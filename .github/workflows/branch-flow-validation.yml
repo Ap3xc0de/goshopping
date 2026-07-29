@@ -1,0 +1,34 @@
+name: Validar flujo de ramas
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - main
+
+jobs:
+  validate-source-branch:
+    name: Validar rama origen
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validar flujo permitido
+        run: |
+          echo "Base branch: ${{ github.base_ref }}"
+          echo "Source branch: ${{ github.head_ref }}"
+
+          if [[ "${{ github.base_ref }}" == "staging" && "${{ github.head_ref }}" == "develop" ]]; then
+            echo "Flujo permitido: develop -> staging"
+            exit 0
+          fi
+
+          if [[ "${{ github.base_ref }}" == "main" && "${{ github.head_ref }}" == "staging" ]]; then
+            echo "Flujo permitido: staging -> main"
+            exit 0
+          fi
+
+          echo "Flujo no permitido."
+          echo "Solo se permite:"
+          echo "  develop -> staging"
+          echo "  staging -> main"
+          exit 1
