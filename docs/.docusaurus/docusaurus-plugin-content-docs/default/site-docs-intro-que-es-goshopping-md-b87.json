@@ -1,0 +1,23 @@
+{
+  "id": "intro/que-es-goshopping",
+  "title": "¿Qué es Go Shopping?",
+  "description": "Go Shopping es un middleware inteligente de e-commerce que conecta la tienda digital de un negocio con todas las herramientas que necesita para operar: pagos, contabilidad, marketing, WhatsApp y más.",
+  "source": "@site/docs/intro/que-es-goshopping.md",
+  "sourceDirName": "intro",
+  "slug": "/intro/que-es-goshopping",
+  "permalink": "/docs/intro/que-es-goshopping",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/intro/que-es-goshopping.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "introSidebar",
+  "next": {
+    "title": "El problema que resuelve",
+    "permalink": "/docs/intro/problema-que-resuelve"
+  }
+}

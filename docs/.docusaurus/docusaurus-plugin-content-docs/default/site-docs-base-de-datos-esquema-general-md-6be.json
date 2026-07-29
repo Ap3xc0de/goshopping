@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/esquema-general",
+  "title": "Esquema General de Base de Datos",
+  "description": "Go Shopping usa PostgreSQL 16 con 9 tablas organizadas en torno al modelo multi-tenant store_id.",
+  "source": "@site/docs/base-de-datos/esquema-general.md",
+  "sourceDirName": "base-de-datos",
+  "slug": "/base-de-datos/esquema-general",
+  "permalink": "/docs/base-de-datos/esquema-general",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/esquema-general.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Integraciones Externas",
+    "permalink": "/docs/reglas-de-negocio/integraciones-externas"
+  },
+  "next": {
+    "title": "Tabla: accounts",
+    "permalink": "/docs/base-de-datos/tablas/accounts"
+  }
+}

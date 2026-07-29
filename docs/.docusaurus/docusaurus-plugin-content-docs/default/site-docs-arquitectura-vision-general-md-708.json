@@ -1,0 +1,23 @@
+{
+  "id": "arquitectura/vision-general",
+  "title": "Visión General de Arquitectura",
+  "description": "Go Shopping está organizado en 4 capas bien definidas. Cada capa tiene una responsabilidad única y se comunica con las capas adyacentes via protocolos bien definidos (HTTP/REST, SQS events).",
+  "source": "@site/docs/arquitectura/vision-general.md",
+  "sourceDirName": "arquitectura",
+  "slug": "/arquitectura/vision-general",
+  "permalink": "/docs/arquitectura/vision-general",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/arquitectura/vision-general.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "arquitecturaSidebar",
+  "next": {
+    "title": "Capas del Sistema",
+    "permalink": "/docs/arquitectura/capas-del-sistema"
+  }
+}

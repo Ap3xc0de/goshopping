@@ -1,0 +1,71 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   GoShopping Design System — Theme Variables
+   La IA modifica --brand-* para personalizar cada tienda generada.
+   El resto del sistema (shadcn + Tailwind) se adapta automáticamente.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Brand Colors (la IA cambia estos por tienda) ── */
+  --brand-primary: 142 71% 45%;           /* Verde por defecto */
+  --brand-primary-foreground: 0 0% 100%;
+  --brand-secondary: 215 28% 17%;
+  --brand-secondary-foreground: 0 0% 100%;
+  --brand-accent: 24 95% 53%;
+  --brand-accent-foreground: 0 0% 100%;
+
+  /* ── Surfaces ── */
+  --surface-background: 0 0% 100%;
+  --surface-foreground: 222 47% 11%;
+  --surface-muted: 210 40% 96%;
+  --surface-card: 0 0% 100%;
+
+  /* ── Typography (la IA cambia estos por tienda) ── */
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-size-base: 16px;
+
+  /* ── Spacing scale ── */
+  --section-spacing: 5rem;
+  --container-max: 1280px;
+  --container-padding: 1.5rem;
+
+  /* ── Border radius ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Paleta ejemplo: Tienda de Moda ──────────────────────────────────────
+   Descomentar para preview:
+:root {
+  --brand-primary: 330 81% 60%;
+  --brand-secondary: 240 5% 15%;
+  --brand-accent: 42 100% 56%;
+}
+── */
+
+/* ── Paleta ejemplo: Tienda de Tecnología ────────────────────────────────
+   Descomentar para preview:
+:root {
+  --brand-primary: 217 91% 60%;
+  --brand-secondary: 222 47% 11%;
+  --brand-accent: 168 76% 42%;
+}
+── */
+
+/* ── Paleta ejemplo: Tienda Artesanal ───────────────────────────────────
+   Descomentar para preview:
+:root {
+  --brand-primary: 25 95% 53%;
+  --brand-secondary: 30 20% 25%;
+  --brand-accent: 142 76% 36%;
+}
+── */

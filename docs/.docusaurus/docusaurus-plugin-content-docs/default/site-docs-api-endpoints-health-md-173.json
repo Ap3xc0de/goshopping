@@ -1,0 +1,27 @@
+{
+  "id": "api/endpoints/health",
+  "title": "Endpoint: Health Check",
+  "description": "GET /health",
+  "source": "@site/docs/api/endpoints/health.md",
+  "sourceDirName": "api/endpoints",
+  "slug": "/api/endpoints/health",
+  "permalink": "/docs/api/endpoints/health",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/endpoints/health.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Endpoint: Auth",
+    "permalink": "/docs/api/endpoints/auth"
+  },
+  "next": {
+    "title": "Endpoint: Products",
+    "permalink": "/docs/api/endpoints/products"
+  }
+}

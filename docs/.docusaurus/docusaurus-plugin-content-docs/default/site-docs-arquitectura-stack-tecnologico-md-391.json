@@ -1,0 +1,27 @@
+{
+  "id": "arquitectura/stack-tecnologico",
+  "title": "Stack Tecnológico",
+  "description": "Resumen por componente",
+  "source": "@site/docs/arquitectura/stack-tecnologico.md",
+  "sourceDirName": "arquitectura",
+  "slug": "/arquitectura/stack-tecnologico",
+  "permalink": "/docs/arquitectura/stack-tecnologico",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/arquitectura/stack-tecnologico.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Monorepo",
+    "permalink": "/docs/arquitectura/monorepo"
+  },
+  "next": {
+    "title": "Flujo de Datos — Una Venta Completa",
+    "permalink": "/docs/arquitectura/flujo-de-datos"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "infraestructura/ambientes",
+  "title": "Ambientes",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/infraestructura/ambientes.md",
+  "sourceDirName": "infraestructura",
+  "slug": "/infraestructura/ambientes",
+  "permalink": "/docs/infraestructura/ambientes",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/infraestructura/ambientes.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "CI/CD Pipeline",
+    "permalink": "/docs/infraestructura/ci-cd"
+  },
+  "next": {
+    "title": "Docker Local",
+    "permalink": "/docs/infraestructura/docker-local"
+  }
+}

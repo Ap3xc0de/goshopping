@@ -1,0 +1,27 @@
+{
+  "id": "api/paginacion",
+  "title": "Paginación",
+  "description": "Todos los endpoints que retornan listas usan paginación por offset.",
+  "source": "@site/docs/api/paginacion.md",
+  "sourceDirName": "api",
+  "slug": "/api/paginacion",
+  "permalink": "/docs/api/paginacion",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/paginacion.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Manejo de Errores",
+    "permalink": "/docs/api/errores"
+  },
+  "next": {
+    "title": "Core API",
+    "permalink": "/docs/servicios/core-api"
+  }
+}

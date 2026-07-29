@@ -1,0 +1,55 @@
+name: Deploy AI Engine
+
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - 'apps/ai-engine/**'
+      - '.github/workflows/ai-engine.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ECR_REPO: goshopping-ai-engine
+  ECS_SERVICE: goshopping-ai-engine
+  ECS_CLUSTER: goshopping-${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Build & Deploy AI Engine (${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_SABIA }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_REPO:latest \
+                       apps/ai-engine
+          docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPO:latest
+
+      - name: Force ECS service redeployment
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment \
+            --region $AWS_REGION

@@ -1,0 +1,27 @@
+{
+  "id": "seguridad/autorizacion-rbac",
+  "title": "Autorización RBAC",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/seguridad/autorizacion-rbac.md",
+  "sourceDirName": "seguridad",
+  "slug": "/seguridad/autorizacion-rbac",
+  "permalink": "/docs/seguridad/autorizacion-rbac",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/seguridad/autorizacion-rbac.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Autenticación JWT",
+    "permalink": "/docs/seguridad/autenticacion-jwt"
+  },
+  "next": {
+    "title": "Aislamiento de Stores",
+    "permalink": "/docs/seguridad/store-isolation"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "reglas-de-negocio/roles-y-permisos",
+  "title": "Roles y Permisos",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/reglas-de-negocio/roles-y-permisos.md",
+  "sourceDirName": "reglas-de-negocio",
+  "slug": "/reglas-de-negocio/roles-y-permisos",
+  "permalink": "/docs/reglas-de-negocio/roles-y-permisos",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/reglas-de-negocio/roles-y-permisos.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 7,
+  "frontMatter": {
+    "sidebar_position": 7
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Multi-Tienda",
+    "permalink": "/docs/reglas-de-negocio/multi-tienda"
+  },
+  "next": {
+    "title": "Integraciones Externas",
+    "permalink": "/docs/reglas-de-negocio/integraciones-externas"
+  }
+}

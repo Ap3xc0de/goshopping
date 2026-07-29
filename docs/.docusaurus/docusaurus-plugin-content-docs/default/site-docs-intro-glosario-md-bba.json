@@ -1,0 +1,23 @@
+{
+  "id": "intro/glosario",
+  "title": "Glosario",
+  "description": "Términos del dominio Go Shopping ordenados alfabeticamente.",
+  "source": "@site/docs/intro/glosario.md",
+  "sourceDirName": "intro",
+  "slug": "/intro/glosario",
+  "permalink": "/docs/intro/glosario",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/intro/glosario.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "introSidebar",
+  "previous": {
+    "title": "Filosofía del producto",
+    "permalink": "/docs/intro/filosofia-del-producto"
+  }
+}

@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkgoshopping_docs=globalThis.webpackChunkgoshopping_docs||[]).push([[3674],{3674(e,s,o){o.d(s,{createTreeViewServices:()=>c.I});var c=o(5738);o(9302)}}]);

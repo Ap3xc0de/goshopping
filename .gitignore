@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build
+dist/
+.next/
+out/
+tmp/
+bin/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform.lock.hcl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.exe
+*.test
+*.out
+
+# Docker
+docker-compose.override.yml

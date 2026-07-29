@@ -1,0 +1,27 @@
+{
+  "id": "seguridad/owasp-checklist",
+  "title": "OWASP Checklist",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/seguridad/owasp-checklist.md",
+  "sourceDirName": "seguridad",
+  "slug": "/seguridad/owasp-checklist",
+  "permalink": "/docs/seguridad/owasp-checklist",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/seguridad/owasp-checklist.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Webhooks HMAC",
+    "permalink": "/docs/seguridad/webhooks-hmac"
+  },
+  "next": {
+    "title": "ADR-001: Monorepo",
+    "permalink": "/docs/decisiones/ADR-001-monorepo"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "arquitectura/event-driven-architecture",
+  "title": "Arquitectura Event-Driven",
+  "description": "Go Shopping usa AWS SQS como event bus. Todos los efectos secundarios de una acción de negocio se ejecutan via eventos asincrónicos, nunca en el mismo request HTTP.",
+  "source": "@site/docs/arquitectura/event-driven-architecture.md",
+  "sourceDirName": "arquitectura",
+  "slug": "/arquitectura/event-driven-architecture",
+  "permalink": "/docs/arquitectura/event-driven-architecture",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/arquitectura/event-driven-architecture.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Flujo de Datos — Una Venta Completa",
+    "permalink": "/docs/arquitectura/flujo-de-datos"
+  },
+  "next": {
+    "title": "Modelo de Negocio",
+    "permalink": "/docs/reglas-de-negocio/modelo-de-negocio"
+  }
+}

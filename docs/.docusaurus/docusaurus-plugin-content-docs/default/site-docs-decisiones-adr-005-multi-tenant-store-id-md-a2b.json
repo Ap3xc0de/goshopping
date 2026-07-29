@@ -1,0 +1,27 @@
+{
+  "id": "decisiones/ADR-005-multi-tenant-store-id",
+  "title": "ADR-005: Multi-Tenant con store_id",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/decisiones/ADR-005-multi-tenant-store-id.md",
+  "sourceDirName": "decisiones",
+  "slug": "/decisiones/ADR-005-multi-tenant-store-id",
+  "permalink": "/docs/decisiones/ADR-005-multi-tenant-store-id",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/decisiones/ADR-005-multi-tenant-store-id.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "ADR-004: OIDC para Deploy",
+    "permalink": "/docs/decisiones/ADR-004-oidc-deploy"
+  },
+  "next": {
+    "title": "ADR-006: Event-Driven con SQS",
+    "permalink": "/docs/decisiones/ADR-006-event-driven-sqs"
+  }
+}

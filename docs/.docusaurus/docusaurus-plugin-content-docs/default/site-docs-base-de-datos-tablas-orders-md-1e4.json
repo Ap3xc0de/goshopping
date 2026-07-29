@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/orders",
+  "title": "Tabla: orders",
+  "description": "Pedidos de clientes. La tabla más crítica del sistema.",
+  "source": "@site/docs/base-de-datos/tablas/orders.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/orders",
+  "permalink": "/docs/base-de-datos/tablas/orders",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/orders.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 8,
+  "frontMatter": {
+    "sidebar_position": 8
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: customers",
+    "permalink": "/docs/base-de-datos/tablas/customers"
+  },
+  "next": {
+    "title": "Tabla: order_timeline",
+    "permalink": "/docs/base-de-datos/tablas/order-timeline"
+  }
+}

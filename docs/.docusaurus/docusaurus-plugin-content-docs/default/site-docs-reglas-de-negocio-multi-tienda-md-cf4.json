@@ -1,0 +1,27 @@
+{
+  "id": "reglas-de-negocio/multi-tienda",
+  "title": "Multi-Tienda",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/reglas-de-negocio/multi-tienda.md",
+  "sourceDirName": "reglas-de-negocio",
+  "slug": "/reglas-de-negocio/multi-tienda",
+  "permalink": "/docs/reglas-de-negocio/multi-tienda",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/reglas-de-negocio/multi-tienda.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Facturación Electrónica DIAN",
+    "permalink": "/docs/reglas-de-negocio/facturacion-electronica-dian"
+  },
+  "next": {
+    "title": "Roles y Permisos",
+    "permalink": "/docs/reglas-de-negocio/roles-y-permisos"
+  }
+}

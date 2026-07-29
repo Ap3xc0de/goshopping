@@ -1,0 +1,27 @@
+{
+  "id": "api/endpoints/public-storefront",
+  "title": "Endpoint: Public Storefront",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/api/endpoints/public-storefront.md",
+  "sourceDirName": "api/endpoints",
+  "slug": "/api/endpoints/public-storefront",
+  "permalink": "/docs/api/endpoints/public-storefront",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/endpoints/public-storefront.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Endpoint: Customers",
+    "permalink": "/docs/api/endpoints/customers"
+  },
+  "next": {
+    "title": "Endpoint: SuperAdmin",
+    "permalink": "/docs/api/endpoints/superadmin"
+  }
+}

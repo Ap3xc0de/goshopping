@@ -1,0 +1,68 @@
+name: Deploy Storefront
+
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - 'apps/storefront/**'
+      - '.github/workflows/storefront.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Build & Deploy Storefront (${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }})
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_SABIA }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/storefront/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/storefront
+        run: npm ci
+
+      - name: Build Next.js app
+        working-directory: apps/storefront
+        env:
+          NEXT_PUBLIC_API_URL: https://api.${{ github.ref == 'refs/heads/main' && 'vettacode.com' || 'staging.vettacode.com' }}
+        run: npm run build
+
+      - name: Sync to S3
+        run: |
+          BUCKET="goshopping-storefront-$ENVIRONMENT"
+          aws s3 sync apps/storefront/.next/static s3://$BUCKET/_next/static \
+            --delete --cache-control "public,max-age=31536000,immutable"
+          aws s3 sync apps/storefront/public s3://$BUCKET \
+            --delete --cache-control "public,max-age=86400"
+          aws s3 cp apps/storefront/.next/standalone/server.js s3://$BUCKET/ \
+            --cache-control "no-cache"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Comment=='Go Shopping Storefront $ENVIRONMENT'].Id" \
+            --output text)
+          aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*"

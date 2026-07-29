@@ -1,0 +1,18 @@
+{
+  "id": "guias/tests-etapa1",
+  "title": "Tests Operacionales — Etapa 1",
+  "description": "Los 12 tests que verifican que la Etapa 1 está completa y operativa.",
+  "source": "@site/docs/guias/tests-etapa1.md",
+  "sourceDirName": "guias",
+  "slug": "/guias/tests-etapa1",
+  "permalink": "/docs/guias/tests-etapa1",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/guias/tests-etapa1.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  }
+}

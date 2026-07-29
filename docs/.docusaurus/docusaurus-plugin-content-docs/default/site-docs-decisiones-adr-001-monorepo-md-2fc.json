@@ -1,0 +1,27 @@
+{
+  "id": "decisiones/ADR-001-monorepo",
+  "title": "ADR-001: Monorepo",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/decisiones/ADR-001-monorepo.md",
+  "sourceDirName": "decisiones",
+  "slug": "/decisiones/ADR-001-monorepo",
+  "permalink": "/docs/decisiones/ADR-001-monorepo",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/decisiones/ADR-001-monorepo.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "OWASP Checklist",
+    "permalink": "/docs/seguridad/owasp-checklist"
+  },
+  "next": {
+    "title": "ADR-002: Go + Fiber para Core API",
+    "permalink": "/docs/decisiones/ADR-002-go-fiber-core"
+  }
+}

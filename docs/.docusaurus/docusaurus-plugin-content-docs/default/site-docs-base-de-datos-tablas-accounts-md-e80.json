@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/accounts",
+  "title": "Tabla: accounts",
+  "description": "Usuarios del sistema. Cada persona que se registra crea una cuenta.",
+  "source": "@site/docs/base-de-datos/tablas/accounts.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/accounts",
+  "permalink": "/docs/base-de-datos/tablas/accounts",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/accounts.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Esquema General de Base de Datos",
+    "permalink": "/docs/base-de-datos/esquema-general"
+  },
+  "next": {
+    "title": "Tabla: stores",
+    "permalink": "/docs/base-de-datos/tablas/stores"
+  }
+}

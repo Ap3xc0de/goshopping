@@ -1,0 +1,27 @@
+{
+  "id": "intro/problema-que-resuelve",
+  "title": "El problema que resuelve",
+  "description": "El dolor del negocio digital en Colombia",
+  "source": "@site/docs/intro/problema-que-resuelve.md",
+  "sourceDirName": "intro",
+  "slug": "/intro/problema-que-resuelve",
+  "permalink": "/docs/intro/problema-que-resuelve",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/intro/problema-que-resuelve.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "introSidebar",
+  "previous": {
+    "title": "¿Qué es Go Shopping?",
+    "permalink": "/docs/intro/que-es-goshopping"
+  },
+  "next": {
+    "title": "Filosofía del producto",
+    "permalink": "/docs/intro/filosofia-del-producto"
+  }
+}

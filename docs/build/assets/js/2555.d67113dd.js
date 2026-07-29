@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkgoshopping_docs=globalThis.webpackChunkgoshopping_docs||[]).push([[2555],{2555(s,e,o){o.d(e,{createWardleyServices:()=>a.J});var a=o(4837);o(9302)}}]);

@@ -1,0 +1,27 @@
+{
+  "id": "infraestructura/oidc-github-actions",
+  "title": "OIDC + GitHub Actions",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/infraestructura/oidc-github-actions.md",
+  "sourceDirName": "infraestructura",
+  "slug": "/infraestructura/oidc-github-actions",
+  "permalink": "/docs/infraestructura/oidc-github-actions",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/infraestructura/oidc-github-actions.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Terraform",
+    "permalink": "/docs/infraestructura/terraform"
+  },
+  "next": {
+    "title": "Secretos y Variables",
+    "permalink": "/docs/infraestructura/secretos-y-variables"
+  }
+}

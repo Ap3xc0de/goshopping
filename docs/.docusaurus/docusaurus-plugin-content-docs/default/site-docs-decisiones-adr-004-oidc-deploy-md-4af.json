@@ -1,0 +1,27 @@
+{
+  "id": "decisiones/ADR-004-oidc-deploy",
+  "title": "ADR-004: OIDC para Deploy",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/decisiones/ADR-004-oidc-deploy.md",
+  "sourceDirName": "decisiones",
+  "slug": "/decisiones/ADR-004-oidc-deploy",
+  "permalink": "/docs/decisiones/ADR-004-oidc-deploy",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/decisiones/ADR-004-oidc-deploy.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "ADR-003: NestJS para Integraciones",
+    "permalink": "/docs/decisiones/ADR-003-nestjs-integraciones"
+  },
+  "next": {
+    "title": "ADR-005: Multi-Tenant con store_id",
+    "permalink": "/docs/decisiones/ADR-005-multi-tenant-store-id"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "api/endpoints/products",
+  "title": "Endpoint: Products",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/api/endpoints/products.md",
+  "sourceDirName": "api/endpoints",
+  "slug": "/api/endpoints/products",
+  "permalink": "/docs/api/endpoints/products",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/endpoints/products.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Endpoint: Health Check",
+    "permalink": "/docs/api/endpoints/health"
+  },
+  "next": {
+    "title": "Endpoint: Orders",
+    "permalink": "/docs/api/endpoints/orders"
+  }
+}

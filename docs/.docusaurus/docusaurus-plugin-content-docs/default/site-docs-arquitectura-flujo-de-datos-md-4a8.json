@@ -1,0 +1,27 @@
+{
+  "id": "arquitectura/flujo-de-datos",
+  "title": "Flujo de Datos — Una Venta Completa",
+  "description": "Este diagrama muestra el ciclo de vida completo de una venta en Go Shopping, desde que el cliente navega la tienda hasta que la contabilidad queda actualizada.",
+  "source": "@site/docs/arquitectura/flujo-de-datos.md",
+  "sourceDirName": "arquitectura",
+  "slug": "/arquitectura/flujo-de-datos",
+  "permalink": "/docs/arquitectura/flujo-de-datos",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/arquitectura/flujo-de-datos.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Stack Tecnológico",
+    "permalink": "/docs/arquitectura/stack-tecnologico"
+  },
+  "next": {
+    "title": "Arquitectura Event-Driven",
+    "permalink": "/docs/arquitectura/event-driven-architecture"
+  }
+}

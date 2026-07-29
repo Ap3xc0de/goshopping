@@ -1,0 +1,27 @@
+{
+  "id": "servicios/superadmin-panel",
+  "title": "SuperAdmin Panel",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/servicios/superadmin-panel.md",
+  "sourceDirName": "servicios",
+  "slug": "/servicios/superadmin-panel",
+  "permalink": "/docs/servicios/superadmin-panel",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/servicios/superadmin-panel.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "AI Engine",
+    "permalink": "/docs/servicios/ai-engine"
+  },
+  "next": {
+    "title": "Admin Panel",
+    "permalink": "/docs/servicios/admin-panel"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "servicios/core-api",
+  "title": "Core API",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/servicios/core-api.md",
+  "sourceDirName": "servicios",
+  "slug": "/servicios/core-api",
+  "permalink": "/docs/servicios/core-api",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/servicios/core-api.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Paginación",
+    "permalink": "/docs/api/paginacion"
+  },
+  "next": {
+    "title": "Integrations Service",
+    "permalink": "/docs/servicios/integrations-service"
+  }
+}

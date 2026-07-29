@@ -1,0 +1,23 @@
+{
+  "id": "servicios/storefront-engine",
+  "title": "Storefront Engine",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/servicios/storefront-engine.md",
+  "sourceDirName": "servicios",
+  "slug": "/servicios/storefront-engine",
+  "permalink": "/docs/servicios/storefront-engine",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/servicios/storefront-engine.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Admin Panel",
+    "permalink": "/docs/servicios/admin-panel"
+  }
+}

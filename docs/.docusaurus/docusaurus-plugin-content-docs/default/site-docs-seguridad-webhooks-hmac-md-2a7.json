@@ -1,0 +1,27 @@
+{
+  "id": "seguridad/webhooks-hmac",
+  "title": "Webhooks HMAC",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/seguridad/webhooks-hmac.md",
+  "sourceDirName": "seguridad",
+  "slug": "/seguridad/webhooks-hmac",
+  "permalink": "/docs/seguridad/webhooks-hmac",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/seguridad/webhooks-hmac.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Gestión de Secretos",
+    "permalink": "/docs/seguridad/secretos"
+  },
+  "next": {
+    "title": "OWASP Checklist",
+    "permalink": "/docs/seguridad/owasp-checklist"
+  }
+}

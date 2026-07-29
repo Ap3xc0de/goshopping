@@ -1,0 +1,27 @@
+{
+  "id": "decisiones/ADR-006-event-driven-sqs",
+  "title": "ADR-006: Event-Driven con SQS",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/decisiones/ADR-006-event-driven-sqs.md",
+  "sourceDirName": "decisiones",
+  "slug": "/decisiones/ADR-006-event-driven-sqs",
+  "permalink": "/docs/decisiones/ADR-006-event-driven-sqs",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/decisiones/ADR-006-event-driven-sqs.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "ADR-005: Multi-Tenant con store_id",
+    "permalink": "/docs/decisiones/ADR-005-multi-tenant-store-id"
+  },
+  "next": {
+    "title": "ADR-007: Secretos en AWS",
+    "permalink": "/docs/decisiones/ADR-007-secretos-aws"
+  }
+}

@@ -1,0 +1,31 @@
+﻿{
+    "startedAt":  "2026-07-24T17:33:27.6350541-05:00",
+    "lanIp":  "192.168.1.2",
+    "terminals":  [
+                      {
+                          "name":  "core",
+                          "pid":  17808,
+                          "workdir":  "apps/core"
+                      },
+                      {
+                          "name":  "integrations",
+                          "pid":  32144,
+                          "workdir":  "apps/integrations"
+                      },
+                      {
+                          "name":  "superadmin",
+                          "pid":  7708,
+                          "workdir":  "apps/superadmin"
+                      },
+                      {
+                          "name":  "admin",
+                          "pid":  33888,
+                          "workdir":  "apps/admin"
+                      },
+                      {
+                          "name":  "storefront",
+                          "pid":  4184,
+                          "workdir":  "apps/storefront"
+                      }
+                  ]
+}

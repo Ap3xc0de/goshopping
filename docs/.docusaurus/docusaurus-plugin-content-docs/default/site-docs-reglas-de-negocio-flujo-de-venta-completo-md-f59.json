@@ -1,0 +1,27 @@
+{
+  "id": "reglas-de-negocio/flujo-de-venta-completo",
+  "title": "Flujo de Venta Completo",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/reglas-de-negocio/flujo-de-venta-completo.md",
+  "sourceDirName": "reglas-de-negocio",
+  "slug": "/reglas-de-negocio/flujo-de-venta-completo",
+  "permalink": "/docs/reglas-de-negocio/flujo-de-venta-completo",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/reglas-de-negocio/flujo-de-venta-completo.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Modelo de Negocio",
+    "permalink": "/docs/reglas-de-negocio/modelo-de-negocio"
+  },
+  "next": {
+    "title": "Estados de Pedido",
+    "permalink": "/docs/reglas-de-negocio/estados-de-pedido"
+  }
+}

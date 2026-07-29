@@ -1,0 +1,27 @@
+{
+  "id": "intro/filosofia-del-producto",
+  "title": "Filosofía del producto",
+  "description": "Lo que SÍ construimos",
+  "source": "@site/docs/intro/filosofia-del-producto.md",
+  "sourceDirName": "intro",
+  "slug": "/intro/filosofia-del-producto",
+  "permalink": "/docs/intro/filosofia-del-producto",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/intro/filosofia-del-producto.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "introSidebar",
+  "previous": {
+    "title": "El problema que resuelve",
+    "permalink": "/docs/intro/problema-que-resuelve"
+  },
+  "next": {
+    "title": "Glosario",
+    "permalink": "/docs/intro/glosario"
+  }
+}

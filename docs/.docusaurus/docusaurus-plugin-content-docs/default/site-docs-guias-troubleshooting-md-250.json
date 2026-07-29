@@ -1,0 +1,27 @@
+{
+  "id": "guias/troubleshooting",
+  "title": "Troubleshooting",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/guias/troubleshooting.md",
+  "sourceDirName": "guias",
+  "slug": "/guias/troubleshooting",
+  "permalink": "/docs/guias/troubleshooting",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/guias/troubleshooting.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Agregar una Integración",
+    "permalink": "/docs/guias/agregar-integracion"
+  },
+  "next": {
+    "title": "AWS Overview",
+    "permalink": "/docs/infraestructura/aws-overview"
+  }
+}

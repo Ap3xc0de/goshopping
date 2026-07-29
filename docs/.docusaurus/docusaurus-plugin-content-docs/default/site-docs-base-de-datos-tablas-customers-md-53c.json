@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/customers",
+  "title": "Tabla: customers",
+  "description": "Clientes registrados por tienda.",
+  "source": "@site/docs/base-de-datos/tablas/customers.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/customers",
+  "permalink": "/docs/base-de-datos/tablas/customers",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/customers.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 10,
+  "frontMatter": {
+    "sidebar_position": 10
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: products",
+    "permalink": "/docs/base-de-datos/tablas/products"
+  },
+  "next": {
+    "title": "Tabla: orders",
+    "permalink": "/docs/base-de-datos/tablas/orders"
+  }
+}

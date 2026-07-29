@@ -1,0 +1,27 @@
+{
+  "id": "guias/agregar-endpoint",
+  "title": "Agregar un Endpoint",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/guias/agregar-endpoint.md",
+  "sourceDirName": "guias",
+  "slug": "/guias/agregar-endpoint",
+  "permalink": "/docs/guias/agregar-endpoint",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/guias/agregar-endpoint.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Primer Deploy",
+    "permalink": "/docs/guias/primer-deploy"
+  },
+  "next": {
+    "title": "Crear una Migración",
+    "permalink": "/docs/guias/crear-migracion"
+  }
+}

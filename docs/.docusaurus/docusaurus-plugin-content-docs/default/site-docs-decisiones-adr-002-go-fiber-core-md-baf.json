@@ -1,0 +1,27 @@
+{
+  "id": "decisiones/ADR-002-go-fiber-core",
+  "title": "ADR-002: Go + Fiber para Core API",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/decisiones/ADR-002-go-fiber-core.md",
+  "sourceDirName": "decisiones",
+  "slug": "/decisiones/ADR-002-go-fiber-core",
+  "permalink": "/docs/decisiones/ADR-002-go-fiber-core",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/decisiones/ADR-002-go-fiber-core.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "ADR-001: Monorepo",
+    "permalink": "/docs/decisiones/ADR-001-monorepo"
+  },
+  "next": {
+    "title": "ADR-003: NestJS para Integraciones",
+    "permalink": "/docs/decisiones/ADR-003-nestjs-integraciones"
+  }
+}

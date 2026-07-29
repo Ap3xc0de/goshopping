@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkgoshopping_docs=globalThis.webpackChunkgoshopping_docs||[]).push([[6735],{6735(s,e,o){o.d(e,{createEventModelingServices:()=>g.g});var g=o(2968);o(9302)}}]);

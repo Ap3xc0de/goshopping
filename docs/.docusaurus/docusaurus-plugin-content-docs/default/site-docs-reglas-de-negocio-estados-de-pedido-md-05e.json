@@ -1,0 +1,27 @@
+{
+  "id": "reglas-de-negocio/estados-de-pedido",
+  "title": "Estados de Pedido",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/reglas-de-negocio/estados-de-pedido.md",
+  "sourceDirName": "reglas-de-negocio",
+  "slug": "/reglas-de-negocio/estados-de-pedido",
+  "permalink": "/docs/reglas-de-negocio/estados-de-pedido",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/reglas-de-negocio/estados-de-pedido.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Flujo de Venta Completo",
+    "permalink": "/docs/reglas-de-negocio/flujo-de-venta-completo"
+  },
+  "next": {
+    "title": "Gestión de Inventario",
+    "permalink": "/docs/reglas-de-negocio/gestion-de-inventario"
+  }
+}

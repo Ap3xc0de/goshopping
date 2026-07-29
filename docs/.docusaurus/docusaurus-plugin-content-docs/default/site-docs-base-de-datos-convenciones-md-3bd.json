@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/convenciones",
+  "title": "Convenciones de Base de Datos",
+  "description": "IDs: UUID v4",
+  "source": "@site/docs/base-de-datos/convenciones.md",
+  "sourceDirName": "base-de-datos",
+  "slug": "/base-de-datos/convenciones",
+  "permalink": "/docs/base-de-datos/convenciones",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/convenciones.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Migraciones",
+    "permalink": "/docs/base-de-datos/migraciones"
+  },
+  "next": {
+    "title": "Multi-Tenancy",
+    "permalink": "/docs/base-de-datos/multi-tenancy"
+  }
+}

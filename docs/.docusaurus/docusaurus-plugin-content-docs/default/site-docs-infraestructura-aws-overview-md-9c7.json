@@ -1,0 +1,27 @@
+{
+  "id": "infraestructura/aws-overview",
+  "title": "AWS Overview",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/infraestructura/aws-overview.md",
+  "sourceDirName": "infraestructura",
+  "slug": "/infraestructura/aws-overview",
+  "permalink": "/docs/infraestructura/aws-overview",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/infraestructura/aws-overview.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Troubleshooting",
+    "permalink": "/docs/guias/troubleshooting"
+  },
+  "next": {
+    "title": "Terraform",
+    "permalink": "/docs/infraestructura/terraform"
+  }
+}

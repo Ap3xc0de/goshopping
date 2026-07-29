@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/migraciones",
+  "title": "Migraciones",
+  "description": "Go Shopping usa golang-migrate para gestión de migraciones SQL.",
+  "source": "@site/docs/base-de-datos/migraciones.md",
+  "sourceDirName": "base-de-datos",
+  "slug": "/base-de-datos/migraciones",
+  "permalink": "/docs/base-de-datos/migraciones",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/migraciones.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: audit_log",
+    "permalink": "/docs/base-de-datos/tablas/audit-log"
+  },
+  "next": {
+    "title": "Convenciones de Base de Datos",
+    "permalink": "/docs/base-de-datos/convenciones"
+  }
+}

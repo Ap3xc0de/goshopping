@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # ── Base de datos ──
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: goshopping
+      POSTGRES_PASSWORD: devpassword2026
+      POSTGRES_DB: goshopping
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goshopping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:latest
+    volumes:
+      - ./elasticmq.conf:/opt/elasticmq.conf
+    restart: unless-stopped
+
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+    restart: unless-stopped
+
+  # ── Backend Services ──
+  core:
+    build:
+      context: ./apps/core
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticmq:
+        condition: service_started
+    restart: unless-stopped
+
+  integrations:
+    build:
+      context: ./apps/integrations
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - PORT=3001
+    depends_on:
+      - postgres
+      - elasticmq
+    restart: unless-stopped
+
+  ai-engine:
+    build:
+      context: ./apps/ai-engine
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - PORT=3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - core
+    restart: unless-stopped
+
+  # ── Frontend Services ──
+  superadmin:
+    build:
+      context: ./apps/superadmin
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    ports:
+      - "3003:3000"
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_AI_ENGINE_URL=${NEXT_PUBLIC_AI_ENGINE_URL:-http://localhost:3002}
+    ports:
+      - "3010:3000"
+    restart: unless-stopped
+
+  storefront:
+    build:
+      context: ./apps/storefront
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    ports:
+      - "3004:3000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

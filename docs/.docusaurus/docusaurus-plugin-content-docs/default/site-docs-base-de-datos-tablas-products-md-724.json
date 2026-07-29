@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/products",
+  "title": "Tabla: products",
+  "description": "Catálogo de productos por tienda.",
+  "source": "@site/docs/base-de-datos/tablas/products.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/products",
+  "permalink": "/docs/base-de-datos/tablas/products",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/products.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 9,
+  "frontMatter": {
+    "sidebar_position": 9
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: store_users",
+    "permalink": "/docs/base-de-datos/tablas/store-users"
+  },
+  "next": {
+    "title": "Tabla: customers",
+    "permalink": "/docs/base-de-datos/tablas/customers"
+  }
+}

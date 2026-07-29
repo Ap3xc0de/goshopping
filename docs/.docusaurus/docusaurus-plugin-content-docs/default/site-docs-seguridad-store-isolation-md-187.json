@@ -1,0 +1,27 @@
+{
+  "id": "seguridad/store-isolation",
+  "title": "Aislamiento de Stores",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/seguridad/store-isolation.md",
+  "sourceDirName": "seguridad",
+  "slug": "/seguridad/store-isolation",
+  "permalink": "/docs/seguridad/store-isolation",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/seguridad/store-isolation.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Autorización RBAC",
+    "permalink": "/docs/seguridad/autorizacion-rbac"
+  },
+  "next": {
+    "title": "Gestión de Secretos",
+    "permalink": "/docs/seguridad/secretos"
+  }
+}

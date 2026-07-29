@@ -1,0 +1,428 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/docs",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/docs",
+          "mainDocId": "intro/que-es-goshopping",
+          "docs": [
+            {
+              "id": "api/autenticacion",
+              "path": "/docs/api/autenticacion",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/endpoints/auth",
+              "path": "/docs/api/endpoints/auth",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/endpoints/customers",
+              "path": "/docs/api/endpoints/customers",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/endpoints/health",
+              "path": "/docs/api/endpoints/health",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/endpoints/orders",
+              "path": "/docs/api/endpoints/orders",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/endpoints/products",
+              "path": "/docs/api/endpoints/products",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/endpoints/public-storefront",
+              "path": "/docs/api/endpoints/public-storefront",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/endpoints/superadmin",
+              "path": "/docs/api/endpoints/superadmin",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/errores",
+              "path": "/docs/api/errores",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/overview",
+              "path": "/docs/api/overview",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "api/paginacion",
+              "path": "/docs/api/paginacion",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "arquitectura/capas-del-sistema",
+              "path": "/docs/arquitectura/capas-del-sistema",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "arquitectura/event-driven-architecture",
+              "path": "/docs/arquitectura/event-driven-architecture",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "arquitectura/flujo-de-datos",
+              "path": "/docs/arquitectura/flujo-de-datos",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "arquitectura/monorepo",
+              "path": "/docs/arquitectura/monorepo",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "arquitectura/stack-tecnologico",
+              "path": "/docs/arquitectura/stack-tecnologico",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "arquitectura/vision-general",
+              "path": "/docs/arquitectura/vision-general",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/convenciones",
+              "path": "/docs/base-de-datos/convenciones",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/esquema-general",
+              "path": "/docs/base-de-datos/esquema-general",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/migraciones",
+              "path": "/docs/base-de-datos/migraciones",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/multi-tenancy",
+              "path": "/docs/base-de-datos/multi-tenancy",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/accounts",
+              "path": "/docs/base-de-datos/tablas/accounts",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/audit-log",
+              "path": "/docs/base-de-datos/tablas/audit-log",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/customers",
+              "path": "/docs/base-de-datos/tablas/customers",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/integrations",
+              "path": "/docs/base-de-datos/tablas/integrations",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/order-timeline",
+              "path": "/docs/base-de-datos/tablas/order-timeline",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/orders",
+              "path": "/docs/base-de-datos/tablas/orders",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/products",
+              "path": "/docs/base-de-datos/tablas/products",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/store-users",
+              "path": "/docs/base-de-datos/tablas/store-users",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "base-de-datos/tablas/stores",
+              "path": "/docs/base-de-datos/tablas/stores",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "decisiones/ADR-001-monorepo",
+              "path": "/docs/decisiones/ADR-001-monorepo",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "decisiones/ADR-002-go-fiber-core",
+              "path": "/docs/decisiones/ADR-002-go-fiber-core",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "decisiones/ADR-003-nestjs-integraciones",
+              "path": "/docs/decisiones/ADR-003-nestjs-integraciones",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "decisiones/ADR-004-oidc-deploy",
+              "path": "/docs/decisiones/ADR-004-oidc-deploy",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "decisiones/ADR-005-multi-tenant-store-id",
+              "path": "/docs/decisiones/ADR-005-multi-tenant-store-id",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "decisiones/ADR-006-event-driven-sqs",
+              "path": "/docs/decisiones/ADR-006-event-driven-sqs",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "decisiones/ADR-007-secretos-aws",
+              "path": "/docs/decisiones/ADR-007-secretos-aws",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "guias/agregar-endpoint",
+              "path": "/docs/guias/agregar-endpoint",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "guias/agregar-integracion",
+              "path": "/docs/guias/agregar-integracion",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "guias/crear-migracion",
+              "path": "/docs/guias/crear-migracion",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "guias/docker-local",
+              "path": "/docs/guias/docker-local"
+            },
+            {
+              "id": "guias/primer-deploy",
+              "path": "/docs/guias/primer-deploy",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "guias/setup-local",
+              "path": "/docs/guias/setup-local",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "guias/tests-etapa1",
+              "path": "/docs/guias/tests-etapa1"
+            },
+            {
+              "id": "guias/troubleshooting",
+              "path": "/docs/guias/troubleshooting",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "guias/variables-de-entorno",
+              "path": "/docs/guias/variables-de-entorno"
+            },
+            {
+              "id": "infraestructura/ambientes",
+              "path": "/docs/infraestructura/ambientes",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "infraestructura/aws-overview",
+              "path": "/docs/infraestructura/aws-overview",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "infraestructura/ci-cd",
+              "path": "/docs/infraestructura/ci-cd",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "infraestructura/docker-local",
+              "path": "/docs/infraestructura/docker-local",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "infraestructura/oidc-github-actions",
+              "path": "/docs/infraestructura/oidc-github-actions",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "infraestructura/secretos-y-variables",
+              "path": "/docs/infraestructura/secretos-y-variables",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "infraestructura/terraform",
+              "path": "/docs/infraestructura/terraform",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "intro/filosofia-del-producto",
+              "path": "/docs/intro/filosofia-del-producto",
+              "sidebar": "introSidebar"
+            },
+            {
+              "id": "intro/glosario",
+              "path": "/docs/intro/glosario",
+              "sidebar": "introSidebar"
+            },
+            {
+              "id": "intro/problema-que-resuelve",
+              "path": "/docs/intro/problema-que-resuelve",
+              "sidebar": "introSidebar"
+            },
+            {
+              "id": "intro/que-es-goshopping",
+              "path": "/docs/intro/que-es-goshopping",
+              "sidebar": "introSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/estados-de-pedido",
+              "path": "/docs/reglas-de-negocio/estados-de-pedido",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/facturacion-electronica-dian",
+              "path": "/docs/reglas-de-negocio/facturacion-electronica-dian",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/flujo-de-venta-completo",
+              "path": "/docs/reglas-de-negocio/flujo-de-venta-completo",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/gestion-de-inventario",
+              "path": "/docs/reglas-de-negocio/gestion-de-inventario",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/integraciones-externas",
+              "path": "/docs/reglas-de-negocio/integraciones-externas",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/modelo-de-negocio",
+              "path": "/docs/reglas-de-negocio/modelo-de-negocio",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/multi-tienda",
+              "path": "/docs/reglas-de-negocio/multi-tienda",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "reglas-de-negocio/roles-y-permisos",
+              "path": "/docs/reglas-de-negocio/roles-y-permisos",
+              "sidebar": "arquitecturaSidebar"
+            },
+            {
+              "id": "seguridad/autenticacion-jwt",
+              "path": "/docs/seguridad/autenticacion-jwt",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "seguridad/autorizacion-rbac",
+              "path": "/docs/seguridad/autorizacion-rbac",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "seguridad/owasp-checklist",
+              "path": "/docs/seguridad/owasp-checklist",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "seguridad/secretos",
+              "path": "/docs/seguridad/secretos",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "seguridad/store-isolation",
+              "path": "/docs/seguridad/store-isolation",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "seguridad/webhooks-hmac",
+              "path": "/docs/seguridad/webhooks-hmac",
+              "sidebar": "guiasSidebar"
+            },
+            {
+              "id": "servicios/admin-panel",
+              "path": "/docs/servicios/admin-panel",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "servicios/ai-engine",
+              "path": "/docs/servicios/ai-engine",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "servicios/core-api",
+              "path": "/docs/servicios/core-api",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "servicios/integrations-service",
+              "path": "/docs/servicios/integrations-service",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "servicios/storefront-engine",
+              "path": "/docs/servicios/storefront-engine",
+              "sidebar": "apiSidebar"
+            },
+            {
+              "id": "servicios/superadmin-panel",
+              "path": "/docs/servicios/superadmin-panel",
+              "sidebar": "apiSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "introSidebar": {
+              "link": {
+                "path": "/docs/intro/que-es-goshopping",
+                "label": "intro/que-es-goshopping"
+              }
+            },
+            "arquitecturaSidebar": {
+              "link": {
+                "path": "/docs/arquitectura/vision-general",
+                "label": "arquitectura/vision-general"
+              }
+            },
+            "apiSidebar": {
+              "link": {
+                "path": "/docs/api/overview",
+                "label": "api/overview"
+              }
+            },
+            "guiasSidebar": {
+              "link": {
+                "path": "/docs/guias/setup-local",
+                "label": "guias/setup-local"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

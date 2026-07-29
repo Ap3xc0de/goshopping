@@ -1,0 +1,27 @@
+{
+  "id": "reglas-de-negocio/gestion-de-inventario",
+  "title": "Gestión de Inventario",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/reglas-de-negocio/gestion-de-inventario.md",
+  "sourceDirName": "reglas-de-negocio",
+  "slug": "/reglas-de-negocio/gestion-de-inventario",
+  "permalink": "/docs/reglas-de-negocio/gestion-de-inventario",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/reglas-de-negocio/gestion-de-inventario.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Estados de Pedido",
+    "permalink": "/docs/reglas-de-negocio/estados-de-pedido"
+  },
+  "next": {
+    "title": "Facturación Electrónica DIAN",
+    "permalink": "/docs/reglas-de-negocio/facturacion-electronica-dian"
+  }
+}

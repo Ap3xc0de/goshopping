@@ -1,0 +1,27 @@
+{
+  "id": "decisiones/ADR-003-nestjs-integraciones",
+  "title": "ADR-003: NestJS para Integraciones",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/decisiones/ADR-003-nestjs-integraciones.md",
+  "sourceDirName": "decisiones",
+  "slug": "/decisiones/ADR-003-nestjs-integraciones",
+  "permalink": "/docs/decisiones/ADR-003-nestjs-integraciones",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/decisiones/ADR-003-nestjs-integraciones.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "ADR-002: Go + Fiber para Core API",
+    "permalink": "/docs/decisiones/ADR-002-go-fiber-core"
+  },
+  "next": {
+    "title": "ADR-004: OIDC para Deploy",
+    "permalink": "/docs/decisiones/ADR-004-oidc-deploy"
+  }
+}

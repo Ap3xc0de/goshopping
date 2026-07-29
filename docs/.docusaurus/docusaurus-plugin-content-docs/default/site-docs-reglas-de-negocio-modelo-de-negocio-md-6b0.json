@@ -1,0 +1,27 @@
+{
+  "id": "reglas-de-negocio/modelo-de-negocio",
+  "title": "Modelo de Negocio",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/reglas-de-negocio/modelo-de-negocio.md",
+  "sourceDirName": "reglas-de-negocio",
+  "slug": "/reglas-de-negocio/modelo-de-negocio",
+  "permalink": "/docs/reglas-de-negocio/modelo-de-negocio",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/reglas-de-negocio/modelo-de-negocio.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Arquitectura Event-Driven",
+    "permalink": "/docs/arquitectura/event-driven-architecture"
+  },
+  "next": {
+    "title": "Flujo de Venta Completo",
+    "permalink": "/docs/reglas-de-negocio/flujo-de-venta-completo"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "servicios/ai-engine",
+  "title": "AI Engine",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/servicios/ai-engine.md",
+  "sourceDirName": "servicios",
+  "slug": "/servicios/ai-engine",
+  "permalink": "/docs/servicios/ai-engine",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/servicios/ai-engine.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Integrations Service",
+    "permalink": "/docs/servicios/integrations-service"
+  },
+  "next": {
+    "title": "SuperAdmin Panel",
+    "permalink": "/docs/servicios/superadmin-panel"
+  }
+}

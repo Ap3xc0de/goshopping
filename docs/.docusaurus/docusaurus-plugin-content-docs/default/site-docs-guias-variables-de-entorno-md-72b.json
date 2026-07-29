@@ -1,0 +1,18 @@
+{
+  "id": "guias/variables-de-entorno",
+  "title": "Variables de Entorno",
+  "description": "Todas las variables que el Core API necesita para funcionar.",
+  "source": "@site/docs/guias/variables-de-entorno.md",
+  "sourceDirName": "guias",
+  "slug": "/guias/variables-de-entorno",
+  "permalink": "/docs/guias/variables-de-entorno",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/guias/variables-de-entorno.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  }
+}

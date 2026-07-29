@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/stores",
+  "title": "Tabla: stores",
+  "description": "Tiendas. Cada account puede tener una o más tiendas.",
+  "source": "@site/docs/base-de-datos/tablas/stores.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/stores",
+  "permalink": "/docs/base-de-datos/tablas/stores",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/stores.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 7,
+  "frontMatter": {
+    "sidebar_position": 7
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: accounts",
+    "permalink": "/docs/base-de-datos/tablas/accounts"
+  },
+  "next": {
+    "title": "Tabla: store_users",
+    "permalink": "/docs/base-de-datos/tablas/store-users"
+  }
+}

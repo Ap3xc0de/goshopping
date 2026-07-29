@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/store-users",
+  "title": "Tabla: store_users",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/base-de-datos/tablas/store-users.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/store-users",
+  "permalink": "/docs/base-de-datos/tablas/store-users",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/store-users.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: stores",
+    "permalink": "/docs/base-de-datos/tablas/stores"
+  },
+  "next": {
+    "title": "Tabla: products",
+    "permalink": "/docs/base-de-datos/tablas/products"
+  }
+}

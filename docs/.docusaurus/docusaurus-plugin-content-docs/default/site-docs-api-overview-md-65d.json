@@ -1,0 +1,23 @@
+{
+  "id": "api/overview",
+  "title": "API Overview",
+  "description": "El Core API es el único punto de entrada para todas las operaciones de negocio.",
+  "source": "@site/docs/api/overview.md",
+  "sourceDirName": "api",
+  "slug": "/api/overview",
+  "permalink": "/docs/api/overview",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/overview.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "apiSidebar",
+  "next": {
+    "title": "Autenticación",
+    "permalink": "/docs/api/autenticacion"
+  }
+}

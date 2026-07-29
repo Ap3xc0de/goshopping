@@ -1,0 +1,27 @@
+{
+  "id": "infraestructura/terraform",
+  "title": "Terraform",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/infraestructura/terraform.md",
+  "sourceDirName": "infraestructura",
+  "slug": "/infraestructura/terraform",
+  "permalink": "/docs/infraestructura/terraform",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/infraestructura/terraform.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "AWS Overview",
+    "permalink": "/docs/infraestructura/aws-overview"
+  },
+  "next": {
+    "title": "OIDC + GitHub Actions",
+    "permalink": "/docs/infraestructura/oidc-github-actions"
+  }
+}

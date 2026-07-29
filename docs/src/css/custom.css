@@ -1,0 +1,46 @@
+/* Go Shopping — Color Primario */
+:root {
+  --ifm-color-primary: #0D47A1;
+  --ifm-color-primary-dark: #0b3f8f;
+  --ifm-color-primary-darker: #0a3b87;
+  --ifm-color-primary-darkest: #083170;
+  --ifm-color-primary-light: #0f4fb3;
+  --ifm-color-primary-lighter: #1053bb;
+  --ifm-color-primary-lightest: #1460d4;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(13, 71, 161, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #5c9ce6;
+  --ifm-color-primary-dark: #3f8ae0;
+  --ifm-color-primary-darker: #3181dd;
+  --ifm-color-primary-darkest: #1a66c4;
+  --ifm-color-primary-light: #79aeec;
+  --ifm-color-primary-lighter: #87b7ee;
+  --ifm-color-primary-lightest: #b3d0f5;
+  --docusaurus-highlighted-code-line-bg: rgba(92, 156, 230, 0.15);
+}
+
+/* Hero section */
+.hero--primary {
+  background: linear-gradient(135deg, #0D47A1 0%, #1565C0 50%, #1976D2 100%);
+}
+
+/* Feature cards */
+.feature-card {
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Mermaid diagrams */
+.docusaurus-mermaid-container {
+  margin: 2rem 0;
+}

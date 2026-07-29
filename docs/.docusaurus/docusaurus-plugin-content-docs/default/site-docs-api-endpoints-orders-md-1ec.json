@@ -1,0 +1,27 @@
+{
+  "id": "api/endpoints/orders",
+  "title": "Endpoint: Orders",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/api/endpoints/orders.md",
+  "sourceDirName": "api/endpoints",
+  "slug": "/api/endpoints/orders",
+  "permalink": "/docs/api/endpoints/orders",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/endpoints/orders.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Endpoint: Products",
+    "permalink": "/docs/api/endpoints/products"
+  },
+  "next": {
+    "title": "Endpoint: Customers",
+    "permalink": "/docs/api/endpoints/customers"
+  }
+}

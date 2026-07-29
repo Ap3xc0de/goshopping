@@ -1,0 +1,27 @@
+{
+  "id": "guias/crear-migracion",
+  "title": "Crear una Migración",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/guias/crear-migracion.md",
+  "sourceDirName": "guias",
+  "slug": "/guias/crear-migracion",
+  "permalink": "/docs/guias/crear-migracion",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/guias/crear-migracion.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Agregar un Endpoint",
+    "permalink": "/docs/guias/agregar-endpoint"
+  },
+  "next": {
+    "title": "Agregar una Integración",
+    "permalink": "/docs/guias/agregar-integracion"
+  }
+}

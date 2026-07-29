@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/integrations",
+  "title": "Tabla: integrations",
+  "description": "Configuración de integraciones externas por tienda.",
+  "source": "@site/docs/base-de-datos/tablas/integrations.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/integrations",
+  "permalink": "/docs/base-de-datos/tablas/integrations",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/integrations.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 11,
+  "frontMatter": {
+    "sidebar_position": 11
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: order_timeline",
+    "permalink": "/docs/base-de-datos/tablas/order-timeline"
+  },
+  "next": {
+    "title": "Tabla: audit_log",
+    "permalink": "/docs/base-de-datos/tablas/audit-log"
+  }
+}

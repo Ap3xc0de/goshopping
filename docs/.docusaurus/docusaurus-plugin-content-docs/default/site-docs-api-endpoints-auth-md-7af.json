@@ -1,0 +1,27 @@
+{
+  "id": "api/endpoints/auth",
+  "title": "Endpoint: Auth",
+  "description": "POST /auth/register",
+  "source": "@site/docs/api/endpoints/auth.md",
+  "sourceDirName": "api/endpoints",
+  "slug": "/api/endpoints/auth",
+  "permalink": "/docs/api/endpoints/auth",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/endpoints/auth.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Autenticación",
+    "permalink": "/docs/api/autenticacion"
+  },
+  "next": {
+    "title": "Endpoint: Health Check",
+    "permalink": "/docs/api/endpoints/health"
+  }
+}

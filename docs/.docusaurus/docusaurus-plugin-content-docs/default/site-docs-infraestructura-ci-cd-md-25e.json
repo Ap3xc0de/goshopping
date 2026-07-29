@@ -1,0 +1,27 @@
+{
+  "id": "infraestructura/ci-cd",
+  "title": "CI/CD Pipeline",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/infraestructura/ci-cd.md",
+  "sourceDirName": "infraestructura",
+  "slug": "/infraestructura/ci-cd",
+  "permalink": "/docs/infraestructura/ci-cd",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/infraestructura/ci-cd.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Secretos y Variables",
+    "permalink": "/docs/infraestructura/secretos-y-variables"
+  },
+  "next": {
+    "title": "Ambientes",
+    "permalink": "/docs/infraestructura/ambientes"
+  }
+}

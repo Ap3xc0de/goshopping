@@ -1,0 +1,10 @@
+output "alb_dns_name"            { value = module.ecs.alb_dns_name }
+output "superadmin_cdn_domain"   { value = module.cdn.superadmin_domain_name }
+output "admin_cdn_domain"        { value = module.cdn.admin_domain_name }
+output "api_domain"              { value = local.api_domain_name }
+output "admin_domain"            { value = local.admin_domain_name }
+output "superadmin_domain"       { value = local.superadmin_domain_name }
+output "storefront_domain"       { value = local.storefront_domain_name }
+output "cdn_domain"              { value = local.cdn_domain_name }
+output "github_actions_role_arn" { value = module.oidc.role_arn }
+output "ecr_repository_urls"     { value = module.ecr.repository_urls }

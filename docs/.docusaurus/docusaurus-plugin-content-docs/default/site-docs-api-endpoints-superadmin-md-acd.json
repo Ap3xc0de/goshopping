@@ -1,0 +1,27 @@
+{
+  "id": "api/endpoints/superadmin",
+  "title": "Endpoint: SuperAdmin",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/api/endpoints/superadmin.md",
+  "sourceDirName": "api/endpoints",
+  "slug": "/api/endpoints/superadmin",
+  "permalink": "/docs/api/endpoints/superadmin",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/endpoints/superadmin.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Endpoint: Public Storefront",
+    "permalink": "/docs/api/endpoints/public-storefront"
+  },
+  "next": {
+    "title": "Manejo de Errores",
+    "permalink": "/docs/api/errores"
+  }
+}

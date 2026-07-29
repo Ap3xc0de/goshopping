@@ -1,0 +1,27 @@
+{
+  "id": "seguridad/autenticacion-jwt",
+  "title": "Autenticación JWT",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/seguridad/autenticacion-jwt.md",
+  "sourceDirName": "seguridad",
+  "slug": "/seguridad/autenticacion-jwt",
+  "permalink": "/docs/seguridad/autenticacion-jwt",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/seguridad/autenticacion-jwt.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Docker Local",
+    "permalink": "/docs/infraestructura/docker-local"
+  },
+  "next": {
+    "title": "Autorización RBAC",
+    "permalink": "/docs/seguridad/autorizacion-rbac"
+  }
+}

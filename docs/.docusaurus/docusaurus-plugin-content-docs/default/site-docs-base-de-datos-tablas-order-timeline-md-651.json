@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/order-timeline",
+  "title": "Tabla: order_timeline",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/base-de-datos/tablas/order-timeline.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/order-timeline",
+  "permalink": "/docs/base-de-datos/tablas/order-timeline",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/order-timeline.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: orders",
+    "permalink": "/docs/base-de-datos/tablas/orders"
+  },
+  "next": {
+    "title": "Tabla: integrations",
+    "permalink": "/docs/base-de-datos/tablas/integrations"
+  }
+}

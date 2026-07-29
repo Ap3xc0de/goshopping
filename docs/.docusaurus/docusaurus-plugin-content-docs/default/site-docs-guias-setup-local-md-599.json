@@ -1,0 +1,23 @@
+{
+  "id": "guias/setup-local",
+  "title": "Setup Local",
+  "description": "Esta guía te lleva desde cero hasta tener el stack completo corriendo en tu máquina.",
+  "source": "@site/docs/guias/setup-local.md",
+  "sourceDirName": "guias",
+  "slug": "/guias/setup-local",
+  "permalink": "/docs/guias/setup-local",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/guias/setup-local.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "guiasSidebar",
+  "next": {
+    "title": "Primer Deploy",
+    "permalink": "/docs/guias/primer-deploy"
+  }
+}

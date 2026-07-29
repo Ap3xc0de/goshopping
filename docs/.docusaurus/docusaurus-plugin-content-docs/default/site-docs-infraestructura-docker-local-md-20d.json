@@ -1,0 +1,27 @@
+{
+  "id": "infraestructura/docker-local",
+  "title": "Docker Local",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/infraestructura/docker-local.md",
+  "sourceDirName": "infraestructura",
+  "slug": "/infraestructura/docker-local",
+  "permalink": "/docs/infraestructura/docker-local",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/infraestructura/docker-local.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 7,
+  "frontMatter": {
+    "sidebar_position": 7
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Ambientes",
+    "permalink": "/docs/infraestructura/ambientes"
+  },
+  "next": {
+    "title": "Autenticación JWT",
+    "permalink": "/docs/seguridad/autenticacion-jwt"
+  }
+}

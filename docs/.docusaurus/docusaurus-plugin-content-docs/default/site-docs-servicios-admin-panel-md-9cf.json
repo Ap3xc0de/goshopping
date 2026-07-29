@@ -1,0 +1,27 @@
+{
+  "id": "servicios/admin-panel",
+  "title": "Admin Panel",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/servicios/admin-panel.md",
+  "sourceDirName": "servicios",
+  "slug": "/servicios/admin-panel",
+  "permalink": "/docs/servicios/admin-panel",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/servicios/admin-panel.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "SuperAdmin Panel",
+    "permalink": "/docs/servicios/superadmin-panel"
+  },
+  "next": {
+    "title": "Storefront Engine",
+    "permalink": "/docs/servicios/storefront-engine"
+  }
+}

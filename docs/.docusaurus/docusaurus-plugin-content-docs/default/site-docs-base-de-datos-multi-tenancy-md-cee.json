@@ -1,0 +1,23 @@
+{
+  "id": "base-de-datos/multi-tenancy",
+  "title": "Multi-Tenancy",
+  "description": "Go Shopping es un sistema multi-tenant donde cada tienda (store) es un tenant aislado. Los datos de una tienda nunca son visibles para otra.",
+  "source": "@site/docs/base-de-datos/multi-tenancy.md",
+  "sourceDirName": "base-de-datos",
+  "slug": "/base-de-datos/multi-tenancy",
+  "permalink": "/docs/base-de-datos/multi-tenancy",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/multi-tenancy.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Convenciones de Base de Datos",
+    "permalink": "/docs/base-de-datos/convenciones"
+  }
+}

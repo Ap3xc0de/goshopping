@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkgoshopping_docs=globalThis.webpackChunkgoshopping_docs||[]).push([[2014],{2014(s,e,o){o.d(e,{createTreemapServices:()=>p.d});var p=o(1681);o(9302)}}]);

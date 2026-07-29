@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkgoshopping_docs=globalThis.webpackChunkgoshopping_docs||[]).push([[6288],{6288(s,o,c){c.d(o,{createInfoServices:()=>e.v});var e=c(9511);c(9302)}}]);

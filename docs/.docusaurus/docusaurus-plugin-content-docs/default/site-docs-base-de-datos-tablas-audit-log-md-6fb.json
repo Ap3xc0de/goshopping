@@ -1,0 +1,27 @@
+{
+  "id": "base-de-datos/tablas/audit-log",
+  "title": "Tabla: audit_log",
+  "description": "Log inmutable de acciones sensibles. Nunca se borra ni modifica.",
+  "source": "@site/docs/base-de-datos/tablas/audit-log.md",
+  "sourceDirName": "base-de-datos/tablas",
+  "slug": "/base-de-datos/tablas/audit-log",
+  "permalink": "/docs/base-de-datos/tablas/audit-log",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/base-de-datos/tablas/audit-log.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 12,
+  "frontMatter": {
+    "sidebar_position": 12
+  },
+  "sidebar": "arquitecturaSidebar",
+  "previous": {
+    "title": "Tabla: integrations",
+    "permalink": "/docs/base-de-datos/tablas/integrations"
+  },
+  "next": {
+    "title": "Migraciones",
+    "permalink": "/docs/base-de-datos/migraciones"
+  }
+}

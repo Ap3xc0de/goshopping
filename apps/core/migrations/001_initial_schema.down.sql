@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS integrations;
+DROP TABLE IF EXISTS order_timeline;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS store_users;
+DROP TABLE IF EXISTS stores;
+DROP TABLE IF EXISTS accounts;
+DROP FUNCTION IF EXISTS update_updated_at();

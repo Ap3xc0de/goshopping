@@ -1,0 +1,27 @@
+{
+  "id": "api/errores",
+  "title": "Manejo de Errores",
+  "description": "Formato de error",
+  "source": "@site/docs/api/errores.md",
+  "sourceDirName": "api",
+  "slug": "/api/errores",
+  "permalink": "/docs/api/errores",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/api/errores.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "apiSidebar",
+  "previous": {
+    "title": "Endpoint: SuperAdmin",
+    "permalink": "/docs/api/endpoints/superadmin"
+  },
+  "next": {
+    "title": "Paginación",
+    "permalink": "/docs/api/paginacion"
+  }
+}

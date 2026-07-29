@@ -1,0 +1,373 @@
+{
+  "/__docusaurus/debug-5ff": {
+    "__comp": "__comp---theme-debug-config-23-a-2ff",
+    "__context": {
+      "plugin": "plugin---docusaurus-debugb-38-ad3"
+    }
+  },
+  "/__docusaurus/debug/config-5ba": {
+    "__comp": "__comp---theme-debug-config-23-a-2ff",
+    "__context": {
+      "plugin": "plugin---docusaurus-debugb-38-ad3"
+    }
+  },
+  "/__docusaurus/debug/content-a2b": {
+    "__comp": "__comp---theme-debug-contentba-8-ce7",
+    "__context": {
+      "plugin": "plugin---docusaurus-debugb-38-ad3"
+    },
+    "__props": "__props---docusaurus-debug-content-3-c-0-be2"
+  },
+  "/__docusaurus/debug/globalData-c3c": {
+    "__comp": "__comp---theme-debug-global-dataede-0fa",
+    "__context": {
+      "plugin": "plugin---docusaurus-debugb-38-ad3"
+    }
+  },
+  "/__docusaurus/debug/metadata-156": {
+    "__comp": "__comp---theme-debug-site-metadata-68-e-3d4",
+    "__context": {
+      "plugin": "plugin---docusaurus-debugb-38-ad3"
+    }
+  },
+  "/__docusaurus/debug/registry-88c": {
+    "__comp": "__comp---theme-debug-registry-679-501",
+    "__context": {
+      "plugin": "plugin---docusaurus-debugb-38-ad3"
+    }
+  },
+  "/__docusaurus/debug/routes-000": {
+    "__comp": "__comp---theme-debug-routes-946-699",
+    "__context": {
+      "plugin": "plugin---docusaurus-debugb-38-ad3"
+    }
+  },
+  "/docs-4bc": {
+    "__comp": "__comp---theme-docs-root-5-e-9-0b6",
+    "__context": {
+      "plugin": "plugin---docsaba-d7c"
+    }
+  },
+  "/docs-ff8": {
+    "__comp": "__comp---theme-doc-version-roota-7-b-5de",
+    "__props": "__props---docs-005-788"
+  },
+  "/docs-210": {
+    "__comp": "__comp---theme-doc-roota-94-67a"
+  },
+  "/docs/api/autenticacion-407": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-autenticacion-548-a20"
+  },
+  "/docs/api/endpoints/auth-ee2": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-endpoints-auth-7-af-8fa"
+  },
+  "/docs/api/endpoints/customers-8df": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-endpoints-customersd-9-c-295"
+  },
+  "/docs/api/endpoints/health-cab": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-endpoints-health-173-1ab"
+  },
+  "/docs/api/endpoints/orders-721": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-endpoints-orders-1-ec-780"
+  },
+  "/docs/api/endpoints/products-910": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-endpoints-productsfa-5-885"
+  },
+  "/docs/api/endpoints/public-storefront-a50": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-endpoints-public-storefront-341-3f1"
+  },
+  "/docs/api/endpoints/superadmin-123": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-endpoints-superadminacd-f36"
+  },
+  "/docs/api/errores-fe6": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-errores-79-b-e48"
+  },
+  "/docs/api/overview-1fc": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-overview-65-d-0e3"
+  },
+  "/docs/api/paginacion-9c7": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-api-paginacion-3-ba-019"
+  },
+  "/docs/arquitectura/capas-del-sistema-7df": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-arquitectura-capas-del-sistema-605-b1a"
+  },
+  "/docs/arquitectura/event-driven-architecture-931": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-arquitectura-event-driven-architecture-9-f-3-ed1"
+  },
+  "/docs/arquitectura/flujo-de-datos-191": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-arquitectura-flujo-de-datos-4-a-8-7fe"
+  },
+  "/docs/arquitectura/monorepo-092": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-arquitectura-monorepo-1-e-2-bb6"
+  },
+  "/docs/arquitectura/stack-tecnologico-a44": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-arquitectura-stack-tecnologico-391-43f"
+  },
+  "/docs/arquitectura/vision-general-9fa": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-arquitectura-vision-general-708-5a9"
+  },
+  "/docs/base-de-datos/convenciones-6c3": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-convenciones-3-bd-0e6"
+  },
+  "/docs/base-de-datos/esquema-general-f33": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-esquema-general-6-be-e4c"
+  },
+  "/docs/base-de-datos/migraciones-c2b": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-migracionesdb-0-497"
+  },
+  "/docs/base-de-datos/multi-tenancy-6c7": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-multi-tenancycee-624"
+  },
+  "/docs/base-de-datos/tablas/accounts-766": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-accountse-80-4a5"
+  },
+  "/docs/base-de-datos/tablas/audit-log-4d8": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-audit-log-6-fb-32e"
+  },
+  "/docs/base-de-datos/tablas/customers-a8c": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-customers-53-c-c78"
+  },
+  "/docs/base-de-datos/tablas/integrations-685": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-integrations-3-aa-e2f"
+  },
+  "/docs/base-de-datos/tablas/order-timeline-826": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-order-timeline-651-8f5"
+  },
+  "/docs/base-de-datos/tablas/orders-633": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-orders-1-e-4-415"
+  },
+  "/docs/base-de-datos/tablas/products-14f": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-products-724-643"
+  },
+  "/docs/base-de-datos/tablas/store-users-d25": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-store-users-527-28b"
+  },
+  "/docs/base-de-datos/tablas/stores-995": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-base-de-datos-tablas-storesa-56-2fc"
+  },
+  "/docs/decisiones/ADR-001-monorepo-6ed": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-decisiones-adr-001-monorepo-2-fc-ac2"
+  },
+  "/docs/decisiones/ADR-002-go-fiber-core-be1": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-decisiones-adr-002-go-fiber-corebaf-f6c"
+  },
+  "/docs/decisiones/ADR-003-nestjs-integraciones-828": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-decisiones-adr-003-nestjs-integracionesb-32-c82"
+  },
+  "/docs/decisiones/ADR-004-oidc-deploy-a52": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-decisiones-adr-004-oidc-deploy-4-af-b62"
+  },
+  "/docs/decisiones/ADR-005-multi-tenant-store-id-971": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-decisiones-adr-005-multi-tenant-store-ida-2-b-a16"
+  },
+  "/docs/decisiones/ADR-006-event-driven-sqs-ab9": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-decisiones-adr-006-event-driven-sqsef-7-b6a"
+  },
+  "/docs/decisiones/ADR-007-secretos-aws-c7d": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-decisiones-adr-007-secretos-aws-7-c-0-dea"
+  },
+  "/docs/guias/agregar-endpoint-b1a": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-agregar-endpoint-16-a-d7d"
+  },
+  "/docs/guias/agregar-integracion-ffa": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-agregar-integracione-5-a-36d"
+  },
+  "/docs/guias/crear-migracion-80b": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-crear-migraciona-59-12d"
+  },
+  "/docs/guias/docker-local-8ea": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-docker-local-060-b54"
+  },
+  "/docs/guias/primer-deploy-353": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-primer-deploy-6-fa-b67"
+  },
+  "/docs/guias/setup-local-90b": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-setup-local-599-533"
+  },
+  "/docs/guias/tests-etapa1-fe8": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-tests-etapa-18-db-935"
+  },
+  "/docs/guias/troubleshooting-727": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-troubleshooting-250-abe"
+  },
+  "/docs/guias/variables-de-entorno-3b4": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-guias-variables-de-entorno-72-b-068"
+  },
+  "/docs/infraestructura/ambientes-e5d": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-infraestructura-ambientesc-9-c-235"
+  },
+  "/docs/infraestructura/aws-overview-091": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-infraestructura-aws-overview-9-c-7-711"
+  },
+  "/docs/infraestructura/ci-cd-e13": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-infraestructura-ci-cd-25-e-ec9"
+  },
+  "/docs/infraestructura/docker-local-e91": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-infraestructura-docker-local-20-d-bab"
+  },
+  "/docs/infraestructura/oidc-github-actions-ed6": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-infraestructura-oidc-github-actionsff-9-353"
+  },
+  "/docs/infraestructura/secretos-y-variables-f14": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-infraestructura-secretos-y-variables-5-e-5-926"
+  },
+  "/docs/infraestructura/terraform-981": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-infraestructura-terraformeb-8-2fd"
+  },
+  "/docs/intro/filosofia-del-producto-7ae": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-intro-filosofia-del-producto-0-de-98b"
+  },
+  "/docs/intro/glosario-270": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-intro-glosariobba-cdd"
+  },
+  "/docs/intro/problema-que-resuelve-eb7": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-intro-problema-que-resuelvea-53-6a7"
+  },
+  "/docs/intro/que-es-goshopping-9c1": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-intro-que-es-goshoppingb-87-663"
+  },
+  "/docs/reglas-de-negocio/estados-de-pedido-51a": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-estados-de-pedido-05-e-564"
+  },
+  "/docs/reglas-de-negocio/facturacion-electronica-dian-818": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-facturacion-electronica-dian-192-55f"
+  },
+  "/docs/reglas-de-negocio/flujo-de-venta-completo-7ab": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-flujo-de-venta-completof-59-2d7"
+  },
+  "/docs/reglas-de-negocio/gestion-de-inventario-f25": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-gestion-de-inventario-043-98f"
+  },
+  "/docs/reglas-de-negocio/integraciones-externas-4e8": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-integraciones-externasff-0-5cf"
+  },
+  "/docs/reglas-de-negocio/modelo-de-negocio-be8": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-modelo-de-negocio-6-b-0-9a7"
+  },
+  "/docs/reglas-de-negocio/multi-tienda-bf4": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-multi-tiendacf-4-5dd"
+  },
+  "/docs/reglas-de-negocio/roles-y-permisos-e99": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-reglas-de-negocio-roles-y-permisos-9-ec-ce4"
+  },
+  "/docs/seguridad/autenticacion-jwt-b03": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-seguridad-autenticacion-jwtc-98-616"
+  },
+  "/docs/seguridad/autorizacion-rbac-b46": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-seguridad-autorizacion-rbacb-36-746"
+  },
+  "/docs/seguridad/owasp-checklist-d4b": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-seguridad-owasp-checklist-415-5eb"
+  },
+  "/docs/seguridad/secretos-4bc": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-seguridad-secretos-0-cf-3b6"
+  },
+  "/docs/seguridad/store-isolation-5ce": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-seguridad-store-isolation-187-c55"
+  },
+  "/docs/seguridad/webhooks-hmac-7c7": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-seguridad-webhooks-hmac-2-a-7-4e2"
+  },
+  "/docs/servicios/admin-panel-4e8": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-servicios-admin-panel-9-cf-4ac"
+  },
+  "/docs/servicios/ai-engine-84f": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-servicios-ai-enginedbf-132"
+  },
+  "/docs/servicios/core-api-9cd": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-servicios-core-api-1-ea-cde"
+  },
+  "/docs/servicios/integrations-service-4bd": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-servicios-integrations-serviceb-4-d-26a"
+  },
+  "/docs/servicios/storefront-engine-cc3": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-servicios-storefront-engine-447-570"
+  },
+  "/docs/servicios/superadmin-panel-094": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---docs-servicios-superadmin-panel-26-f-7bb"
+  },
+  "/-e5f": {
+    "__comp": "__comp---site-src-pages-index-tsx-1-df-d3e",
+    "__context": {
+      "plugin": "plugin---a-74-9d6"
+    },
+    "config": "config---5-e-9-4f3"
+  }
+}

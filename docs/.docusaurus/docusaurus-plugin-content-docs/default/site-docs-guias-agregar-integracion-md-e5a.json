@@ -1,0 +1,27 @@
+{
+  "id": "guias/agregar-integracion",
+  "title": "Agregar una Integración",
+  "description": "Esta sección está en construcción. Se completará en próximas etapas del proyecto.",
+  "source": "@site/docs/guias/agregar-integracion.md",
+  "sourceDirName": "guias",
+  "slug": "/guias/agregar-integracion",
+  "permalink": "/docs/guias/agregar-integracion",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/goshopping/goshopping/tree/main/docs/docs/guias/agregar-integracion.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5
+  },
+  "sidebar": "guiasSidebar",
+  "previous": {
+    "title": "Crear una Migración",
+    "permalink": "/docs/guias/crear-migracion"
+  },
+  "next": {
+    "title": "Troubleshooting",
+    "permalink": "/docs/guias/troubleshooting"
+  }
+}
