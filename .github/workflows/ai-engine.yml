@@ -1,6 +1,7 @@
 name: Deploy AI Engine
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, staging]
     paths:

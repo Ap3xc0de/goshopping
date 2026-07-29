@@ -1,6 +1,7 @@
 name: Deploy Integrations
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, staging]
     paths:
