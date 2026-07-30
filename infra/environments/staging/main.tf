@@ -26,7 +26,7 @@ provider "aws" {
 provider "cloudflare" {}
 
 data "cloudflare_zone" "primary" {
-  filter {
+  filter = {
     name = var.cloudflare_zone_name
   }
 }
