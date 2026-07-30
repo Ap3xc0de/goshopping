@@ -41,7 +41,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/admin
-        run: npm ci
+        run: npm install --prefer-offline
 
       - name: Build Next.js app
         working-directory: apps/admin
