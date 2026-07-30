@@ -54,8 +54,10 @@ jobs:
           BUCKET="goshopping-admin-$ENVIRONMENT"
           aws s3 sync apps/admin/.next/static s3://$BUCKET/_next/static \
             --delete --cache-control "public,max-age=31536000,immutable"
-          aws s3 sync apps/admin/public s3://$BUCKET \
-            --delete --cache-control "public,max-age=86400"
+          if [ -d apps/admin/public ]; then
+            aws s3 sync apps/admin/public s3://$BUCKET \
+              --delete --cache-control "public,max-age=86400"
+          fi
           aws s3 cp apps/admin/.next/standalone/server.js s3://$BUCKET/ \
             --cache-control "no-cache"
 
