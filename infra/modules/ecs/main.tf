@@ -207,8 +207,9 @@ resource "aws_ecs_task_definition" "core" {
     essential = true
     portMappings = [{ containerPort = 3000, protocol = "tcp" }]
     environment = [
-      { name = "APP_ENV",  value = var.environment },
-      { name = "PORT",     value = "3000" },
+      { name = "APP_ENV",     value = var.environment },
+      { name = "PORT",        value = "3000" },
+      { name = "DB_SSL_MODE", value = "require" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
