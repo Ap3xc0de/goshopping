@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -113,12 +114,24 @@ func (c *Config) loadFromAWS() {
 	// ── Secrets Manager ─────────────────────────────────────────────────────
 	smClient := secretsmanager.NewFromConfig(awsCfg)
 	c.loadSecret(ctx, smClient, "goshopping/db-credentials", func(val string) {
-		// Expected JSON: {"username":"...","password":"..."}
-		// Simple env-style override: if the secret IS the password string, use it directly.
-		c.DBPassword = val
+		var creds struct {
+			Password string `json:"password"`
+		}
+		if err := json.Unmarshal([]byte(val), &creds); err == nil && creds.Password != "" {
+			c.DBPassword = creds.Password
+		} else {
+			c.DBPassword = val
+		}
 	})
 	c.loadSecret(ctx, smClient, "goshopping/jwt-signing-key", func(val string) {
-		c.JWTSecret = val
+		var creds struct {
+			Key string `json:"key"`
+		}
+		if err := json.Unmarshal([]byte(val), &creds); err == nil && creds.Key != "" {
+			c.JWTSecret = creds.Key
+		} else {
+			c.JWTSecret = val
+		}
 	})
 
 	// ── SSM Parameter Store ─────────────────────────────────────────────────
