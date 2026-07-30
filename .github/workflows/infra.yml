@@ -47,6 +47,25 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Import pre-existing AWS resources (idempotent)
+        run: |
+          set -e
+          OIDC_ARN=$(aws iam list-open-id-connect-providers --query 'OpenIDConnectProviderList[0].Arn' --output text)
+          import_if_missing() {
+            addr="$1"
+            id="$2"
+            if terraform state list | grep -qF -- "$addr"; then
+              echo "$addr already in state, skipping"
+            else
+              terraform import -var="db_password=${{ secrets.DB_PASSWORD }}" -var="jwt_signing_key=${{ secrets.JWT_SIGNING_KEY }}" "$addr" "$id" || true
+            fi
+          }
+          import_if_missing module.s3.aws_s3_bucket.terraform_state goshopping-terraform-state
+          import_if_missing module.s3.aws_dynamodb_table.terraform_locks goshopping-terraform-locks
+          if [ -n "$OIDC_ARN" ] && [ "$OIDC_ARN" != "None" ]; then
+            import_if_missing module.oidc.aws_iam_openid_connect_provider.github "$OIDC_ARN"
+          fi
+
       - name: Terraform Validate
         run: terraform validate
 

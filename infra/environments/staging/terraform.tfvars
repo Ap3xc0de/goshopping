@@ -1,5 +1,5 @@
 aws_region  = "us-east-1"
-github_org  = "your-github-org"
+github_org  = "Ap3xc0de"
 github_repo = "goshopping"
 base_domain = "vettacode.com"
 cloudflare_zone_name = "vettacode.com"
