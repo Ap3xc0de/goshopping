@@ -151,6 +151,10 @@ module "ecs" {
   desired_count      = 2
   certificate_arn    = aws_acm_certificate_validation.api.certificate_arn
   api_domain_name    = local.api_domain_name
+  frontend_certificate_arn = aws_acm_certificate_validation.frontend.certificate_arn
+  admin_domain_name        = local.admin_domain_name
+  superadmin_domain_name   = local.superadmin_domain_name
+  storefront_domain_name   = local.storefront_domain_name
 }
 
 module "ssm" {
@@ -204,7 +208,7 @@ resource "cloudflare_dns_record" "admin" {
   zone_id = data.cloudflare_zone.primary.zone_id
   name    = replace(local.admin_domain_name, ".${var.cloudflare_zone_name}", "")
   type    = "CNAME"
-  content = module.cdn.admin_domain_name
+  content = module.ecs.alb_dns_name
   ttl     = 1
   proxied = false
 }
@@ -213,7 +217,7 @@ resource "cloudflare_dns_record" "superadmin" {
   zone_id = data.cloudflare_zone.primary.zone_id
   name    = replace(local.superadmin_domain_name, ".${var.cloudflare_zone_name}", "")
   type    = "CNAME"
-  content = module.cdn.superadmin_domain_name
+  content = module.ecs.alb_dns_name
   ttl     = 1
   proxied = false
 }
@@ -222,7 +226,7 @@ resource "cloudflare_dns_record" "storefront" {
   zone_id = data.cloudflare_zone.primary.zone_id
   name    = replace(local.storefront_domain_name, ".${var.cloudflare_zone_name}", "")
   type    = "CNAME"
-  content = module.cdn.storefront_domain_name
+  content = module.ecs.alb_dns_name
   ttl     = 1
   proxied = false
 }

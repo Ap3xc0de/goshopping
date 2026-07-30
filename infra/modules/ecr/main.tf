@@ -1,5 +1,5 @@
 locals {
-  repos = ["goshopping-core", "goshopping-integrations", "goshopping-ai-engine"]
+  repos = ["goshopping-core", "goshopping-integrations", "goshopping-ai-engine", "goshopping-admin", "goshopping-superadmin", "goshopping-storefront"]
 }
 
 resource "aws_ecr_repository" "repos" {

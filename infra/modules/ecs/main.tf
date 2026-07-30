@@ -175,6 +175,104 @@ resource "aws_lb_listener" "https" {
   }
 }
 
+resource "aws_lb_listener_certificate" "frontend" {
+  listener_arn    = aws_lb_listener.https.arn
+  certificate_arn = var.frontend_certificate_arn
+}
+
+resource "aws_lb_target_group" "admin" {
+  name        = "goshopping-admin-${var.environment}"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    path                = "/"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+  }
+}
+
+resource "aws_lb_target_group" "superadmin" {
+  name        = "goshopping-superadmin-${var.environment}"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    path                = "/"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+  }
+}
+
+resource "aws_lb_target_group" "storefront" {
+  name        = "goshopping-storefront-${var.environment}"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    path                = "/"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+  }
+}
+
+resource "aws_lb_listener_rule" "admin" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.admin.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.admin_domain_name]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "superadmin" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 101
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.superadmin.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.superadmin_domain_name]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "storefront" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 102
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.storefront.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.storefront_domain_name]
+    }
+  }
+}
+
 # --- CloudWatch Log Groups ---
 resource "aws_cloudwatch_log_group" "core" {
   name              = "/ecs/goshopping-core-${var.environment}"
@@ -341,4 +439,187 @@ resource "aws_ecs_service" "ai_engine" {
   lifecycle {
     ignore_changes = [task_definition]
   }
+}
+
+# --- Frontend CloudWatch Log Groups ---
+resource "aws_cloudwatch_log_group" "admin" {
+  name              = "/ecs/goshopping-admin-${var.environment}"
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "superadmin" {
+  name              = "/ecs/goshopping-superadmin-${var.environment}"
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "storefront" {
+  name              = "/ecs/goshopping-storefront-${var.environment}"
+  retention_in_days = 30
+}
+
+# --- Frontend Task Definitions ---
+resource "aws_ecs_task_definition" "admin" {
+  family                   = "goshopping-admin-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([{
+    name      = "admin"
+    image     = "${var.ecr_urls["goshopping-admin"]}:latest"
+    essential = true
+    portMappings = [{ containerPort = 3000, protocol = "tcp" }]
+    environment = [
+      { name = "APP_ENV", value = var.environment },
+      { name = "PORT",    value = "3000" },
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.admin.name
+        "awslogs-region"        = data.aws_region.current.name
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+  }])
+}
+
+resource "aws_ecs_task_definition" "superadmin" {
+  family                   = "goshopping-superadmin-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([{
+    name      = "superadmin"
+    image     = "${var.ecr_urls["goshopping-superadmin"]}:latest"
+    essential = true
+    portMappings = [{ containerPort = 3000, protocol = "tcp" }]
+    environment = [
+      { name = "APP_ENV", value = var.environment },
+      { name = "PORT",    value = "3000" },
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.superadmin.name
+        "awslogs-region"        = data.aws_region.current.name
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+  }])
+}
+
+resource "aws_ecs_task_definition" "storefront" {
+  family                   = "goshopping-storefront-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([{
+    name      = "storefront"
+    image     = "${var.ecr_urls["goshopping-storefront"]}:latest"
+    essential = true
+    portMappings = [{ containerPort = 3000, protocol = "tcp" }]
+    environment = [
+      { name = "APP_ENV", value = var.environment },
+      { name = "PORT",    value = "3000" },
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.storefront.name
+        "awslogs-region"        = data.aws_region.current.name
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+  }])
+}
+
+# --- Frontend ECS Services ---
+resource "aws_ecs_service" "admin" {
+  name            = "goshopping-admin"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.admin.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.private_subnet_ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.admin.arn
+    container_name   = "admin"
+    container_port   = 3000
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
+  depends_on = [aws_lb_listener.https]
+}
+
+resource "aws_ecs_service" "superadmin" {
+  name            = "goshopping-superadmin"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.superadmin.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.private_subnet_ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.superadmin.arn
+    container_name   = "superadmin"
+    container_port   = 3000
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
+  depends_on = [aws_lb_listener.https]
+}
+
+resource "aws_ecs_service" "storefront" {
+  name            = "goshopping-storefront"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.storefront.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.private_subnet_ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.storefront.arn
+    container_name   = "storefront"
+    container_port   = 3000
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
+  depends_on = [aws_lb_listener.https]
 }

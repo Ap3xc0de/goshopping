@@ -13,15 +13,15 @@ permissions:
   contents: read
 
 env:
+  ECR_REPO: goshopping-superadmin
+  ECS_SERVICE: goshopping-superadmin
+  ECS_CLUSTER: goshopping-${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
   AWS_REGION: us-east-1
 
 jobs:
   deploy:
     name: Build & Deploy SuperAdmin (${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }})
     runs-on: ubuntu-latest
-
-    env:
-      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -32,44 +32,29 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/superadmin/package-lock.json
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Install dependencies
-        working-directory: apps/superadmin
-        run: npm install --prefer-offline
-
-      - name: Build Next.js app
-        working-directory: apps/superadmin
+      - name: Build, tag and push Docker image
         env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
           NEXT_PUBLIC_API_URL: https://api.${{ github.ref == 'refs/heads/main' && 'vettacode.com' || 'staging.vettacode.com' }}
-        run: npm run build
-
-      - name: Sync to S3
         run: |
-          BUCKET="goshopping-superadmin-$ENVIRONMENT"
-          aws s3 sync apps/superadmin/.next/static s3://$BUCKET/_next/static \
-            --delete --cache-control "public,max-age=31536000,immutable"
-          if [ -d apps/superadmin/public ]; then
-            aws s3 sync apps/superadmin/public s3://$BUCKET \
-              --delete --cache-control "public,max-age=86400"
-          fi
-          aws s3 cp apps/superadmin/.next/standalone/server.js s3://$BUCKET/ \
-            --cache-control "no-cache"
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+            -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPO:latest \
+            apps/superadmin
+          docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPO:latest
 
-      - name: Invalidate CloudFront cache
+      - name: Force ECS service redeployment
         run: |
-          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
-            --query "DistributionList.Items[?Comment=='Go Shopping SuperAdmin $ENVIRONMENT'].Id" \
-            --output text)
-          if [ -n "$DISTRIBUTION_ID" ]; then
-            aws cloudfront create-invalidation \
-              --distribution-id "$DISTRIBUTION_ID" \
-              --paths "/*"
-          else
-            echo "CloudFront distribution not found, skipping invalidation"
-          fi
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment \
+            --region $AWS_REGION
+

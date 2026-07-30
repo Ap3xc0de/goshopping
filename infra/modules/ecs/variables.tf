@@ -17,3 +17,7 @@ variable "desired_count" {
 }
 variable "certificate_arn"    { type = string }
 variable "api_domain_name"    { type = string }
+variable "frontend_certificate_arn" { type = string }
+variable "admin_domain_name"       { type = string }
+variable "superadmin_domain_name"  { type = string }
+variable "storefront_domain_name"  { type = string }
