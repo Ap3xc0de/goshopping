@@ -54,8 +54,10 @@ jobs:
           BUCKET="goshopping-storefront-$ENVIRONMENT"
           aws s3 sync apps/storefront/.next/static s3://$BUCKET/_next/static \
             --delete --cache-control "public,max-age=31536000,immutable"
-          aws s3 sync apps/storefront/public s3://$BUCKET \
-            --delete --cache-control "public,max-age=86400"
+          if [ -d apps/storefront/public ]; then
+            aws s3 sync apps/storefront/public s3://$BUCKET \
+              --delete --cache-control "public,max-age=86400"
+          fi
           aws s3 cp apps/storefront/.next/standalone/server.js s3://$BUCKET/ \
             --cache-control "no-cache"
 
@@ -64,6 +66,10 @@ jobs:
           DISTRIBUTION_ID=$(aws cloudfront list-distributions \
             --query "DistributionList.Items[?Comment=='Go Shopping Storefront $ENVIRONMENT'].Id" \
             --output text)
-          aws cloudfront create-invalidation \
-            --distribution-id "$DISTRIBUTION_ID" \
-            --paths "/*"
+          if [ -n "$DISTRIBUTION_ID" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --paths "/*"
+          else
+            echo "CloudFront distribution not found, skipping invalidation"
+          fi

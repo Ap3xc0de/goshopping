@@ -66,6 +66,10 @@ jobs:
           DISTRIBUTION_ID=$(aws cloudfront list-distributions \
             --query "DistributionList.Items[?Comment=='Go Shopping SuperAdmin $ENVIRONMENT'].Id" \
             --output text)
-          aws cloudfront create-invalidation \
-            --distribution-id "$DISTRIBUTION_ID" \
-            --paths "/*"
+          if [ -n "$DISTRIBUTION_ID" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --paths "/*"
+          else
+            echo "CloudFront distribution not found, skipping invalidation"
+          fi
