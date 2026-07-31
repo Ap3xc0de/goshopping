@@ -27,6 +27,9 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	authGroup.Post("/login", handlers.Login(authSvc))
 	authGroup.Post("/refresh", handlers.Refresh(authSvc))
 
+	// TEMPORARY bootstrap-only route; remove after initial superadmin creation.
+	app.Post("/internal/promote-superadmin", handlers.PromoteSuperAdmin(db, cfg))
+
 	// Public storefront (no auth)
 	pub := app.Group("/public")
 	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db))
