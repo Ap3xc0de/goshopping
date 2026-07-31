@@ -305,10 +305,9 @@ resource "aws_ecs_task_definition" "core" {
     essential = true
     portMappings = [{ containerPort = 3000, protocol = "tcp" }]
     environment = [
-      { name = "APP_ENV",         value = var.environment },
-      { name = "PORT",            value = "3000" },
-      { name = "DB_SSL_MODE",     value = "require" },
-      { name = "BOOTSTRAP_TOKEN", value = "pAxMt9iXj7G5NBEOKm6FnPz1us02rwfobcRYShqT" }, # TEMPORARY: remove after initial superadmin creation
+      { name = "APP_ENV",     value = var.environment },
+      { name = "PORT",        value = "3000" },
+      { name = "DB_SSL_MODE", value = "require" },
     ]
     logConfiguration = {
       logDriver = "awslogs"

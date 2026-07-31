@@ -34,9 +34,6 @@ type Config struct {
 	JWTAccessExpiry  time.Duration
 	JWTRefreshExpiry time.Duration
 
-	// Bootstrap (temporary, for initial superadmin promotion only)
-	BootstrapToken string
-
 	// SQS
 	SQSEndpoint              string
 	SQSOrderEventsURL        string
@@ -85,8 +82,6 @@ func Load() *Config {
 		JWTSecret:        getEnv("JWT_SECRET", ""),
 		JWTAccessExpiry:  parseDuration(getEnv("JWT_ACCESS_EXPIRY", "15m"), "15m"),
 		JWTRefreshExpiry: parseDuration(getEnv("JWT_REFRESH_EXPIRY", "168h"), "168h"),
-
-		BootstrapToken: getEnv("BOOTSTRAP_TOKEN", ""),
 
 		SQSEndpoint:              getEnv("SQS_ENDPOINT", ""),
 		SQSOrderEventsURL:        getEnv("SQS_ORDER_EVENTS_URL", ""),
