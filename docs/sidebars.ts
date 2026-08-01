@@ -97,6 +97,7 @@ const sidebars: SidebarsConfig = {
         'servicios/core-api',
         'servicios/integrations-service',
         'servicios/ai-engine',
+        'servicios/ai-engine-workflow-review',
         'servicios/superadmin-panel',
         'servicios/admin-panel',
         'servicios/storefront-engine',
