@@ -10,12 +10,12 @@ import (
 )
 
 // Setup registers all routes on the Fiber app.
-func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *services.EventService) {
+func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *services.EventService, outboxSvc *services.OutboxService) {
 	// ── Services ─────────────────────────────────────────────────────────────
 	authSvc := services.NewAuthService(db, cfg)
 	prodSvc := services.NewProductService(db, cfg, eventSvc)
 	custSvc := services.NewCustomerService(db, cfg)
-	orderSvc := services.NewOrderService(db, cfg, eventSvc, custSvc, prodSvc)
+	orderSvc := services.NewOrderService(db, cfg, eventSvc, outboxSvc, custSvc, prodSvc)
 	dashSvc := services.NewDashboardService(db, cfg)
 	adminSvc := services.NewAdminService(db, cfg)
 

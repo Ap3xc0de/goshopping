@@ -55,6 +55,9 @@ func NewEventService(cfg *config.Config) *EventService {
 
 // Publish serialises an Event and sends it to the given SQS queue URL.
 func (s *EventService) Publish(queueURL string, eventType string, storeID string, payload interface{}) error {
+	if queueURL == "" {
+		return fmt.Errorf("event service: queue URL not configured")
+	}
 	if s.client == nil {
 		return fmt.Errorf("event service: SQS client not initialised")
 	}

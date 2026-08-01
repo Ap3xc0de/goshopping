@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -28,6 +30,20 @@ func main() {
 
 	// 4. Initialise AWS services
 	eventSvc := services.NewEventService(cfg)
+	outboxSvc := services.NewOutboxService(db, eventSvc, cfg)
+
+	// ponytail: best-effort after commit is enough + optional 30s ticker
+	go func() {
+		t := time.NewTicker(30 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			if n, err := outboxSvc.PublishPending(context.Background()); err != nil {
+				log.Printf("outbox PublishPending: %v", err)
+			} else if n > 0 {
+				log.Printf("outbox: published %d pending events", n)
+			}
+		}
+	}()
 
 	// 5. Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -44,7 +60,7 @@ func main() {
 	}))
 
 	// 7. Setup routes
-	router.Setup(app, cfg, db, eventSvc)
+	router.Setup(app, cfg, db, eventSvc, outboxSvc)
 
 	// 8. Graceful shutdown
 	quit := make(chan os.Signal, 1)

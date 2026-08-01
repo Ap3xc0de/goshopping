@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
+	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,7 +24,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-var ErrProductNotFound = errors.New("product not found")
+var (
+	ErrProductNotFound = errors.New("product not found")
+	safeImageFilename  = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+)
 
 // ProductService handles business logic for products.
 type ProductService struct {
@@ -185,11 +191,92 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 		return nil, fmt.Errorf("stock must be non-negative")
 	}
 
+	ctx := context.Background()
+
+	// ponytail: absolute admin stock set under FOR UPDATE so paid deduct waits; no version column yet
+	if req.Stock != nil {
+		tx, err := s.db.Begin(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("begin tx: %w", err)
+		}
+		defer tx.Rollback(ctx) //nolint:errcheck
+
+		var cur models.Product
+		err = tx.QueryRow(ctx, `
+			SELECT id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
+			       price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
+			       images, status, created_at, updated_at
+			FROM products
+			WHERE id = $1 AND store_id = $2 AND status != 'deleted'
+			FOR UPDATE`,
+			productID, storeID,
+		).Scan(&cur.ID, &cur.StoreID, &cur.Name, &cur.SKU, &cur.Description,
+			&cur.Price, &cur.Cost, &cur.Stock, &cur.MinStock, &cur.Category,
+			&cur.Images, &cur.Status, &cur.CreatedAt, &cur.UpdatedAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, ErrProductNotFound
+			}
+			return nil, fmt.Errorf("lock product: %w", err)
+		}
+
+		applyProductUpdateFields(&cur, req)
+
+		var updated models.Product
+		err = tx.QueryRow(ctx, `
+			UPDATE products
+			SET name=$1, sku=$2, description=$3, price=$4, cost=$5,
+			    stock=$6, min_stock=$7, category=$8, status=$9, updated_at=NOW()
+			WHERE id=$10 AND store_id=$11
+			RETURNING id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
+			          price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
+			          images, status, created_at, updated_at`,
+			cur.Name, cur.SKU, cur.Description, cur.Price, cur.Cost,
+			cur.Stock, cur.MinStock, cur.Category, cur.Status,
+			productID, storeID,
+		).Scan(&updated.ID, &updated.StoreID, &updated.Name, &updated.SKU, &updated.Description,
+			&updated.Price, &updated.Cost, &updated.Stock, &updated.MinStock, &updated.Category,
+			&updated.Images, &updated.Status, &updated.CreatedAt, &updated.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("update product: %w", err)
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit tx: %w", err)
+		}
+		s.publishLowStockIfNeeded(&updated)
+		return &updated, nil
+	}
+
 	cur, err := s.GetProduct(storeID, productID)
 	if err != nil {
 		return nil, err
 	}
+	applyProductUpdateFields(cur, req)
 
+	var updated models.Product
+	err = s.db.QueryRow(ctx, `
+		UPDATE products
+		SET name=$1, sku=$2, description=$3, price=$4, cost=$5,
+		    stock=$6, min_stock=$7, category=$8, status=$9, updated_at=NOW()
+		WHERE id=$10 AND store_id=$11
+		RETURNING id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
+		          price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
+		          images, status, created_at, updated_at`,
+		cur.Name, cur.SKU, cur.Description, cur.Price, cur.Cost,
+		cur.Stock, cur.MinStock, cur.Category, cur.Status,
+		productID, storeID,
+	).Scan(&updated.ID, &updated.StoreID, &updated.Name, &updated.SKU, &updated.Description,
+		&updated.Price, &updated.Cost, &updated.Stock, &updated.MinStock, &updated.Category,
+		&updated.Images, &updated.Status, &updated.CreatedAt, &updated.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("update product: %w", err)
+	}
+
+	s.publishLowStockIfNeeded(&updated)
+	return &updated, nil
+}
+
+func applyProductUpdateFields(cur *models.Product, req models.UpdateProductRequest) {
 	if req.Name != nil {
 		cur.Name = *req.Name
 	}
@@ -214,8 +301,6 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 	if req.Category != nil {
 		cur.Category = *req.Category
 	}
-
-	// Auto-adjust status based on stock changes (unless explicitly setting inactive/deleted)
 	if req.Status != nil {
 		cur.Status = *req.Status
 	} else if cur.Status == "active" || cur.Status == "out_of_stock" {
@@ -225,29 +310,6 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 			cur.Status = "active"
 		}
 	}
-
-	ctx := context.Background()
-	var updated models.Product
-	err = s.db.QueryRow(ctx, `
-		UPDATE products
-		SET name=$1, sku=$2, description=$3, price=$4, cost=$5,
-		    stock=$6, min_stock=$7, category=$8, status=$9, updated_at=NOW()
-		WHERE id=$10 AND store_id=$11
-		RETURNING id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
-		          price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		          images, status, created_at, updated_at`,
-		cur.Name, cur.SKU, cur.Description, cur.Price, cur.Cost,
-		cur.Stock, cur.MinStock, cur.Category, cur.Status,
-		productID, storeID,
-	).Scan(&updated.ID, &updated.StoreID, &updated.Name, &updated.SKU, &updated.Description,
-		&updated.Price, &updated.Cost, &updated.Stock, &updated.MinStock, &updated.Category,
-		&updated.Images, &updated.Status, &updated.CreatedAt, &updated.UpdatedAt)
-	if err != nil {
-		return nil, fmt.Errorf("update product: %w", err)
-	}
-
-	s.publishLowStockIfNeeded(&updated)
-	return &updated, nil
 }
 
 // DeleteProduct soft-deletes a product (status = 'deleted').
@@ -358,6 +420,11 @@ func (s *ProductService) GetProductImageUploadURL(storeID, productID uuid.UUID, 
 		return nil, err
 	}
 
+	filename = path.Base(filename)
+	if filename == "" || filename == "." || filename == ".." || !safeImageFilename.MatchString(filename) {
+		return nil, fmt.Errorf("invalid filename")
+	}
+
 	key := fmt.Sprintf("products/%s/%s/%s", storeID.String(), productID.String(), filename)
 	ctx := context.Background()
 
@@ -416,11 +483,13 @@ func (s *ProductService) GetProductImageUploadURL(storeID, productID uuid.UUID, 
 
 func (s *ProductService) publishLowStockIfNeeded(p *models.Product) {
 	if p.MinStock > 0 && p.Stock <= p.MinStock && s.cfg.SQSNotificationEventsURL != "" {
-		_ = s.eventSvc.Publish(s.cfg.SQSNotificationEventsURL, "stock.low", p.StoreID.String(), map[string]interface{}{
+		if err := s.eventSvc.Publish(s.cfg.SQSNotificationEventsURL, "stock.low", p.StoreID.String(), map[string]interface{}{
 			"product_id": p.ID.String(),
 			"name":       p.Name,
 			"stock":      p.Stock,
 			"min_stock":  p.MinStock,
-		})
+		}); err != nil {
+			log.Printf("stock.low publish failed: %v", err)
+		}
 	}
 }

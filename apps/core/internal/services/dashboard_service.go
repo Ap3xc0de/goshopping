@@ -138,7 +138,7 @@ func (s *DashboardService) GetDashboard(storeID uuid.UUID) (*DashboardMetrics, e
 		       COALESCE(c.name, 'Anónimo') AS customer_name,
 		       o.status, o.total
 		FROM orders o
-		LEFT JOIN customers c ON c.id = o.customer_id
+		LEFT JOIN customers c ON c.id = o.customer_id AND c.store_id = o.store_id
 		WHERE o.store_id = $1
 		ORDER BY o.created_at DESC LIMIT 5`,
 		storeID,
@@ -310,7 +310,7 @@ func (s *DashboardService) GetReportsCustomers(storeID uuid.UUID, from, to strin
 		       SUM(o.total)    AS total_spent,
 		       AVG(o.total)    AS avg_order_value
 		FROM orders o
-		LEFT JOIN customers c ON c.id = o.customer_id
+		LEFT JOIN customers c ON c.id = o.customer_id AND c.store_id = o.store_id
 		WHERE o.store_id = $1
 		  AND o.status NOT IN ('cancelled')
 		  AND o.customer_id IS NOT NULL

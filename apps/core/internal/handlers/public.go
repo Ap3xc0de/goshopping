@@ -84,6 +84,9 @@ func PublicGetProduct(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			}
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
+		if p.Status != "active" {
+			return fiber.NewError(fiber.StatusNotFound, "product not found")
+		}
 		return c.JSON(toPublicProduct(*p))
 	}
 }
@@ -106,9 +109,10 @@ func PublicCreateOrder(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 		}
 
 		eventSvc := services.NewEventService(cfg)
+		outboxSvc := services.NewOutboxService(db, eventSvc, cfg)
 		prodSvc := services.NewProductService(db, cfg, eventSvc)
 		custSvc := services.NewCustomerService(db, cfg)
-		orderSvc := services.NewOrderService(db, cfg, eventSvc, custSvc, prodSvc)
+		orderSvc := services.NewOrderService(db, cfg, eventSvc, outboxSvc, custSvc, prodSvc)
 
 		order, err := orderSvc.CreateOrder(storeID, req, nil)
 		if err != nil {
@@ -128,7 +132,7 @@ func PublicCreateOrder(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	}
 }
 
-// PublicOrderStatus handles GET /public/orders/:orderId/status
+// PublicOrderStatus handles GET /public/:storeSlug/orders/:orderId/status
 func PublicOrderStatus(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		tokenStr := c.Query("token")
@@ -146,12 +150,18 @@ func PublicOrderStatus(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			return fiber.NewError(fiber.StatusForbidden, "token does not match order")
 		}
 
+		storeID, err := resolveStoreBySlug(c.Context(), db, c.Params("storeSlug"))
+		if err != nil {
+			return fiber.NewError(fiber.StatusNotFound, "store not found")
+		}
+
 		eventSvc := services.NewEventService(cfg)
+		outboxSvc := services.NewOutboxService(db, eventSvc, cfg)
 		prodSvc := services.NewProductService(db, cfg, eventSvc)
 		custSvc := services.NewCustomerService(db, cfg)
-		orderSvc := services.NewOrderService(db, cfg, eventSvc, custSvc, prodSvc)
+		orderSvc := services.NewOrderService(db, cfg, eventSvc, outboxSvc, custSvc, prodSvc)
 
-		order, err := orderSvc.GetOrderByIDOnly(orderID)
+		order, err := orderSvc.GetOrder(storeID, orderID)
 		if err != nil {
 			if errors.Is(err, services.ErrOrderNotFound) {
 				return fiber.NewError(fiber.StatusNotFound, "order not found")
@@ -236,6 +246,10 @@ func validateOrderAccessToken(tokenStr, secret string) (uuid.UUID, error) {
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return uuid.Nil, fmt.Errorf("invalid claims")
+	}
+	tokenType, _ := claims["token_type"].(string)
+	if tokenType != "order_access" {
+		return uuid.Nil, fmt.Errorf("invalid token type")
 	}
 	orderIDStr, _ := claims["order_id"].(string)
 	return uuid.Parse(orderIDStr)
