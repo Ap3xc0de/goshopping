@@ -81,7 +81,7 @@ terraform plan
 terraform apply
 ```
 
-**OIDC**: Los workflows de GitHub Actions usan OIDC — cero access keys almacenadas. El único secret requerido es `AWS_OIDC_ROLE_ARN`.
+**OIDC**: GitHub Actions assume AWS via OIDC (no long-lived access keys). Prefer per-env secrets `AWS_ROLE_ARN_STAGING` / `AWS_ROLE_ARN_PRODUCTION`; workflows fall back to `AWS_ROLE_ARN` for backward compatibility. Configure GitHub Environment protection on `production` so Terraform apply is not silent on `main`.
 
 ## Multi-Tenancy
 

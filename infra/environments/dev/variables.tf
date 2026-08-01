@@ -23,9 +23,21 @@ variable "project_name" {
 }
 
 variable "allowed_ssh_cidr" {
-  description = "CIDR permitido para SSH (solo si key_pair_name está definido)"
+  description = "CIDR permitido para SSH (vacío = sin regla SSH; no usar 0.0.0.0/0)"
   type        = string
-  default     = "0.0.0.0/0"
+  default     = ""
+}
+
+variable "jwt_secret" {
+  description = "JWT signing secret for the dev EC2 stack (required via tfvars / CI; not committed)"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_password" {
+  description = "Postgres password for the local docker stack on the dev EC2 (required via tfvars / CI)"
+  type        = string
+  sensitive   = true
 }
 
 variable "anthropic_api_key" {

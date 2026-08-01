@@ -46,25 +46,25 @@ resource "aws_iam_role" "ecs_task" {
 }
 
 resource "aws_iam_role_policy" "ecs_task_sqs" {
-  name   = "goshopping-ecs-task-sqs"
-  role   = aws_iam_role.ecs_task.id
+  name = "goshopping-ecs-task-sqs"
+  role = aws_iam_role.ecs_task.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect   = "Allow"
         Action   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
-        Resource = ["arn:aws:sqs:*:*:goshopping-*"]
+        Resource = ["arn:aws:sqs:*:*:goshopping-${var.environment}-*"]
       },
       {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
-        Resource = ["arn:aws:secretsmanager:*:*:secret:goshopping/*"]
+        Resource = ["arn:aws:secretsmanager:*:*:secret:goshopping/${var.environment}/*"]
       },
       {
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
-        Resource = ["arn:aws:ssm:*:*:parameter/goshopping/*"]
+        Resource = ["arn:aws:ssm:*:*:parameter/goshopping/${var.environment}/*"]
       }
     ]
   })
@@ -106,8 +106,25 @@ resource "aws_security_group" "ecs_tasks" {
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port       = 0
-    to_port         = 65535
+    description     = "Core API"
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  ingress {
+    description     = "Integrations"
+    from_port       = 3001
+    to_port         = 3001
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  ingress {
+    description     = "AI Engine"
+    from_port       = 3002
+    to_port         = 3002
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
@@ -202,13 +219,13 @@ resource "aws_ecs_task_definition" "core" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
-    name      = "core"
-    image     = "${var.ecr_urls["goshopping-core"]}:latest"
-    essential = true
+    name         = "core"
+    image        = "${var.ecr_urls["goshopping-core"]}:latest"
+    essential    = true
     portMappings = [{ containerPort = 3000, protocol = "tcp" }]
     environment = [
-      { name = "APP_ENV",  value = var.environment },
-      { name = "PORT",     value = "3000" },
+      { name = "APP_ENV", value = var.environment },
+      { name = "PORT", value = "3000" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -231,13 +248,13 @@ resource "aws_ecs_task_definition" "integrations" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
-    name      = "integrations"
-    image     = "${var.ecr_urls["goshopping-integrations"]}:latest"
-    essential = true
+    name         = "integrations"
+    image        = "${var.ecr_urls["goshopping-integrations"]}:latest"
+    essential    = true
     portMappings = [{ containerPort = 3001, protocol = "tcp" }]
     environment = [
       { name = "APP_ENV", value = var.environment },
-      { name = "PORT",    value = "3001" },
+      { name = "PORT", value = "3001" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -260,13 +277,13 @@ resource "aws_ecs_task_definition" "ai_engine" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
-    name      = "ai-engine"
-    image     = "${var.ecr_urls["goshopping-ai-engine"]}:latest"
-    essential = true
+    name         = "ai-engine"
+    image        = "${var.ecr_urls["goshopping-ai-engine"]}:latest"
+    essential    = true
     portMappings = [{ containerPort = 3002, protocol = "tcp" }]
     environment = [
       { name = "APP_ENV", value = var.environment },
-      { name = "PORT",    value = "3002" },
+      { name = "PORT", value = "3002" },
     ]
     logConfiguration = {
       logDriver = "awslogs"

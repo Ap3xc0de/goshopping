@@ -27,13 +27,13 @@ resource "aws_security_group" "rds" {
 }
 
 resource "aws_db_instance" "main" {
-  identifier             = "goshopping-${var.environment}"
-  engine                 = "postgres"
-  engine_version         = "16.3"
-  instance_class         = var.instance_class
-  allocated_storage      = var.allocated_storage
-  max_allocated_storage  = var.max_allocated_storage
-  storage_encrypted      = true
+  identifier            = "goshopping-${var.environment}"
+  engine                = "postgres"
+  engine_version        = "16.3"
+  instance_class        = var.instance_class
+  allocated_storage     = var.allocated_storage
+  max_allocated_storage = var.max_allocated_storage
+  storage_encrypted     = true
 
   db_name  = "goshopping"
   username = "goshopping"
@@ -57,7 +57,7 @@ resource "aws_db_instance" "main" {
 }
 
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name        = "goshopping/db-credentials"
+  name        = "goshopping/${var.environment}/db-credentials"
   description = "PostgreSQL credentials for goshopping ${var.environment}"
 }
 

@@ -6,7 +6,7 @@ resource "aws_vpc" "dev" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags = { Name = "${var.project_name}-vpc" }
+  tags                 = { Name = "${var.project_name}-vpc" }
 }
 
 resource "aws_subnet" "public" {
@@ -14,7 +14,7 @@ resource "aws_subnet" "public" {
   cidr_block              = "10.0.1.0/24"
   availability_zone       = "${var.aws_region}a"
   map_public_ip_on_launch = true
-  tags = { Name = "${var.project_name}-public" }
+  tags                    = { Name = "${var.project_name}-public" }
 }
 
 resource "aws_internet_gateway" "dev" {
@@ -98,9 +98,9 @@ resource "aws_security_group" "dev" {
     description = "HTTP"
   }
 
-  # SSH (condicional)
+  # SSH — only when key pair AND a non-empty CIDR are provided (no open 0.0.0.0/0 default)
   dynamic "ingress" {
-    for_each = var.key_pair_name != "" ? [1] : []
+    for_each = var.key_pair_name != "" && var.allowed_ssh_cidr != "" ? [1] : []
     content {
       from_port   = 22
       to_port     = 22
@@ -220,6 +220,8 @@ resource "aws_instance" "dev" {
 
   user_data = templatefile("${path.module}/user-data.sh", {
     anthropic_api_key = var.anthropic_api_key
+    jwt_secret        = var.jwt_secret
+    db_password       = var.db_password
   })
 
   # Esperar a que el S3 bundle esté subido antes de crear la instancia

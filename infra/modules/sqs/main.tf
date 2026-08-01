@@ -12,8 +12,9 @@ locals {
 resource "aws_sqs_queue" "dlq" {
   for_each = toset(local.queues)
 
-  name                      = "goshopping-${each.key}-dlq"
+  name                      = "goshopping-${var.environment}-${each.key}-dlq"
   message_retention_seconds = 1209600 # 14 days
+  sqs_managed_sse_enabled   = true
   tags                      = { Environment = var.environment }
 }
 
@@ -21,10 +22,11 @@ resource "aws_sqs_queue" "dlq" {
 resource "aws_sqs_queue" "main" {
   for_each = toset(local.queues)
 
-  name                       = "goshopping-${each.key}"
+  name                       = "goshopping-${var.environment}-${each.key}"
   message_retention_seconds  = 1209600 # 14 days
   visibility_timeout_seconds = 30
   receive_wait_time_seconds  = 10 # long-polling
+  sqs_managed_sse_enabled    = true
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.dlq[each.key].arn

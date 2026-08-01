@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -61,6 +62,28 @@ func parseDuration(s, fallback string) time.Duration {
 	return d
 }
 
+// parseJWTSecretValue accepts raw key strings or JSON {"key":"..."}.
+func parseJWTSecretValue(val string) string {
+	var parsed struct {
+		Key string `json:"key"`
+	}
+	if err := json.Unmarshal([]byte(val), &parsed); err == nil && parsed.Key != "" {
+		return parsed.Key
+	}
+	return val
+}
+
+// parseDBPasswordValue accepts a raw password or JSON credentials with "password".
+func parseDBPasswordValue(val string) string {
+	var parsed struct {
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal([]byte(val), &parsed); err == nil && parsed.Password != "" {
+		return parsed.Password
+	}
+	return val
+}
+
 // Load reads configuration from environment variables. In staging/production
 // it enriches sensitive values from AWS Secrets Manager and SSM Parameter Store,
 // falling back to env vars when AWS calls fail.
@@ -112,13 +135,11 @@ func (c *Config) loadFromAWS() {
 
 	// ── Secrets Manager ─────────────────────────────────────────────────────
 	smClient := secretsmanager.NewFromConfig(awsCfg)
-	c.loadSecret(ctx, smClient, "goshopping/db-credentials", func(val string) {
-		// Expected JSON: {"username":"...","password":"..."}
-		// Simple env-style override: if the secret IS the password string, use it directly.
-		c.DBPassword = val
+	c.loadSecret(ctx, smClient, fmt.Sprintf("goshopping/%s/db-credentials", c.AppEnv), func(val string) {
+		c.DBPassword = parseDBPasswordValue(val)
 	})
-	c.loadSecret(ctx, smClient, "goshopping/jwt-signing-key", func(val string) {
-		c.JWTSecret = val
+	c.loadSecret(ctx, smClient, fmt.Sprintf("goshopping/%s/jwt-signing-key", c.AppEnv), func(val string) {
+		c.JWTSecret = parseJWTSecretValue(val)
 	})
 
 	// ── SSM Parameter Store ─────────────────────────────────────────────────
