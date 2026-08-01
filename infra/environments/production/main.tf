@@ -26,7 +26,8 @@ provider "aws" {
 provider "cloudflare" {}
 
 data "cloudflare_zone" "primary" {
-  filter {
+  # Cloudflare provider v5: filter is an attribute, not a block.
+  filter = {
     name = var.cloudflare_zone_name
   }
 }
