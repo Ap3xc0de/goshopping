@@ -1,14 +1,17 @@
 package handlers_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/goshopping/core/internal/models"
 	"github.com/goshopping/core/internal/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mustParseUUID(t *testing.T, s string) uuid.UUID {
@@ -152,4 +155,91 @@ func TestCancelOrder(t *testing.T) {
 		data := testutil.AssertJSON(t, resp)
 		assert.Equal(t, "cancelled", data["status"])
 	})
+}
+
+func readProductStock(t *testing.T, app *testutil.TestApp, productID uuid.UUID) int {
+	t.Helper()
+	var stock int
+	err := app.DB.QueryRow(context.Background(),
+		`SELECT stock FROM products WHERE id = $1`, productID).Scan(&stock)
+	require.NoError(t, err)
+	return stock
+}
+
+func TestCancelFromShippedDoesNotRestoreStock(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	auth, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(10))
+	cust := testutil.CreateTestCustomer(t, app.DB, storeIDParsed)
+	o := testutil.CreateTestOrder(t, app.DB, storeIDParsed, cust.ID, []models.Product{p}, "pending")
+
+	path := fmt.Sprintf("/stores/%s/orders/%s/status", storeID, o.ID)
+	for _, status := range []string{"paid", "preparing", "shipped"} {
+		resp := app.PATCH(t, path, map[string]interface{}{"status": status}, auth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+	}
+	assert.Equal(t, 9, readProductStock(t, app, p.ID), "stock after paid deduct")
+
+	cancelResp := app.POST(t, fmt.Sprintf("/stores/%s/orders/%s/cancel", storeID, o.ID),
+		map[string]interface{}{"reason": "lost in transit"}, auth)
+	testutil.AssertStatus(t, cancelResp, http.StatusOK)
+	data := testutil.AssertJSON(t, cancelResp)
+	assert.Equal(t, "cancelled", data["status"])
+	assert.Equal(t, 9, readProductStock(t, app, p.ID), "cancel from shipped must not restore stock")
+}
+
+func TestConcurrentPaidInsufficientStock(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	auth, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(5))
+
+	createBody := map[string]interface{}{
+		"customer_name":  "Race Customer",
+		"customer_phone": "555-9999",
+		"items": []map[string]interface{}{
+			{"product_id": p.ID.String(), "quantity": 3},
+		},
+		"payment_method": "cash",
+	}
+	var orderIDs [2]string
+	for i := 0; i < 2; i++ {
+		resp := app.POST(t, "/stores/"+storeID+"/orders", createBody, auth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		orderIDs[i] = data["id"].(string)
+	}
+
+	statuses := make([]int, 2)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for i := 0; i < 2; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			resp := app.PATCH(t, fmt.Sprintf("/stores/%s/orders/%s/status", storeID, orderIDs[i]),
+				map[string]interface{}{"status": "paid"}, auth)
+			statuses[i] = resp.StatusCode
+			_ = resp.Body.Close()
+		}()
+	}
+	wg.Wait()
+
+	var ok, fail int
+	for _, code := range statuses {
+		switch code {
+		case http.StatusOK:
+			ok++
+		case http.StatusUnprocessableEntity:
+			fail++
+		}
+	}
+	assert.Equal(t, 1, ok, "exactly one paid should succeed")
+	assert.Equal(t, 1, fail, "other paid should hit insufficient stock")
+	assert.Equal(t, 2, readProductStock(t, app, p.ID), "5 - 3 from the winning paid")
 }

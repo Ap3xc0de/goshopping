@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -9,6 +10,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSuspendedStoreBlocksNonSuperadmin(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	auth, _, storeID := app.OwnerAuthHeader(t)
+	testutil.CreateTestProduct(t, app.DB, mustParseUUID(t, storeID))
+
+	_, err := app.DB.Exec(context.Background(),
+		`UPDATE stores SET status = 'suspended' WHERE id = $1`, storeID)
+	require.NoError(t, err)
+
+	resp := app.GET(t, "/stores/"+storeID+"/products", auth)
+	testutil.AssertStatus(t, resp, http.StatusForbidden)
+
+	adminAuth, _ := app.SuperAdminAuthHeader(t)
+	adminResp := app.GET(t, "/stores/"+storeID+"/products", adminAuth)
+	testutil.AssertStatus(t, adminResp, http.StatusOK)
+}
 
 func TestListProducts(t *testing.T) {
 	app := testutil.SetupTestApp(t)
