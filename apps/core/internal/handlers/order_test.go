@@ -100,8 +100,7 @@ func TestGetOrder(t *testing.T) {
 		resp := app.GET(t, fmt.Sprintf("/stores/%s/orders/%s", storeID, o.ID), auth)
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		data := testutil.AssertJSON(t, resp)
-		order, _ := data["order"].(map[string]interface{})
-		assert.Equal(t, o.ID.String(), order["id"])
+		assert.Equal(t, o.ID.String(), data["id"])
 		_, hasTimeline := data["timeline"]
 		assert.True(t, hasTimeline)
 	})
@@ -151,7 +150,6 @@ func TestCancelOrder(t *testing.T) {
 			map[string]interface{}{"reason": "Customer request"}, auth)
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		data := testutil.AssertJSON(t, resp)
-		order, _ := data["order"].(map[string]interface{})
-		assert.Equal(t, "cancelled", order["status"])
+		assert.Equal(t, "cancelled", data["status"])
 	})
 }

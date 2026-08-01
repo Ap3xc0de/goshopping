@@ -20,19 +20,19 @@ func TestGetDashboard(t *testing.T) {
 		resp := app.GET(t, "/stores/"+storeID+"/dashboard", auth)
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		data := testutil.AssertJSON(t, resp)
-		assert.Equal(t, float64(0), data["total_orders"])
-		assert.Equal(t, float64(0), data["total_customers"])
-		assert.Equal(t, float64(0), data["total_products"])
+		assert.Equal(t, float64(0), data["sales_today"])
+		assert.Equal(t, float64(0), data["pending_orders"])
+		assert.Equal(t, float64(0), data["low_stock_count"])
 	})
 
 	t.Run("reflects created products", func(t *testing.T) {
-		testutil.CreateTestProduct(t, app.DB, storeIDParsed)
-		testutil.CreateTestProduct(t, app.DB, storeIDParsed)
+		testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(1), testutil.WithMinStock(5))
+		testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(1), testutil.WithMinStock(5))
 
 		resp := app.GET(t, "/stores/"+storeID+"/dashboard", auth)
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		data := testutil.AssertJSON(t, resp)
-		assert.Equal(t, float64(2), data["total_products"])
+		assert.Equal(t, float64(2), data["low_stock_count"])
 	})
 
 	t.Run("requires auth", func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestGetTopProducts(t *testing.T) {
 		resp := app.GET(t, "/stores/"+storeID+"/reports/products", auth)
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		data := testutil.AssertJSON(t, resp)
-		_, hasData := data["data"]
+		_, hasData := data["top_products"]
 		assert.True(t, hasData)
 	})
 
@@ -88,7 +88,7 @@ func TestGetTopCustomers(t *testing.T) {
 		resp := app.GET(t, "/stores/"+storeID+"/reports/customers", auth)
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		data := testutil.AssertJSON(t, resp)
-		_, hasData := data["data"]
+		_, hasData := data["top_customers"]
 		assert.True(t, hasData)
 	})
 }
