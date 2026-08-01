@@ -74,6 +74,7 @@ func (ta *TestApp) CleanDB(t *testing.T) {
 		"orders",
 		"products",
 		"customers",
+		"refresh_tokens",
 		"store_users",
 		"stores",
 		"accounts",

@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,8 +19,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const bcryptCost = 12 // ponytail: DefaultCost is 10; 12 is a deliberate bump
+
 // ErrInvalidCredentials is returned when email or password do not match.
 var ErrInvalidCredentials = errors.New("invalid email or password")
+
+// ErrAccountSuspended is returned when the account is not active.
+var ErrAccountSuspended = errors.New("account is not active")
 
 // ErrEmailTaken is returned when the email is already registered.
 var ErrEmailTaken = errors.New("email already registered")
@@ -39,8 +46,7 @@ func NewAuthService(db *pgxpool.Pool, cfg *config.Config) *AuthService {
 
 // Register creates a new account with role=owner and provisions an initial store.
 func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse, error) {
-	// Hash password
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcryptCost)
 	if err != nil {
 		return models.AuthResponse{}, fmt.Errorf("bcrypt: %w", err)
 	}
@@ -52,7 +58,6 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	// Insert account
 	var account models.Account
 	err = tx.QueryRow(ctx, `
 		INSERT INTO accounts (email, password_hash, name, role, status)
@@ -68,7 +73,6 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 		return models.AuthResponse{}, fmt.Errorf("insert account: %w", err)
 	}
 
-	// Auto-create first store
 	storeSlug := generateSlug(req.Name)
 	var storeID uuid.UUID
 	err = tx.QueryRow(ctx, `
@@ -81,7 +85,6 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 		return models.AuthResponse{}, fmt.Errorf("insert store: %w", err)
 	}
 
-	// Link account → store with role=owner
 	_, err = tx.Exec(ctx, `
 		INSERT INTO store_users (store_id, account_id, role)
 		VALUES ($1, $2, 'owner')`,
@@ -127,6 +130,10 @@ func (s *AuthService) Login(req models.LoginRequest) (models.AuthResponse, error
 		return models.AuthResponse{}, fmt.Errorf("query account: %w", err)
 	}
 
+	if account.Status != "active" {
+		return models.AuthResponse{}, ErrAccountSuspended
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(req.Password)); err != nil {
 		return models.AuthResponse{}, ErrInvalidCredentials
 	}
@@ -148,14 +155,13 @@ func (s *AuthService) Login(req models.LoginRequest) (models.AuthResponse, error
 	}, nil
 }
 
-// RefreshToken validates a refresh token and issues a new token pair.
+// RefreshToken validates a refresh token, rotates it, and issues a new pair.
 func (s *AuthService) RefreshToken(refreshToken string) (models.AuthResponse, error) {
 	claims, err := s.parseToken(refreshToken)
 	if err != nil {
 		return models.AuthResponse{}, ErrInvalidToken
 	}
 
-	// Verify token type
 	if tokenType, _ := claims["token_type"].(string); tokenType != "refresh" {
 		return models.AuthResponse{}, ErrInvalidToken
 	}
@@ -167,6 +173,24 @@ func (s *AuthService) RefreshToken(refreshToken string) (models.AuthResponse, er
 	}
 
 	ctx := context.Background()
+	hash := hashToken(refreshToken)
+
+	var existingID uuid.UUID
+	err = s.db.QueryRow(ctx, `
+		SELECT id FROM refresh_tokens
+		WHERE token_hash = $1 AND account_id = $2 AND revoked_at IS NULL AND expires_at > NOW()`,
+		hash, accountID,
+	).Scan(&existingID)
+	if err != nil {
+		return models.AuthResponse{}, ErrInvalidToken
+	}
+
+	// Rotate: revoke the presented token before issuing a new pair.
+	if _, err := s.db.Exec(ctx, `
+		UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $1`, existingID); err != nil {
+		return models.AuthResponse{}, fmt.Errorf("revoke refresh token: %w", err)
+	}
+
 	var account models.Account
 	err = s.db.QueryRow(ctx, `
 		SELECT id, email, name, role, status, created_at, updated_at
@@ -176,6 +200,10 @@ func (s *AuthService) RefreshToken(refreshToken string) (models.AuthResponse, er
 		&account.CreatedAt, &account.UpdatedAt)
 	if err != nil {
 		return models.AuthResponse{}, ErrInvalidToken
+	}
+
+	if account.Status != "active" {
+		return models.AuthResponse{}, ErrAccountSuspended
 	}
 
 	storeAccesses, err := s.getStoreAccesses(ctx, account.ID)
@@ -195,11 +223,49 @@ func (s *AuthService) RefreshToken(refreshToken string) (models.AuthResponse, er
 	}, nil
 }
 
-// generateTokenPair creates a JWT access token and a longer-lived refresh token.
+// Logout revokes the given refresh token. If valid, also revokes all tokens for that account.
+func (s *AuthService) Logout(refreshToken string) error {
+	if refreshToken == "" {
+		return nil // ponytail: idempotent logout
+	}
+
+	ctx := context.Background()
+	hash := hashToken(refreshToken)
+
+	var accountID uuid.UUID
+	err := s.db.QueryRow(ctx, `
+		SELECT account_id FROM refresh_tokens
+		WHERE token_hash = $1 AND revoked_at IS NULL`,
+		hash,
+	).Scan(&accountID)
+	if err != nil {
+		// Best-effort: try JWT path for account_id even if row missing.
+		if claims, parseErr := s.parseToken(refreshToken); parseErr == nil {
+			if sub, _ := claims["sub"].(string); sub != "" {
+				if id, idErr := uuid.Parse(sub); idErr == nil {
+					return s.RevokeAllRefreshTokens(id)
+				}
+			}
+		}
+		return nil // ponytail: logout is idempotent — missing token is still success
+	}
+
+	return s.RevokeAllRefreshTokens(accountID)
+}
+
+// RevokeAllRefreshTokens marks every refresh token for an account as revoked.
+func (s *AuthService) RevokeAllRefreshTokens(accountID uuid.UUID) error {
+	_, err := s.db.Exec(context.Background(), `
+		UPDATE refresh_tokens SET revoked_at = NOW()
+		WHERE account_id = $1 AND revoked_at IS NULL`, accountID)
+	return err
+}
+
+// generateTokenPair creates a JWT access token and a longer-lived refresh token,
+// persisting the refresh token hash for rotation/revocation.
 func (s *AuthService) generateTokenPair(account models.Account, stores []models.StoreAccess) (accessToken, refreshToken string, err error) {
 	now := time.Now()
 
-	// Access token
 	accessClaims := jwt.MapClaims{
 		"sub":        account.ID.String(),
 		"role":       account.Role,
@@ -214,17 +280,28 @@ func (s *AuthService) generateTokenPair(account models.Account, stores []models.
 		return "", "", fmt.Errorf("sign access token: %w", err)
 	}
 
-	// Refresh token
+	jti := uuid.New().String()
+	refreshExp := now.Add(s.cfg.JWTRefreshExpiry)
 	refreshClaims := jwt.MapClaims{
 		"sub":        account.ID.String(),
 		"token_type": "refresh",
+		"jti":        jti,
 		"iat":        now.Unix(),
-		"exp":        now.Add(s.cfg.JWTRefreshExpiry).Unix(),
+		"exp":        refreshExp.Unix(),
 	}
 	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).
 		SignedString([]byte(s.cfg.JWTSecret))
 	if err != nil {
 		return "", "", fmt.Errorf("sign refresh token: %w", err)
+	}
+
+	_, err = s.db.Exec(context.Background(), `
+		INSERT INTO refresh_tokens (account_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)`,
+		account.ID, hashToken(refreshToken), refreshExp,
+	)
+	if err != nil {
+		return "", "", fmt.Errorf("store refresh token: %w", err)
 	}
 
 	return accessToken, refreshToken, nil
@@ -268,6 +345,11 @@ func (s *AuthService) getStoreAccesses(ctx context.Context, accountID uuid.UUID)
 	return accesses, rows.Err()
 }
 
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
 func isDuplicateKeyError(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "unique constraint") ||
 		strings.Contains(err.Error(), "duplicate key")
@@ -281,12 +363,10 @@ func generateSlug(name string) string {
 		}
 		return '-'
 	}, name)
-	// Collapse repeated dashes and trim
 	for strings.Contains(slug, "--") {
 		slug = strings.ReplaceAll(slug, "--", "-")
 	}
 	slug = strings.Trim(slug, "-")
-	// Append a short uuid fragment to guarantee uniqueness
 	slug = slug + "-" + uuid.New().String()[:8]
 	return slug
 }

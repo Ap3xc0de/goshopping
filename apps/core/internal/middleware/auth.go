@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -14,9 +15,9 @@ const (
 	keyStores    = "stores"
 )
 
-// Auth returns a middleware that validates the Bearer JWT and injects claims
-// into the Fiber context.
-func Auth(jwtSecret string) fiber.Handler {
+// Auth returns a middleware that validates the Bearer JWT, checks the account
+// is still active in the DB, and injects live role/claims into the Fiber context.
+func Auth(jwtSecret string, db *pgxpool.Pool) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -52,22 +53,39 @@ func Auth(jwtSecret string) fiber.Handler {
 			})
 		}
 
-		// Verify token_type == "access"
 		if tokenType, _ := claims["token_type"].(string); tokenType != "access" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "invalid token type",
 			})
 		}
 
-		c.Locals(keyAccountID, claims["sub"])
-		c.Locals(keyRole, claims["role"])
+		sub, _ := claims["sub"].(string)
+		accountID, err := uuid.Parse(sub)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "invalid token claims",
+			})
+		}
+
+		var status, role string
+		err = db.QueryRow(c.Context(),
+			`SELECT status, role FROM accounts WHERE id = $1`, accountID,
+		).Scan(&status, &role)
+		if err != nil || status != "active" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "account is not active",
+			})
+		}
+
+		c.Locals(keyAccountID, sub)
+		c.Locals(keyRole, role) // prefer live DB role over JWT claim
 		c.Locals(keyStores, claims["stores"])
 
 		return c.Next()
 	}
 }
 
-// RequireSuperAdmin returns a middleware that allows only superadmin accounts.
+// RequireSuperAdmin allows only active superadmin accounts (role from DB via Auth).
 func RequireSuperAdmin() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if GetRole(c) != "superadmin" {

@@ -1,7 +1,10 @@
 package router
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/goshopping/core/internal/config"
 	"github.com/goshopping/core/internal/handlers"
 	"github.com/goshopping/core/internal/middleware"
@@ -11,7 +14,6 @@ import (
 
 // Setup registers all routes on the Fiber app.
 func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *services.EventService) {
-	// ── Services ─────────────────────────────────────────────────────────────
 	authSvc := services.NewAuthService(db, cfg)
 	prodSvc := services.NewProductService(db, cfg, eventSvc)
 	custSvc := services.NewCustomerService(db, cfg)
@@ -19,15 +21,28 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	dashSvc := services.NewDashboardService(db, cfg)
 	adminSvc := services.NewAdminService(db, cfg)
 
-	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
 
-	authGroup := app.Group("/auth")
-	authGroup.Post("/register", handlers.Register(authSvc))
-	authGroup.Post("/login", handlers.Login(authSvc))
-	authGroup.Post("/refresh", handlers.Refresh(authSvc))
+	// ponytail: in-memory limiter — multi-instance needs Redis (fiber storage adapter)
+	authLimiter := limiter.New(limiter.Config{
+		Max:        20,
+		Expiration: time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "too many requests",
+			})
+		},
+	})
 
-	// Public storefront (no auth)
+	authGroup := app.Group("/auth")
+	authGroup.Post("/register", authLimiter, handlers.Register(authSvc))
+	authGroup.Post("/login", authLimiter, handlers.Login(authSvc))
+	authGroup.Post("/refresh", authLimiter, handlers.Refresh(authSvc))
+	authGroup.Post("/logout", handlers.Logout(authSvc))
+
 	pub := app.Group("/public")
 	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db))
 	pub.Get("/:storeSlug/products", handlers.PublicListProducts(db, cfg))
@@ -35,13 +50,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	pub.Post("/:storeSlug/orders", handlers.PublicCreateOrder(db, cfg))
 	pub.Get("/:storeSlug/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
 
-	// ── Protected routes ──────────────────────────────────────────────────────
-	api := app.Group("/", middleware.Auth(cfg.JWTSecret))
+	api := app.Group("/", middleware.Auth(cfg.JWTSecret, db))
 
-	// Store-scoped routes
 	store := api.Group("/stores/:storeId", middleware.StoreContext(db))
 
-	// Products
 	store.Get("/products", handlers.ListProducts(prodSvc))
 	store.Post("/products", handlers.CreateProduct(prodSvc))
 	store.Post("/products/bulk-import", handlers.BulkImportProducts(prodSvc))
@@ -50,7 +62,6 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Delete("/products/:productId", handlers.DeleteProduct(prodSvc))
 	store.Post("/products/:productId/images", handlers.ProductImageUpload(prodSvc))
 
-	// Orders
 	store.Get("/orders", handlers.ListOrders(orderSvc))
 	store.Post("/orders", handlers.CreateOrder(orderSvc))
 	store.Get("/orders/export", handlers.ExportOrders(orderSvc))
@@ -58,22 +69,18 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Patch("/orders/:orderId/status", handlers.ChangeOrderStatus(orderSvc))
 	store.Post("/orders/:orderId/cancel", handlers.CancelOrder(orderSvc))
 
-	// Customers
 	store.Get("/customers", handlers.ListCustomers(custSvc))
 	store.Post("/customers", handlers.CreateCustomer(custSvc))
 	store.Get("/customers/:customerId", handlers.GetCustomer(custSvc))
 	store.Put("/customers/:customerId", handlers.UpdateCustomer(custSvc))
 	store.Get("/customers/:customerId/orders", handlers.CustomerOrders(custSvc))
 
-	// Dashboard
 	store.Get("/dashboard", handlers.GetDashboard(dashSvc))
 
-	// Reports
 	store.Get("/reports/sales", handlers.GetReportsSales(dashSvc))
 	store.Get("/reports/products", handlers.GetReportsProducts(dashSvc))
 	store.Get("/reports/customers", handlers.GetReportsCustomers(dashSvc))
 
-	// SuperAdmin routes
 	admin := api.Group("/admin", middleware.RequireSuperAdmin())
 	admin.Get("/dashboard", handlers.AdminGetDashboard(adminSvc))
 	admin.Get("/accounts", handlers.AdminListAccounts(adminSvc))

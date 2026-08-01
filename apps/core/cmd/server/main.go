@@ -16,8 +16,9 @@ import (
 )
 
 func main() {
-	// 1. Load config
+	// 1. Load config (fail-closed on JWT secret)
 	cfg := config.Load()
+	cfg.MustValidate()
 
 	// 2. Connect to database
 	db := database.Connect(cfg)

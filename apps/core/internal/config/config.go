@@ -2,9 +2,11 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,6 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
+
+const minJWTSecretLen = 32
 
 // Config holds all configuration values for the application.
 type Config struct {
@@ -61,9 +65,29 @@ func parseDuration(s, fallback string) time.Duration {
 	return d
 }
 
+// extractSecretField pulls a named field from Secrets Manager JSON, e.g. {"key":"..."}
+// or {"password":"..."}. Plain strings pass through unchanged.
+func extractSecretField(raw, field string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw[0] != '{' {
+		return raw
+	}
+	var m map[string]string
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		return raw
+	}
+	if v := m[field]; v != "" {
+		return v
+	}
+	return raw
+}
+
 // Load reads configuration from environment variables. In staging/production
 // it enriches sensitive values from AWS Secrets Manager and SSM Parameter Store,
 // falling back to env vars when AWS calls fail.
+//
+// JWT validation is deferred to MustValidate so tests can override the secret
+// after Load(). Call MustValidate from main before serving.
 func Load() *Config {
 	cfg := &Config{
 		AppEnv:    getEnv("APP_ENV", "development"),
@@ -97,7 +121,29 @@ func Load() *Config {
 		cfg.loadFromAWS()
 	}
 
+	cfg.JWTSecret = extractSecretField(cfg.JWTSecret, "key")
+	cfg.DBPassword = extractSecretField(cfg.DBPassword, "password")
+
+	if !cfg.jwtSecretOK() {
+		if cfg.AppEnv == "staging" || cfg.AppEnv == "production" {
+			log.Fatal("JWT_SECRET is required and must be at least 32 characters in staging/production")
+		}
+		log.Printf("[WARN] JWT_SECRET is empty or shorter than %d chars — set JWT_SECRET before serving", minJWTSecretLen)
+	}
+
 	return cfg
+}
+
+// MustValidate fails closed when JWT_SECRET is missing/short. Call from main
+// after Load(); tests override the secret and skip this.
+func (c *Config) MustValidate() {
+	if !c.jwtSecretOK() {
+		log.Fatal("JWT_SECRET is required and must be at least 32 characters")
+	}
+}
+
+func (c *Config) jwtSecretOK() bool {
+	return len(c.JWTSecret) >= minJWTSecretLen
 }
 
 // loadFromAWS enriches the config with values from AWS Secrets Manager and SSM.
@@ -113,12 +159,10 @@ func (c *Config) loadFromAWS() {
 	// ── Secrets Manager ─────────────────────────────────────────────────────
 	smClient := secretsmanager.NewFromConfig(awsCfg)
 	c.loadSecret(ctx, smClient, "goshopping/db-credentials", func(val string) {
-		// Expected JSON: {"username":"...","password":"..."}
-		// Simple env-style override: if the secret IS the password string, use it directly.
-		c.DBPassword = val
+		c.DBPassword = extractSecretField(val, "password")
 	})
 	c.loadSecret(ctx, smClient, "goshopping/jwt-signing-key", func(val string) {
-		c.JWTSecret = val
+		c.JWTSecret = extractSecretField(val, "key")
 	})
 
 	// ── SSM Parameter Store ─────────────────────────────────────────────────
