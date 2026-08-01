@@ -40,6 +40,12 @@ func SetupTestApp(t *testing.T) *TestApp {
 	cfg := config.Load()
 	cfg.JWTSecret = TestJWTSecret
 	cfg.AppEnv = "development"
+	// Avoid AWS SDK timeouts when ElasticMQ isn't running during unit tests.
+	cfg.SQSOrderEventsURL = ""
+	cfg.SQSPaymentEventsURL = ""
+	cfg.SQSAccountingEventsURL = ""
+	cfg.SQSNotificationEventsURL = ""
+	cfg.SQSMarketingEventsURL = ""
 
 	db := database.Connect(cfg)
 
@@ -127,6 +133,37 @@ func (ta *TestApp) OwnerAuthHeader(t *testing.T) (header, accountID, storeID str
 
 	token := generateTestJWT(t, accID.String(), "owner", sID.String(), "owner", ta.Config.JWTSecret)
 	return "Bearer " + token, accID.String(), sID.String()
+}
+
+// StoreUserAuthHeader creates an account linked to an existing store with the given store role.
+func (ta *TestApp) StoreUserAuthHeader(t *testing.T, storeID, storeRole string) (header, accountID string) {
+	t.Helper()
+	ctx := context.Background()
+
+	accID := uuid.New()
+	email := fmt.Sprintf("%s-%s@test.com", storeRole, accID)
+	if _, err := ta.DB.Exec(ctx, `
+		INSERT INTO accounts (id, email, password_hash, name, role, status)
+		VALUES ($1, $2, $3, $4, 'owner', 'active')`,
+		accID, email, "$2a$12$placeholder", "Test "+storeRole,
+	); err != nil {
+		t.Fatalf("StoreUserAuthHeader: insert account: %v", err)
+	}
+
+	sID, err := uuid.Parse(storeID)
+	if err != nil {
+		t.Fatalf("StoreUserAuthHeader: parse storeID: %v", err)
+	}
+	if _, err := ta.DB.Exec(ctx, `
+		INSERT INTO store_users (store_id, account_id, role)
+		VALUES ($1, $2, $3)`,
+		sID, accID, storeRole,
+	); err != nil {
+		t.Fatalf("StoreUserAuthHeader: insert store_user: %v", err)
+	}
+
+	token := generateTestJWT(t, accID.String(), "owner", storeID, storeRole, ta.Config.JWTSecret)
+	return "Bearer " + token, accID.String()
 }
 
 // SuperAdminAuthHeader creates a superadmin account, returns (Bearer token, accountID).

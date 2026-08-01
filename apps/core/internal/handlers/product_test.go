@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/goshopping/core/internal/models"
 	"github.com/goshopping/core/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,6 +88,80 @@ func TestCreateProduct(t *testing.T) {
 	t.Run("returns 422 when name missing", func(t *testing.T) {
 		resp := app.POST(t, "/stores/"+storeID+"/products", map[string]interface{}{"price": 100}, auth)
 		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "name is required")
+	})
+
+	t.Run("accountant cannot create product", func(t *testing.T) {
+		acctAuth, _ := app.StoreUserAuthHeader(t, storeID, "accountant")
+		body := map[string]interface{}{
+			"name":  "Blocked",
+			"price": 1000,
+			"stock": 1,
+		}
+		resp := app.POST(t, "/stores/"+storeID+"/products", body, acctAuth)
+		testutil.AssertStatus(t, resp, http.StatusForbidden)
+	})
+}
+
+func TestAccountantCanRead(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Visible"))
+	acctAuth, _ := app.StoreUserAuthHeader(t, storeID, "accountant")
+
+	t.Run("can list products", func(t *testing.T) {
+		resp := app.GET(t, "/stores/"+storeID+"/products", acctAuth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		testutil.AssertPaginated(t, data, 1)
+	})
+
+	t.Run("can get dashboard", func(t *testing.T) {
+		resp := app.GET(t, "/stores/"+storeID+"/dashboard", acctAuth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+	})
+
+	t.Run("cannot create product", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name":  "Blocked",
+			"price": 1000,
+			"stock": 1,
+		}
+		resp := app.POST(t, "/stores/"+storeID+"/products", body, acctAuth)
+		testutil.AssertStatus(t, resp, http.StatusForbidden)
+	})
+}
+
+func TestOperatorCanMutate(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	opAuth, _ := app.StoreUserAuthHeader(t, storeID, "operator")
+
+	t.Run("can create product", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name":  "Operator Product",
+			"price": 2500,
+			"stock": 3,
+		}
+		resp := app.POST(t, "/stores/"+storeID+"/products", body, opAuth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, "Operator Product", data["name"])
+	})
+
+	t.Run("can change order status", func(t *testing.T) {
+		p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(10))
+		cust := testutil.CreateTestCustomer(t, app.DB, storeIDParsed)
+		o := testutil.CreateTestOrder(t, app.DB, storeIDParsed, cust.ID, []models.Product{p}, "pending")
+
+		resp := app.PATCH(t, fmt.Sprintf("/stores/%s/orders/%s/status", storeID, o.ID),
+			map[string]interface{}{"status": "paid"}, opAuth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
 	})
 }
 
