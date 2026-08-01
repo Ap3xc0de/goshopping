@@ -40,6 +40,12 @@ func SetupTestApp(t *testing.T) *TestApp {
 	cfg := config.Load()
 	cfg.JWTSecret = TestJWTSecret
 	cfg.AppEnv = "development"
+	// Avoid AWS SDK timeouts when ElasticMQ isn't running during unit tests.
+	cfg.SQSOrderEventsURL = ""
+	cfg.SQSPaymentEventsURL = ""
+	cfg.SQSAccountingEventsURL = ""
+	cfg.SQSNotificationEventsURL = ""
+	cfg.SQSMarketingEventsURL = ""
 
 	db := database.Connect(cfg)
 
