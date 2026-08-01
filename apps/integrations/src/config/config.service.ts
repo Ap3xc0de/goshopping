@@ -19,7 +19,26 @@ export class ConfigService {
     return process.env.APP_ENV || 'development';
   }
 
+  get isDevelopment(): boolean {
+    return this.appEnv === 'development';
+  }
+
   get port(): number {
     return parseInt(process.env.PORT || '3001', 10);
+  }
+
+  get integrationsApiKey(): string {
+    return process.env.INTEGRATIONS_API_KEY || '';
+  }
+
+  /** Comma-separated CORE origins; defaults to localhost in development. */
+  get corsOrigins(): string[] {
+    const raw =
+      process.env.CORS_ORIGINS ||
+      (this.isDevelopment ? 'http://localhost:3000,http://localhost:5173' : '');
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 }

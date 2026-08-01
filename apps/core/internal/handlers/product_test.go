@@ -88,6 +88,17 @@ func TestCreateProduct(t *testing.T) {
 		resp := app.POST(t, "/stores/"+storeID+"/products", map[string]interface{}{"price": 100}, auth)
 		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "name is required")
 	})
+
+	t.Run("accountant cannot create product", func(t *testing.T) {
+		acctAuth, _ := app.StoreUserAuthHeader(t, storeID, "accountant")
+		body := map[string]interface{}{
+			"name":  "Blocked",
+			"price": 1000,
+			"stock": 1,
+		}
+		resp := app.POST(t, "/stores/"+storeID+"/products", body, acctAuth)
+		testutil.AssertStatus(t, resp, http.StatusForbidden)
+	})
 }
 
 func TestGetProduct(t *testing.T) {

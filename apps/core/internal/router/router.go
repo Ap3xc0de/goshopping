@@ -9,6 +9,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var (
+	storeWrite = middleware.RequireStoreRoles("owner", "operator")
+	storeRead  = middleware.RequireStoreRoles("owner", "operator", "accountant")
+)
+
 // Setup registers all routes on the Fiber app.
 func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *services.EventService) {
 	// ── Services ─────────────────────────────────────────────────────────────
@@ -42,36 +47,36 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store := api.Group("/stores/:storeId", middleware.StoreContext(db))
 
 	// Products
-	store.Get("/products", handlers.ListProducts(prodSvc))
-	store.Post("/products", handlers.CreateProduct(prodSvc))
-	store.Post("/products/bulk-import", handlers.BulkImportProducts(prodSvc))
-	store.Get("/products/:productId", handlers.GetProduct(prodSvc))
-	store.Put("/products/:productId", handlers.UpdateProduct(prodSvc))
-	store.Delete("/products/:productId", handlers.DeleteProduct(prodSvc))
-	store.Post("/products/:productId/images", handlers.ProductImageUpload(prodSvc))
+	store.Get("/products", storeRead, handlers.ListProducts(prodSvc))
+	store.Post("/products", storeWrite, handlers.CreateProduct(prodSvc))
+	store.Post("/products/bulk-import", storeWrite, handlers.BulkImportProducts(prodSvc))
+	store.Get("/products/:productId", storeRead, handlers.GetProduct(prodSvc))
+	store.Put("/products/:productId", storeWrite, handlers.UpdateProduct(prodSvc))
+	store.Delete("/products/:productId", storeWrite, handlers.DeleteProduct(prodSvc))
+	store.Post("/products/:productId/images", storeWrite, handlers.ProductImageUpload(prodSvc))
 
 	// Orders
-	store.Get("/orders", handlers.ListOrders(orderSvc))
-	store.Post("/orders", handlers.CreateOrder(orderSvc))
-	store.Get("/orders/export", handlers.ExportOrders(orderSvc))
-	store.Get("/orders/:orderId", handlers.GetOrder(orderSvc))
-	store.Patch("/orders/:orderId/status", handlers.ChangeOrderStatus(orderSvc))
-	store.Post("/orders/:orderId/cancel", handlers.CancelOrder(orderSvc))
+	store.Get("/orders", storeRead, handlers.ListOrders(orderSvc))
+	store.Post("/orders", storeWrite, handlers.CreateOrder(orderSvc))
+	store.Get("/orders/export", storeRead, handlers.ExportOrders(orderSvc))
+	store.Get("/orders/:orderId", storeRead, handlers.GetOrder(orderSvc))
+	store.Patch("/orders/:orderId/status", storeWrite, handlers.ChangeOrderStatus(orderSvc))
+	store.Post("/orders/:orderId/cancel", storeWrite, handlers.CancelOrder(orderSvc))
 
 	// Customers
-	store.Get("/customers", handlers.ListCustomers(custSvc))
-	store.Post("/customers", handlers.CreateCustomer(custSvc))
-	store.Get("/customers/:customerId", handlers.GetCustomer(custSvc))
-	store.Put("/customers/:customerId", handlers.UpdateCustomer(custSvc))
-	store.Get("/customers/:customerId/orders", handlers.CustomerOrders(custSvc))
+	store.Get("/customers", storeRead, handlers.ListCustomers(custSvc))
+	store.Post("/customers", storeWrite, handlers.CreateCustomer(custSvc))
+	store.Get("/customers/:customerId", storeRead, handlers.GetCustomer(custSvc))
+	store.Put("/customers/:customerId", storeWrite, handlers.UpdateCustomer(custSvc))
+	store.Get("/customers/:customerId/orders", storeRead, handlers.CustomerOrders(custSvc))
 
 	// Dashboard
-	store.Get("/dashboard", handlers.GetDashboard(dashSvc))
+	store.Get("/dashboard", storeRead, handlers.GetDashboard(dashSvc))
 
 	// Reports
-	store.Get("/reports/sales", handlers.GetReportsSales(dashSvc))
-	store.Get("/reports/products", handlers.GetReportsProducts(dashSvc))
-	store.Get("/reports/customers", handlers.GetReportsCustomers(dashSvc))
+	store.Get("/reports/sales", storeRead, handlers.GetReportsSales(dashSvc))
+	store.Get("/reports/products", storeRead, handlers.GetReportsProducts(dashSvc))
+	store.Get("/reports/customers", storeRead, handlers.GetReportsCustomers(dashSvc))
 
 	// SuperAdmin routes
 	admin := api.Group("/admin", middleware.RequireSuperAdmin())
