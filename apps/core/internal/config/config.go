@@ -134,11 +134,20 @@ func Load() *Config {
 	return cfg
 }
 
-// MustValidate fails closed when JWT_SECRET is missing/short. Call from main
-// after Load(); tests override the secret and skip this.
+// Validate returns an error when JWT_SECRET is missing/short in staging/production.
+// Development only warns (see Load); fail-closed applies to deployed envs.
+func (c *Config) Validate() error {
+	if (c.AppEnv == "staging" || c.AppEnv == "production") && !c.jwtSecretOK() {
+		return fmt.Errorf("JWT_SECRET is required and must be at least %d characters", minJWTSecretLen)
+	}
+	return nil
+}
+
+// MustValidate fails closed when Validate() errors. Call from main after Load();
+// tests override the secret and skip this.
 func (c *Config) MustValidate() {
-	if !c.jwtSecretOK() {
-		log.Fatal("JWT_SECRET is required and must be at least 32 characters")
+	if err := c.Validate(); err != nil {
+		log.Fatal(err)
 	}
 }
 

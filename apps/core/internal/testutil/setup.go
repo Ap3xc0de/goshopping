@@ -23,7 +23,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const TestJWTSecret = "test-secret-for-goshopping-tests"
+// TestJWTSecret is >=32 chars so it satisfies minJWTSecretLen if Validate is ever called in tests.
+const TestJWTSecret = "test-secret-for-goshopping-tests-xxxxxxxx"
 
 // TestApp holds the test application and its dependencies.
 type TestApp struct {
