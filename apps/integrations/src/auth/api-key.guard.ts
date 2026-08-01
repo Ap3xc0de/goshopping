@@ -1,14 +1,14 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
+import { isRelaxedAuthEnv } from '../config/require-api-key';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const expected = process.env.INTEGRATIONS_API_KEY || '';
-    const isDev = (process.env.APP_ENV || 'development') === 'development';
 
-    // ponytail: no key in development → allow (non-dev requires INTEGRATIONS_API_KEY at boot)
-    if (!expected && isDev) {
+    // ponytail: no key in development/test → allow (non-dev requires INTEGRATIONS_API_KEY at boot)
+    if (!expected && isRelaxedAuthEnv()) {
       return true;
     }
 
