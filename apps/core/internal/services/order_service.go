@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strings"
 	"time"
@@ -32,7 +33,7 @@ var orderTransitions = map[string][]string{
 	"pending":   {"paid", "cancelled"},
 	"paid":      {"preparing", "cancelled"},
 	"preparing": {"shipped", "cancelled"},
-	"shipped":   {"delivered"},
+	"shipped":   {"delivered", "cancelled"},
 	"delivered": {},
 	"cancelled": {},
 }
@@ -45,16 +46,17 @@ type OrderDetail struct {
 
 // OrderService handles business logic for orders.
 type OrderService struct {
-	db       *pgxpool.Pool
-	cfg      *config.Config
-	eventSvc *EventService
-	custSvc  *CustomerService
-	prodSvc  *ProductService
+	db        *pgxpool.Pool
+	cfg       *config.Config
+	eventSvc  *EventService
+	outboxSvc *OutboxService
+	custSvc   *CustomerService
+	prodSvc   *ProductService
 }
 
 // NewOrderService creates a new OrderService.
-func NewOrderService(db *pgxpool.Pool, cfg *config.Config, eventSvc *EventService, custSvc *CustomerService, prodSvc *ProductService) *OrderService {
-	return &OrderService{db: db, cfg: cfg, eventSvc: eventSvc, custSvc: custSvc, prodSvc: prodSvc}
+func NewOrderService(db *pgxpool.Pool, cfg *config.Config, eventSvc *EventService, outboxSvc *OutboxService, custSvc *CustomerService, prodSvc *ProductService) *OrderService {
+	return &OrderService{db: db, cfg: cfg, eventSvc: eventSvc, outboxSvc: outboxSvc, custSvc: custSvc, prodSvc: prodSvc}
 }
 
 // ListOrdersResult holds paginated orders.
@@ -122,7 +124,7 @@ func (s *OrderService) ListOrders(storeID uuid.UUID, page, perPage int, status, 
 		       COALESCE(c.phone,'')                  AS customer_phone,
 		       COALESCE(c.address,'')          AS customer_address
 		FROM orders o
-		LEFT JOIN customers c ON o.customer_id = c.id
+		LEFT JOIN customers c ON c.id = o.customer_id AND c.store_id = o.store_id
 		%s
 		ORDER BY o.created_at DESC
 		LIMIT $%d OFFSET $%d`, where, idx, idx+1)
@@ -168,7 +170,7 @@ func (s *OrderService) GetOrder(storeID, orderID uuid.UUID) (*OrderDetail, error
 		       COALESCE(c.phone,'')              AS customer_phone,
 		       COALESCE(c.address,'')      AS customer_address
 		FROM orders o
-		LEFT JOIN customers c ON o.customer_id = c.id
+		LEFT JOIN customers c ON c.id = o.customer_id AND c.store_id = o.store_id
 		WHERE o.id = $1 AND o.store_id = $2`,
 		orderID, storeID,
 	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items,
@@ -205,7 +207,7 @@ func (s *OrderService) GetOrderByIDOnly(orderID uuid.UUID) (*OrderDetail, error)
 		       COALESCE(c.phone,'')             AS customer_phone,
 		       COALESCE(c.address,'')     AS customer_address
 		FROM orders o
-		LEFT JOIN customers c ON o.customer_id = c.id
+		LEFT JOIN customers c ON c.id = o.customer_id AND c.store_id = o.store_id
 		WHERE o.id = $1`, orderID,
 	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items,
 		&o.Subtotal, &o.Tax, &o.Total, &o.PaymentMethod, &o.PaymentRef,
@@ -328,10 +330,12 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		return nil, fmt.Errorf("insert timeline: %w", err)
 	}
 
-	_ = s.eventSvc.Publish(s.cfg.SQSOrderEventsURL, "order.created", storeID.String(), map[string]interface{}{
+	if err := s.eventSvc.Publish(s.cfg.SQSOrderEventsURL, "order.created", storeID.String(), map[string]interface{}{
 		"order_id": orderID.String(),
 		"total":    total.InexactFloat64(),
-	})
+	}); err != nil {
+		log.Printf("order.created publish failed: %v", err)
+	}
 
 	return s.GetOrder(storeID, orderID)
 }
@@ -381,14 +385,15 @@ func (s *OrderService) ChangeOrderStatus(storeID, orderID uuid.UUID, req models.
 			}
 			if tag.RowsAffected() == 0 {
 				var avail int
-				tx.QueryRow(ctx, "SELECT stock FROM products WHERE id = $1", item.ProductID).Scan(&avail) //nolint:errcheck
+				tx.QueryRow(ctx, "SELECT stock FROM products WHERE id = $1 AND store_id = $2", item.ProductID, storeID).Scan(&avail) //nolint:errcheck
 				return nil, fmt.Errorf("%w: product %s needs %d but has %d",
 					ErrInsufficientStock, item.ProductID, item.Quantity, avail)
 			}
 		}
 	}
 
-	if req.Status == "cancelled" && (curStatus == "paid" || curStatus == "preparing" || curStatus == "shipped") {
+	// ponytail: cancel from shipped allowed without stock restore — needs explicit return flow later
+	if req.Status == "cancelled" && (curStatus == "paid" || curStatus == "preparing") {
 		for _, item := range items {
 			if _, err = tx.Exec(ctx, `
 				UPDATE products
@@ -408,8 +413,8 @@ func (s *OrderService) ChangeOrderStatus(storeID, orderID uuid.UUID, req models.
 		    payment_ref     = COALESCE(NULLIF($2,''), payment_ref),
 		    shipping_tracking = COALESCE(NULLIF($3,''), shipping_tracking),
 		    updated_at = NOW()
-		WHERE id=$4`,
-		req.Status, req.PaymentRef, req.ShippingTracking, orderID); err != nil {
+		WHERE id=$4 AND store_id=$5`,
+		req.Status, req.PaymentRef, req.ShippingTracking, orderID, storeID); err != nil {
 		return nil, fmt.Errorf("update order: %w", err)
 	}
 
@@ -423,15 +428,26 @@ func (s *OrderService) ChangeOrderStatus(storeID, orderID uuid.UUID, req models.
 		return nil, fmt.Errorf("insert timeline: %w", err)
 	}
 
+	payload := map[string]interface{}{
+		"order_id":   orderID.String(),
+		"old_status": curStatus,
+		"new_status": req.Status,
+	}
+	outboxID, err := s.outboxSvc.InsertTx(ctx, tx, storeID, "order.status_changed", payload)
+	if err != nil {
+		return nil, err
+	}
+
 	if err = tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
-	_ = s.eventSvc.Publish(s.cfg.SQSOrderEventsURL, "order.status_changed", storeID.String(), map[string]interface{}{
-		"order_id":   orderID.String(),
-		"old_status": curStatus,
-		"new_status": req.Status,
-	})
+	if err := s.outboxSvc.PublishOne(ctx, outboxID, storeID, "order.status_changed", payload); err != nil {
+		log.Printf("order.status_changed publish failed (outbox %s will retry): %v", outboxID, err)
+	}
+	if _, err := s.outboxSvc.PublishPending(ctx); err != nil {
+		log.Printf("outbox PublishPending: %v", err)
+	}
 
 	return s.GetOrder(storeID, orderID)
 }

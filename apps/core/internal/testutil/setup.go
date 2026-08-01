@@ -56,7 +56,8 @@ func SetupTestApp(t *testing.T) *TestApp {
 	})
 
 	eventSvc := services.NewEventService(cfg)
-	router.Setup(app, cfg, db, eventSvc)
+	outboxSvc := services.NewOutboxService(db, eventSvc, cfg)
+	router.Setup(app, cfg, db, eventSvc, outboxSvc)
 
 	ta := &TestApp{App: app, DB: db, Config: cfg}
 	ta.CleanDB(t)
@@ -68,6 +69,7 @@ func (ta *TestApp) CleanDB(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	tables := []string{
+		"outbox_events",
 		"audit_log",
 		"order_timeline",
 		"integrations",

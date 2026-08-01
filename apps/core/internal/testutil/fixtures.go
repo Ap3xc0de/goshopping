@@ -77,15 +77,15 @@ func CreateTestProduct(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts .
 }
 
 // SetProductStock updates a product's stock directly in the DB.
-func SetProductStock(t *testing.T, db *pgxpool.Pool, productID uuid.UUID, stock int) {
+func SetProductStock(t *testing.T, db *pgxpool.Pool, storeID, productID uuid.UUID, stock int) {
 	t.Helper()
 	status := "active"
 	if stock == 0 {
 		status = "out_of_stock"
 	}
 	if _, err := db.Exec(context.Background(),
-		"UPDATE products SET stock = $1, status = $2, updated_at = NOW() WHERE id = $3",
-		stock, status, productID,
+		"UPDATE products SET stock = $1, status = $2, updated_at = NOW() WHERE id = $3 AND store_id = $4",
+		stock, status, productID, storeID,
 	); err != nil {
 		t.Fatalf("SetProductStock: %v", err)
 	}

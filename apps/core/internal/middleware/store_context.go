@@ -36,11 +36,15 @@ func StoreContext(db *pgxpool.Pool) fiber.Handler {
 			})
 		}
 
-		// Verify the account has a store_users record for this store.
+		// Verify the account has a store_users record for an active store.
 		var exists bool
 		err = db.QueryRow(
 			context.Background(),
-			`SELECT EXISTS(SELECT 1 FROM store_users WHERE store_id = $1 AND account_id = $2)`,
+			`SELECT EXISTS(
+				SELECT 1 FROM store_users su
+				JOIN stores s ON s.id = su.store_id
+				WHERE su.store_id = $1 AND su.account_id = $2 AND s.status = 'active'
+			)`,
 			storeID, accountID,
 		).Scan(&exists)
 		if err != nil {
