@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: dev dev-lan dev-all-lan stop-lan dev-core dev-integrations dev-superadmin dev-admin dev-ai dev-storefront migrate migrate-down build-core build-integrations build-superadmin build-admin test-core test-ai clean
+.PHONY: dev dev-lan dev-all-lan stop-lan dev-core dev-integrations dev-superadmin dev-admin dev-ai dev-storefront migrate migrate-down build-core build-integrations build-superadmin build-admin test-core test-ai clean tf-init-dev tf-init-staging tf-init-production tf-check
 
 # ── Development ──
 dev:
@@ -86,3 +86,22 @@ check-dev:
 
 ssh-dev:
 	@cd infra/environments/dev && terraform output -raw ssh_command | bash
+
+# ── Terraform (root modules only — never init under infra/modules/) ──
+tf-init-dev:
+	cd infra/environments/dev && terraform init
+
+tf-init-staging:
+	cd infra/environments/staging && terraform init
+
+tf-init-production:
+	cd infra/environments/production && terraform init
+
+# Fails if someone ran `terraform init` inside reusable modules (duplicates ~850MB AWS provider each).
+tf-check:
+	@if find infra/modules -type d -name '.terraform' | grep -q .; then \
+		echo "ERROR: .terraform found under infra/modules — only run init in infra/environments/<env>"; \
+		find infra/modules -type d -name '.terraform'; \
+		exit 1; \
+	fi
+	@echo "OK: no .terraform under infra/modules"
