@@ -1,11 +1,14 @@
 import { Request, Response, Router } from 'express';
 import { ChatService } from '../services/chat-service';
 import { StoreConfigBuilder } from '../services/store-config-builder';
+import { assertStoreAccess, requireAuth } from '../middleware/auth';
 
 export const chatRouter = Router();
 
 const chatService = new ChatService();
 const configBuilder = new StoreConfigBuilder();
+
+chatRouter.use(requireAuth);
 
 // POST /chat/sessions — Create a new chat session
 chatRouter.post('/sessions', (req: Request, res: Response) => {
@@ -14,9 +17,10 @@ chatRouter.post('/sessions', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'store_id is required' });
   }
 
+  if (!assertStoreAccess(req, res, store_id)) return;
+
   const session = chatService.createSession(store_id);
 
-  // Send initial greeting
   const greeting =
     '¡Hola! Soy tu asistente de GoShopping. Voy a ayudarte a crear tu tienda en minutos. 🛍️\n\n¿Cómo se llama tu negocio?';
   session.messages.push({ role: 'assistant', content: greeting });
@@ -38,6 +42,12 @@ chatRouter.post('/sessions/:sessionId/messages', async (req: Request, res: Respo
     return res.status(400).json({ error: 'message is required' });
   }
 
+  const session = chatService.getSession(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+  if (!assertStoreAccess(req, res, session.storeId)) return;
+
   try {
     const result = await chatService.processMessage(sessionId, message.trim());
 
@@ -49,15 +59,14 @@ chatRouter.post('/sessions/:sessionId/messages', async (req: Request, res: Respo
       store_config: result.storeConfig,
     };
 
-    // If completed, include the final built config
     if (result.completed) {
       response.built_config = configBuilder.build(result.storeConfig);
     }
 
     return res.json(response);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message === 'Session not found') {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg === 'Session not found') {
       return res.status(404).json({ error: 'Session not found' });
     }
     console.error('[ChatRoute] Error:', err);
@@ -73,6 +82,7 @@ chatRouter.get('/sessions/:sessionId', (req: Request, res: Response) => {
   if (!session) {
     return res.status(404).json({ error: 'Session not found' });
   }
+  if (!assertStoreAccess(req, res, session.storeId)) return;
 
   return res.json({ session });
 });

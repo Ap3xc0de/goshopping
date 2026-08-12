@@ -1,34 +1,14 @@
 import { Request, Response, Router } from 'express';
-import jwt from 'jsonwebtoken';
 import { GenerationPipeline, StoreGenerationRequest } from '../services/generation-pipeline';
 import { StoreAssembler } from '../services/store-assembler';
 import { StoreStorage } from '../services/store-storage';
-import { config } from '../config';
+import { assertStoreAccess, requireAuth } from '../middleware/auth';
 
 export const generateRouter = Router();
 
 const pipeline = new GenerationPipeline();
 const assembler = new StoreAssembler();
 const storage = new StoreStorage();
-
-// Simple JWT auth middleware
-function requireAuth(req: Request, res: Response, next: () => void): void {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authorization required' });
-    return;
-  }
-
-  try {
-    const token = authHeader.slice(7);
-    const payload = jwt.verify(token, config.auth.jwtSecret) as { storeId?: string };
-    // Attach storeId from token for downstream validation
-    (req as Request & { storeId?: string }).storeId = payload.storeId;
-    next();
-  } catch {
-    res.status(401).json({ error: 'Invalid or expired token' });
-  }
-}
 
 // POST /generate/store — Generate a full store
 generateRouter.post('/store', requireAuth, async (req: Request, res: Response) => {
@@ -44,7 +24,8 @@ generateRouter.post('/store', requireAuth, async (req: Request, res: Response) =
     });
   }
 
-  // Validate required config fields
+  if (!assertStoreAccess(req, res, body.store_id)) return;
+
   const { store_config } = body;
   if (!store_config.name || !store_config.category || !store_config.style) {
     return res.status(400).json({
@@ -53,14 +34,12 @@ generateRouter.post('/store', requireAuth, async (req: Request, res: Response) =
   }
 
   try {
-    // 1. Generate pages via AI pipeline
     const generationResult = await pipeline.generateStore({
       storeConfig: store_config,
       storeSlug: body.store_slug,
       storeId: body.store_id,
     });
 
-    // 2. Assemble into Next.js file tree
     const assembled = assembler.assemble(
       generationResult,
       store_config as Parameters<typeof assembler.assemble>[1],
@@ -69,7 +48,6 @@ generateRouter.post('/store', requireAuth, async (req: Request, res: Response) =
       store_config.style,
     );
 
-    // 3. Persist to filesystem
     const stored = await storage.save(assembled);
 
     const previewUrl = `${process.env.STOREFRONT_BASE_URL ?? 'http://localhost:3004'}/${body.store_slug}`;
@@ -92,9 +70,20 @@ generateRouter.post('/store', requireAuth, async (req: Request, res: Response) =
   }
 });
 
+async function assertSlugStoreAccess(req: Request, res: Response, storeSlug: string): Promise<boolean> {
+  const loaded = await storage.load(storeSlug);
+  if (!loaded) {
+    res.status(404).json({ error: `Store '${storeSlug}' not found` });
+    return false;
+  }
+  return assertStoreAccess(req, res, loaded.storeId);
+}
+
 // POST /generate/store/:storeSlug/publish — Publish a generated store
 generateRouter.post('/store/:storeSlug/publish', requireAuth, async (req: Request, res: Response) => {
   const { storeSlug } = req.params;
+  if (!(await assertSlugStoreAccess(req, res, storeSlug))) return;
+
   try {
     const stored = await storage.publish(storeSlug);
     const baseUrl = process.env.STOREFRONT_PUBLIC_URL ?? 'https://goshopping.co';
@@ -117,7 +106,10 @@ generateRouter.post('/store/:storeSlug/publish', requireAuth, async (req: Reques
 // GET /generate/store/:storeSlug/status — Get store status
 generateRouter.get('/store/:storeSlug/status', requireAuth, async (req: Request, res: Response) => {
   const { storeSlug } = req.params;
+  if (!(await assertSlugStoreAccess(req, res, storeSlug))) return;
+
   const loaded = await storage.load(storeSlug);
+  // assertSlugStoreAccess already 404'd if missing; load again is fine (tiny)
   if (!loaded) {
     return res.status(404).json({ error: `Store '${storeSlug}' not found` });
   }
@@ -141,6 +133,8 @@ generateRouter.get('/store/:storeSlug/status', requireAuth, async (req: Request,
 // DELETE /generate/store/:storeSlug — Archive a store
 generateRouter.delete('/store/:storeSlug', requireAuth, async (req: Request, res: Response) => {
   const { storeSlug } = req.params;
+  if (!(await assertSlugStoreAccess(req, res, storeSlug))) return;
+
   try {
     await storage.archive(storeSlug);
     return res.json({ success: true, store_slug: storeSlug, status: 'archived' });

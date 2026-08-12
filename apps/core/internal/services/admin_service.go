@@ -193,6 +193,14 @@ func (s *AdminService) UpdateAccountStatus(accountID uuid.UUID, status string) (
 		}
 		return nil, fmt.Errorf("update account: %w", err)
 	}
+
+	if status != "active" {
+		// Revoke sessions so suspended accounts cannot refresh.
+		_, _ = s.db.Exec(ctx, `
+			UPDATE refresh_tokens SET revoked_at = NOW()
+			WHERE account_id = $1 AND revoked_at IS NULL`, accountID)
+	}
+
 	return &a, nil
 }
 

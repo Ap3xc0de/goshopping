@@ -57,6 +57,11 @@ func Login(svc *services.AuthService) fiber.Handler {
 					"error": "invalid email or password",
 				})
 			}
+			if errors.Is(err, services.ErrAccountSuspended) {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "account is not active",
+				})
+			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "could not authenticate",
 			})
@@ -89,12 +94,37 @@ func Refresh(svc *services.AuthService) fiber.Handler {
 					"error": "invalid or expired refresh token",
 				})
 			}
+			if errors.Is(err, services.ErrAccountSuspended) {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "account is not active",
+				})
+			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "could not refresh token",
 			})
 		}
 
 		return c.JSON(resp)
+	}
+}
+
+// Logout handles POST /auth/logout.
+func Logout(svc *services.AuthService) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.RefreshRequest
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "invalid request body",
+			})
+		}
+
+		if err := svc.Logout(req.RefreshToken); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "could not logout",
+			})
+		}
+
+		return c.JSON(fiber.Map{"ok": true})
 	}
 }
 

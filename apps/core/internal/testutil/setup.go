@@ -23,7 +23,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const TestJWTSecret = "test-secret-for-goshopping-tests"
+// TestJWTSecret is >=32 chars so it satisfies minJWTSecretLen if Validate is ever called in tests.
+const TestJWTSecret = "test-secret-for-goshopping-tests-xxxxxxxx"
 
 // TestApp holds the test application and its dependencies.
 type TestApp struct {
@@ -40,6 +41,12 @@ func SetupTestApp(t *testing.T) *TestApp {
 	cfg := config.Load()
 	cfg.JWTSecret = TestJWTSecret
 	cfg.AppEnv = "development"
+	// Avoid AWS SDK timeouts when ElasticMQ isn't running during unit tests.
+	cfg.SQSOrderEventsURL = ""
+	cfg.SQSPaymentEventsURL = ""
+	cfg.SQSAccountingEventsURL = ""
+	cfg.SQSNotificationEventsURL = ""
+	cfg.SQSMarketingEventsURL = ""
 
 	db := database.Connect(cfg)
 
@@ -74,6 +81,7 @@ func (ta *TestApp) CleanDB(t *testing.T) {
 		"orders",
 		"products",
 		"customers",
+		"refresh_tokens",
 		"store_users",
 		"stores",
 		"accounts",
