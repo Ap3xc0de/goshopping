@@ -1,10 +1,16 @@
+# Map keys stay stable for ECS lookups; repo names are env-prefixed.
 locals {
-  repos = ["goshopping-core", "goshopping-integrations", "goshopping-ai-engine"]
+  repos = {
+    "goshopping-core"         = "goshopping-${var.environment}-core"
+    "goshopping-integrations" = "goshopping-${var.environment}-integrations"
+    "goshopping-ai-engine"    = "goshopping-${var.environment}-ai-engine"
+  }
 }
 
+# MUTABLE: deploy workflows still retag :latest. Switch to IMMUTABLE + SHA-only when that stops.
 resource "aws_ecr_repository" "repos" {
-  for_each             = toset(local.repos)
-  name                 = each.key
+  for_each             = local.repos
+  name                 = each.value
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - 'infra/**'
+      - '.github/workflows/infra.yml'
+      - 'Makefile'
 
 permissions:
   id-token: write
@@ -19,8 +21,31 @@ env:
   TF_VERSION: '1.6.6'
 
 jobs:
-  terraform:
-    name: Terraform ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+  # Catch accidental `terraform init` inside reusable modules (duplicates ~850MB provider each).
+  modules-hygiene:
+    name: Terraform modules hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Reject .terraform under infra/modules
+        run: |
+          set -euo pipefail
+          if git ls-files -z -- 'infra/modules/**/.terraform/**' 'infra/modules/**/.terraform.lock.hcl' | grep -qz .; then
+            echo "ERROR: tracked .terraform artifacts under infra/modules — only init in infra/environments/<env>"
+            git ls-files -- 'infra/modules/**/.terraform/**' 'infra/modules/**/.terraform.lock.hcl'
+            exit 1
+          fi
+          if find infra/modules -type d -name '.terraform' | grep -q .; then
+            echo "ERROR: .terraform directory present under infra/modules in the checkout"
+            find infra/modules -type d -name '.terraform'
+            exit 1
+          fi
+          echo "OK: no .terraform under infra/modules"
+
+  plan:
+    name: Terraform Plan (${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }})
+    needs: modules-hygiene
     runs-on: ubuntu-latest
 
     env:
@@ -31,16 +56,16 @@ jobs:
         working-directory: infra/environments/${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
-          role-to-assume: arn:aws:iam::298660929987:role/github-actions-confia-income-control-role
+          role-to-assume: ${{ github.ref == 'refs/heads/main' && (secrets.AWS_ROLE_ARN_PRODUCTION || secrets.AWS_ROLE_ARN) || (secrets.AWS_ROLE_ARN_STAGING || secrets.AWS_ROLE_ARN) }}
           aws-region: us-east-1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
@@ -54,9 +79,43 @@ jobs:
         run: |
           terraform plan \
             -var="db_password=${{ secrets.DB_PASSWORD }}" \
-            -var="jwt_signing_key=${{ secrets.JWT_SIGNING_KEY }}" \
-            -out=tfplan
+            -var="jwt_signing_key=${{ secrets.JWT_SIGNING_KEY }}"
+
+  # Staging auto-applies on push. Production uses GitHub Environment "production" —
+  # configure required reviewers / wait timer there so apply is not silent.
+  apply:
+    name: Terraform Apply (${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }})
+    needs: plan
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+    defaults:
+      run:
+        working-directory: infra/environments/${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ github.ref == 'refs/heads/main' && (secrets.AWS_ROLE_ARN_PRODUCTION || secrets.AWS_ROLE_ARN) || (secrets.AWS_ROLE_ARN_STAGING || secrets.AWS_ROLE_ARN) }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
 
       - name: Terraform Apply
-        if: github.event_name == 'push'
-        run: terraform apply -auto-approve tfplan
+        run: |
+          terraform apply -auto-approve \
+            -var="db_password=${{ secrets.DB_PASSWORD }}" \
+            -var="jwt_signing_key=${{ secrets.JWT_SIGNING_KEY }}"

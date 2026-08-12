@@ -11,6 +11,10 @@ resource "aws_cloudfront_origin_access_identity" "storefront" {
   comment = "OAI for goshopping storefront ${var.environment}"
 }
 
+resource "aws_cloudfront_origin_access_identity" "assets" {
+  comment = "OAI for goshopping assets ${var.environment}"
+}
+
 # --- S3 Bucket Policies for OAI ---
 data "aws_iam_policy_document" "superadmin_s3" {
   statement {
@@ -61,6 +65,23 @@ data "aws_iam_policy_document" "storefront_s3" {
 resource "aws_s3_bucket_policy" "storefront" {
   bucket = var.storefront_bucket_id
   policy = data.aws_iam_policy_document.storefront_s3.json
+}
+
+data "aws_iam_policy_document" "assets_s3" {
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${var.assets_bucket_arn}/*"]
+    principals {
+      type        = "AWS"
+      identifiers = [aws_cloudfront_origin_access_identity.assets.iam_arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "assets" {
+  bucket = var.assets_bucket_id
+  policy = data.aws_iam_policy_document.assets_s3.json
 }
 
 # --- CloudFront Distribution: SuperAdmin ---
@@ -245,14 +266,18 @@ resource "aws_cloudfront_distribution" "storefront" {
 
 # --- CloudFront Distribution: CDN Assets ---
 resource "aws_cloudfront_distribution" "cdn" {
-  enabled             = true
-  comment             = "Go Shopping CDN ${var.environment}"
-  price_class         = "PriceClass_100"
-  aliases             = [var.cdn_domain_name]
+  enabled     = true
+  comment     = "Go Shopping CDN ${var.environment}"
+  price_class = "PriceClass_100"
+  aliases     = [var.cdn_domain_name]
 
   origin {
     domain_name = var.assets_bucket_regional_domain
     origin_id   = "s3-assets"
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.assets.cloudfront_access_identity_path
+    }
   }
 
   default_cache_behavior {

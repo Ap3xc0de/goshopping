@@ -1,5 +1,5 @@
 resource "aws_secretsmanager_secret" "jwt_signing_key" {
-  name        = "goshopping/jwt-signing-key"
+  name        = "goshopping/${var.environment}/jwt-signing-key"
   description = "JWT signing key for goshopping ${var.environment}"
 }
 
@@ -8,8 +8,11 @@ resource "aws_secretsmanager_secret_version" "jwt_signing_key" {
   secret_string = jsonencode({ key = var.jwt_signing_key })
 }
 
+# db-credentials lives in the RDS module (needs host after DB create);
+# named goshopping/${var.environment}/db-credentials there.
+
 resource "aws_secretsmanager_secret" "third_party_api_keys" {
-  name        = "goshopping/third-party-api-keys"
+  name        = "goshopping/${var.environment}/third-party-api-keys"
   description = "Third-party API keys (Wompi, PayU, Siigo, Alegra, Meta, Google)"
 }
 

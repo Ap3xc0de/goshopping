@@ -26,7 +26,8 @@ provider "aws" {
 provider "cloudflare" {}
 
 data "cloudflare_zone" "primary" {
-  filter {
+  # Cloudflare provider v5: filter is an attribute, not a block.
+  filter = {
     name = var.cloudflare_zone_name
   }
 }
@@ -68,7 +69,7 @@ resource "aws_acm_certificate_validation" "api" {
 }
 
 resource "aws_acm_certificate" "frontend" {
-  domain_name               = local.admin_domain_name
+  domain_name = local.admin_domain_name
   subject_alternative_names = [
     local.superadmin_domain_name,
     local.storefront_domain_name,
@@ -183,7 +184,7 @@ module "cdn" {
   admin_bucket_regional_domain      = "${module.s3.admin_bucket_id}.s3.${var.aws_region}.amazonaws.com"
   storefront_bucket_id              = module.s3.storefront_bucket_id
   storefront_bucket_arn             = module.s3.storefront_bucket_arn
-  storefront_bucket_regional_domain  = "${module.s3.storefront_bucket_id}.s3.${var.aws_region}.amazonaws.com"
+  storefront_bucket_regional_domain = "${module.s3.storefront_bucket_id}.s3.${var.aws_region}.amazonaws.com"
   certificate_arn                   = aws_acm_certificate_validation.frontend.certificate_arn
   cdn_domain_name                   = local.cdn_domain_name
   superadmin_domain_name            = local.superadmin_domain_name
@@ -239,7 +240,8 @@ resource "cloudflare_dns_record" "cdn" {
 module "oidc" {
   source = "../../modules/oidc"
 
-  environment = "production"
-  github_org  = var.github_org
-  github_repo = var.github_repo
+  environment          = "production"
+  github_org           = var.github_org
+  github_repo          = var.github_repo
+  create_oidc_provider = false # provider created by staging; look up by URL
 }

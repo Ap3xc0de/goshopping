@@ -42,7 +42,7 @@ resource "aws_dynamodb_table" "terraform_locks" {
   tags = { Name = "goshopping-terraform-locks" }
 }
 
-# --- S3 Assets Bucket (public static assets) ---
+# --- S3 Assets Bucket (private; served via CloudFront OAI) ---
 resource "aws_s3_bucket" "assets" {
   bucket = "goshopping-assets-${var.environment}"
   tags   = { Name = "goshopping-assets-${var.environment}" }
@@ -50,24 +50,19 @@ resource "aws_s3_bucket" "assets" {
 
 resource "aws_s3_bucket_public_access_block" "assets" {
   bucket                  = aws_s3_bucket.assets.id
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_policy" "assets" {
+resource "aws_s3_bucket_server_side_encryption_configuration" "assets" {
   bucket = aws_s3_bucket.assets.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = "*"
-      Action    = "s3:GetObject"
-      Resource  = "${aws_s3_bucket.assets.arn}/*"
-    }]
-  })
-  depends_on = [aws_s3_bucket_public_access_block.assets]
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
 }
 
 # --- S3 Frontend Buckets (served via CloudFront) ---
@@ -108,4 +103,31 @@ resource "aws_s3_bucket_public_access_block" "storefront" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "superadmin" {
+  bucket = aws_s3_bucket.superadmin.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "admin" {
+  bucket = aws_s3_bucket.admin.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "storefront" {
+  bucket = aws_s3_bucket.storefront.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
 }

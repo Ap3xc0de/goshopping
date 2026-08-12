@@ -6,9 +6,11 @@ echo "════════════════════════�
 echo "  Go Shopping — Dev Environment Setup"
 echo "════════════════════════════════════════"
 
-# ── Variables ──
-# ${anthropic_api_key} es sustituido por Terraform templatefile
+# ── Variables (substituted by Terraform templatefile — never commit real values) ──
+# ${anthropic_api_key}, ${jwt_secret}, ${db_password} come from terraform vars / tfvars.
 ANTHROPIC_API_KEY="${anthropic_api_key}"
+JWT_SECRET_VALUE="${jwt_secret}"
+DB_PASSWORD_VALUE="${db_password}"
 APP_DIR="/opt/goshopping"
 
 # ── 1. Actualizar sistema ──
@@ -80,7 +82,7 @@ cat > $$APP_DIR/.env << ENVEOF
 DB_HOST=postgres
 DB_PORT=5432
 DB_USER=goshopping
-DB_PASSWORD=devpassword2026
+DB_PASSWORD=$$DB_PASSWORD_VALUE
 DB_NAME=goshopping
 DB_SSL_MODE=disable
 
@@ -101,7 +103,7 @@ AWS_SECRET_ACCESS_KEY=test
 S3_BUCKET=goshopping-dev
 
 # ── JWT ──
-JWT_SECRET=goshopping-dev-secret-2026-change-in-prod
+JWT_SECRET=$$JWT_SECRET_VALUE
 
 # ── App ──
 APP_ENV=development

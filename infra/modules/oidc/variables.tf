@@ -12,3 +12,9 @@ variable "github_repo" {
   type        = string
   description = "GitHub repository name"
 }
+
+variable "create_oidc_provider" {
+  type        = bool
+  description = "Create the GitHub OIDC provider (true once per account; other envs data-source it)"
+  default     = false
+}
