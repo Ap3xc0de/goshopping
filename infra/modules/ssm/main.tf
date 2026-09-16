@@ -53,3 +53,10 @@ resource "aws_ssm_parameter" "sqs_marketing_events" {
   value = var.sqs_queue_urls["marketing-events"]
   tags  = { Environment = var.environment }
 }
+
+resource "aws_ssm_parameter" "storefront_base_domain" {
+  name  = "/goshopping/${var.environment}/storefront-base-domain"
+  type  = "String"
+  value = var.storefront_base_domain
+  tags  = { Environment = var.environment }
+}

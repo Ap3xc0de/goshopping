@@ -82,5 +82,35 @@ func RunMigrations(cfg *config.Config) {
 		log.Fatalf("migrations: failed to run up migrations: %v", err)
 	}
 
+	backfillStoreDomains(db, cfg)
+
 	log.Println("migrations: all up-to-date")
+}
+
+// backfillStoreDomains ensures every store has a generic store_domains row,
+// deriving the hostname from its slug and cfg.StorefrontBaseDomain.
+//
+// This intentionally lives in Go, not in 007_store_domains.up.sql: the base
+// domain is an environment value (goshopping.com in production,
+// staging.goshopping.com in staging), and a versioned .sql migration file
+// cannot know which environment it will run against. Running it on every
+// boot (guarded by ON CONFLICT DO NOTHING on the UNIQUE hostname constraint)
+// keeps it idempotent and covers stores created before store_domains existed
+// as well as any that otherwise ended up without a generic domain.
+func backfillStoreDomains(db *sql.DB, cfg *config.Config) {
+	baseDomain := cfg.StorefrontBaseDomain
+	if baseDomain == "" {
+		baseDomain = "goshopping.com"
+	}
+
+	_, err := db.Exec(`
+		INSERT INTO store_domains (store_id, hostname, kind, status, is_primary)
+		SELECT id, slug || '.' || $1, 'generic', 'active', true
+		FROM stores
+		ON CONFLICT (hostname) DO NOTHING`,
+		baseDomain,
+	)
+	if err != nil {
+		log.Fatalf("migrations: failed to backfill store_domains: %v", err)
+	}
 }

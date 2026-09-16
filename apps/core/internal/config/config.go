@@ -45,6 +45,13 @@ type Config struct {
 	// S3
 	S3BucketAssets string
 	S3Endpoint     string
+
+	// Storefront
+	// StorefrontBaseDomain is the domain suffix used to derive generic
+	// per-store hostnames (e.g. "<slug>.<StorefrontBaseDomain>"). It differs
+	// per environment: "goshopping.com" in production, "staging.goshopping.com"
+	// in staging.
+	StorefrontBaseDomain string
 }
 
 func getEnv(key, fallback string) string {
@@ -92,6 +99,8 @@ func Load() *Config {
 
 		S3BucketAssets: getEnv("S3_BUCKET_ASSETS", ""),
 		S3Endpoint:     getEnv("S3_ENDPOINT", ""),
+
+		StorefrontBaseDomain: getEnv("STOREFRONT_BASE_DOMAIN", "goshopping.com"),
 	}
 
 	if cfg.AppEnv == "staging" || cfg.AppEnv == "production" {
@@ -145,6 +154,7 @@ func (c *Config) loadFromAWS() {
 		fmt.Sprintf("/goshopping/%s/sqs-notification-events-url", env): &c.SQSNotificationEventsURL,
 		fmt.Sprintf("/goshopping/%s/sqs-marketing-events-url", env):    &c.SQSMarketingEventsURL,
 		fmt.Sprintf("/goshopping/%s/s3-bucket-assets", env):            &c.S3BucketAssets,
+		fmt.Sprintf("/goshopping/%s/storefront-base-domain", env):      &c.StorefrontBaseDomain,
 	}
 
 	for name, dest := range paramMap {

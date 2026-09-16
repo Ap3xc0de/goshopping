@@ -160,11 +160,12 @@ module "ecs" {
 module "ssm" {
   source = "../../modules/ssm"
 
-  environment      = "production"
-  db_host          = module.rds.db_host
-  core_api_url     = "https://${local.api_domain_name}"
-  integrations_url = "http://${module.ecs.alb_dns_name}:3001"
-  sqs_queue_urls   = module.sqs.queue_urls
+  environment            = "production"
+  db_host                = module.rds.db_host
+  core_api_url           = "https://${local.api_domain_name}"
+  integrations_url       = "http://${module.ecs.alb_dns_name}:3001"
+  sqs_queue_urls         = module.sqs.queue_urls
+  storefront_base_domain = "${local.environment_prefix}${var.base_domain}"
 }
 
 module "s3" {
