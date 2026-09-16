@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -133,6 +134,72 @@ func TestChangeOrderStatus(t *testing.T) {
 		resp := app.PATCH(t, fmt.Sprintf("/stores/%s/orders/%s/status", storeID, o.ID),
 			map[string]interface{}{"status": "pending"}, auth)
 		testutil.AssertStatus(t, resp, http.StatusUnprocessableEntity)
+	})
+}
+
+// TestOrderLifecycleStock walks create → pay and create → cancel over HTTP.
+//
+// The other status tests build their order with testutil.CreateTestOrder, which
+// inserts the row directly and never runs OrderService.CreateOrder, so none of
+// them observe the stock bookkeeping that CreateOrder performs. That blind spot
+// is exactly why a double deduction went unnoticed.
+func TestOrderLifecycleStock(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	auth, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+
+	stockOf := func(t *testing.T, productID uuid.UUID) int {
+		t.Helper()
+		var stock int
+		if err := app.DB.QueryRow(context.Background(),
+			`SELECT stock FROM products WHERE id = $1`, productID).Scan(&stock); err != nil {
+			t.Fatalf("read stock: %v", err)
+		}
+		return stock
+	}
+
+	createOrder := func(t *testing.T, productID uuid.UUID, qty int) string {
+		t.Helper()
+		body := map[string]interface{}{
+			"customer_name":  "Stock Tester",
+			"customer_phone": "555-0000",
+			"items": []map[string]interface{}{
+				{"product_id": productID.String(), "quantity": qty},
+			},
+			"payment_method": "cash",
+		}
+		resp := app.POST(t, "/stores/"+storeID+"/orders", body, auth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		id, ok := data["id"].(string)
+		if !ok {
+			t.Fatalf("order id missing from create response: %v", data)
+		}
+		return id
+	}
+
+	t.Run("paying an order does not deduct the same units twice", func(t *testing.T) {
+		p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(10))
+		orderID := createOrder(t, p.ID, 10)
+		assert.Equal(t, 0, stockOf(t, p.ID), "creating the order should reserve the full stock")
+
+		resp := app.PATCH(t, fmt.Sprintf("/stores/%s/orders/%s/status", storeID, orderID),
+			map[string]interface{}{"status": "paid"}, auth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		assert.Equal(t, 0, stockOf(t, p.ID), "paying must not deduct the reserved units again")
+	})
+
+	t.Run("cancelling a pending order restores the reserved stock", func(t *testing.T) {
+		p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(10))
+		orderID := createOrder(t, p.ID, 4)
+		assert.Equal(t, 6, stockOf(t, p.ID), "creating the order should reserve 4 units")
+
+		resp := app.POST(t, fmt.Sprintf("/stores/%s/orders/%s/cancel", storeID, orderID),
+			map[string]interface{}{"reason": "Customer request"}, auth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		assert.Equal(t, 10, stockOf(t, p.ID), "cancelling a pending order must return the reserved units")
 	})
 }
 

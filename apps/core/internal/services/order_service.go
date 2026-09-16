@@ -484,28 +484,15 @@ func (s *OrderService) ChangeOrderStatus(storeID, orderID uuid.UUID, req models.
 		return nil, fmt.Errorf("parse items: %w", err)
 	}
 
-	if req.Status == "paid" {
-		for _, item := range items {
-			tag, err := tx.Exec(ctx, `
-				UPDATE products
-				SET stock = stock - $1,
-				    status = CASE WHEN (stock - $1) <= 0 THEN 'out_of_stock' ELSE 'active' END,
-				    updated_at = NOW()
-				WHERE id = $2 AND store_id = $3 AND stock >= $1`,
-				item.Quantity, item.ProductID, storeID)
-			if err != nil {
-				return nil, fmt.Errorf("deduct stock for %s: %w", item.ProductID, err)
-			}
-			if tag.RowsAffected() == 0 {
-				var avail int
-				tx.QueryRow(ctx, "SELECT stock FROM products WHERE id = $1", item.ProductID).Scan(&avail) //nolint:errcheck
-				return nil, fmt.Errorf("%w: product %s needs %d but has %d",
-					ErrInsufficientStock, item.ProductID, item.Quantity, avail)
-			}
-		}
-	}
+	// Paying deliberately does not touch stock. CreateOrder reserves the units
+	// inside its own transaction, under SELECT ... FOR UPDATE, the moment the
+	// order is created. Deducting again here charged the same units twice and
+	// made any order covering most of the available stock impossible to pay.
 
-	if req.Status == "cancelled" && (curStatus == "paid" || curStatus == "preparing" || curStatus == "shipped") {
+	// "pending" belongs here: an order holds its reserved units from the moment
+	// it is created, so cancelling one that was never paid must return them.
+	if req.Status == "cancelled" &&
+		(curStatus == "pending" || curStatus == "paid" || curStatus == "preparing" || curStatus == "shipped") {
 		for _, item := range items {
 			if _, err = tx.Exec(ctx, `
 				UPDATE products
