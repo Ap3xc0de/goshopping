@@ -22,12 +22,27 @@ func setupCouponServiceTest(t *testing.T) (*CouponService, *pgxpool.Pool, uuid.U
 	// Get test DB connection
 	db := setupTestDB(t)
 
-	// Create a test store
+	// A store needs a real parent account: stores.account_id is a foreign key,
+	// so a random UUID here fails with stores_account_id_fkey.
 	storeID := uuid.New()
-	_, err := db.Exec(context.Background(), `
+	ctx := context.Background()
+
+	var accountID uuid.UUID
+	err := db.QueryRow(ctx, `
+		INSERT INTO accounts (email, password_hash, name, role, status)
+		VALUES ($1, 'x', 'Coupon Test Account', 'owner', 'active')
+		RETURNING id`,
+		fmt.Sprintf("coupon-test-%s@example.test", storeID),
+	).Scan(&accountID)
+	if err != nil {
+		t.Fatalf("failed to create test account: %v", err)
+	}
+
+	// Slug is derived from storeID so repeated runs cannot collide on it.
+	_, err = db.Exec(ctx, `
 		INSERT INTO stores (id, account_id, name, slug, status)
-		VALUES ($1, $2, 'Test Store', 'test-store', 'active')`,
-		storeID, uuid.New(),
+		VALUES ($1, $2, 'Test Store', $3, 'active')`,
+		storeID, accountID, fmt.Sprintf("test-store-%s", storeID),
 	)
 	if err != nil {
 		t.Fatalf("failed to create test store: %v", err)
@@ -218,7 +233,7 @@ func TestCouponServiceListCoupons(t *testing.T) {
 }
 
 func TestCouponServiceRecordUsage(t *testing.T) {
-	svc, _, storeID := setupCouponServiceTest(t)
+	svc, db, storeID := setupCouponServiceTest(t)
 
 	// Create coupon and order
 	req := models.CreateCouponRequest{
@@ -231,7 +246,18 @@ func TestCouponServiceRecordUsage(t *testing.T) {
 		Status:        "active",
 	}
 	coupon, _ := svc.CreateCoupon(context.Background(), storeID, req)
-	orderID := uuid.New()
+
+	// coupon_usage.order_id is a foreign key to orders, so the order has to
+	// exist: a bare uuid.New() fails with coupon_usage_order_id_fkey.
+	var orderID uuid.UUID
+	if err := db.QueryRow(context.Background(), `
+		INSERT INTO orders (store_id, status, items, subtotal, tax, total, payment_method, notes)
+		VALUES ($1, 'pending', '[]'::jsonb, 0, 0, 0, 'cash', '')
+		RETURNING id`,
+		storeID,
+	).Scan(&orderID); err != nil {
+		t.Fatalf("failed to create test order: %v", err)
+	}
 
 	// Record usage
 	err := svc.RecordCouponUsage(context.Background(), coupon.ID, orderID)
