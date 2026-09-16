@@ -1,0 +1,1 @@
+ALTER TABLE stores ADD COLUMN template_id VARCHAR(100) NOT NULL DEFAULT 'minimal';
