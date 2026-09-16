@@ -147,18 +147,15 @@ func CreateTestOrder(t *testing.T, db *pgxpool.Pool, storeID, customerID uuid.UU
 		status = "pending"
 	}
 
-	type orderItem struct {
-		ProductID uuid.UUID    `json:"product_id"`
-		Name      string       `json:"name"`
-		Quantity  int          `json:"quantity"`
-		Price     models.Money `json:"price"`
-		Total     models.Money `json:"total"`
-	}
-	items := make([]orderItem, len(products))
+	// Use models.OrderItem, never a local copy: the JSON tags are the stored
+	// contract that queries read back (e.g. item->>'product_name' in
+	// DashboardService.GetReportsProducts). A duplicated struct here silently
+	// drifts from production and makes tests assert a shape no handler writes.
+	items := make([]models.OrderItem, len(products))
 	subtotal := models.MoneyZero()
 	for i, p := range products {
-		items[i] = orderItem{
-			ProductID: p.ID,
+		items[i] = models.OrderItem{
+			ProductID: p.ID.String(),
 			Name:      p.Name,
 			Quantity:  1,
 			Price:     p.Price,
