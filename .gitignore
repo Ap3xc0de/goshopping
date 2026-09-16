@@ -38,3 +38,9 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Docusaurus build artifacts (regenerated on every build)
+docs/.docusaurus/
+
+# Local per-developer dev state (LAN IP, PIDs)
+.dev-lan-state.json
