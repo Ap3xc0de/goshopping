@@ -21,12 +21,14 @@ stop-lan:
 dev-core:
 	cd apps/core && go run cmd/server/main.go
 
+# -p 1: los tests comparten una sola DB física y CleanDB() borra todas las filas;
+# correr paquetes en paralelo produce races entre ellos.
 test-core:
 	cd apps/core && \
 	  DB_HOST=127.0.0.1 DB_PORT=5434 DB_USER=goshopping DB_PASSWORD=localdev123 \
 	  DB_NAME=goshopping DB_SSL_MODE=disable \
 	  JWT_SECRET=test-secret-for-goshopping-tests APP_ENV=development \
-	  go test ./internal/... -timeout 120s
+	  go test -p 1 ./internal/... -timeout 120s
 
 test-ai:
 	cd apps/ai-engine && npm test
