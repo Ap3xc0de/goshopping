@@ -17,16 +17,29 @@ import (
 
 // PublicProduct is the public-facing product (no cost field).
 type PublicProduct struct {
-	ID          uuid.UUID    `json:"id"`
-	StoreID     uuid.UUID    `json:"store_id"`
-	Name        string       `json:"name"`
-	SKU         string       `json:"sku"`
-	Description string       `json:"description"`
-	Price       models.Money `json:"price"`
-	Stock       int          `json:"stock"`
-	Category    string       `json:"category"`
-	Images      interface{}  `json:"images"`
-	Status      string       `json:"status"`
+	ID             uuid.UUID    `json:"id"`
+	StoreID        uuid.UUID    `json:"store_id"`
+	Name           string       `json:"name"`
+	SKU            string       `json:"sku"`
+	Description    string       `json:"description"`
+	Price          models.Money `json:"price"`
+	EffectivePrice models.Money `json:"effective_price"`
+	ActiveOffer    *PublicOffer `json:"active_offer"`
+	Stock          int          `json:"stock"`
+	Category       string       `json:"category"`
+	Images         interface{}  `json:"images"`
+	Status         string       `json:"status"`
+}
+
+// PublicOffer is the reduced, public-facing view of the offer currently
+// applied to a product (see ResolveOffer). It never exposes store_id or
+// other internal offer fields (scope, scope_value, status, timestamps).
+type PublicOffer struct {
+	ID            uuid.UUID    `json:"id"`
+	Name          string       `json:"name"`
+	DiscountType  string       `json:"discount_type"`
+	DiscountValue models.Money `json:"discount_value"`
+	EndsAt        *time.Time   `json:"ends_at,omitempty"`
 }
 
 // PublicListProducts handles GET /public/:storeSlug/products
@@ -40,15 +53,24 @@ func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 
 		eventSvc := services.NewEventService(cfg)
 		prodSvc := services.NewProductService(db, cfg, eventSvc)
+		offerSvc := services.NewOfferService(db)
 
 		result, err := prodSvc.ListProducts(storeID, 1, 50, c.Query("category"), "active", c.Query("search"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 
+		// Load active offers once per request and resolve in memory for every
+		// product below, instead of querying offers per product (avoids N+1).
+		activeOffers, err := offerSvc.ListActiveOffers(c.Context(), storeID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+		now := time.Now()
+
 		public := make([]PublicProduct, len(result.Products))
 		for i, p := range result.Products {
-			public[i] = toPublicProduct(p)
+			public[i] = toPublicProduct(p, activeOffers, now)
 		}
 		return c.JSON(fiber.Map{
 			"data":        public,
@@ -76,6 +98,7 @@ func PublicGetProduct(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 
 		eventSvc := services.NewEventService(cfg)
 		prodSvc := services.NewProductService(db, cfg, eventSvc)
+		offerSvc := services.NewOfferService(db)
 
 		p, err := prodSvc.GetProduct(storeID, productID)
 		if err != nil {
@@ -84,7 +107,13 @@ func PublicGetProduct(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			}
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
-		return c.JSON(toPublicProduct(*p))
+
+		activeOffers, err := offerSvc.ListActiveOffers(c.Context(), storeID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		return c.JSON(toPublicProduct(*p, activeOffers, time.Now()))
 	}
 }
 
@@ -208,18 +237,37 @@ func resolveStoreBySlug(ctx context.Context, db *pgxpool.Pool, slug string) (uui
 	return id, nil
 }
 
-func toPublicProduct(p models.Product) PublicProduct {
+// toPublicProduct maps a Product plus the store's already-loaded active
+// offers into a PublicProduct, resolving the single applicable offer (if
+// any) in memory via services.ResolveOffer — no DB access happens here.
+func toPublicProduct(p models.Product, activeOffers []models.Offer, now time.Time) PublicProduct {
+	offer := services.ResolveOffer(activeOffers, p.ID, p.Category, p.Price, now)
+	effectivePrice := services.ApplyOffer(p.Price, offer)
+
+	var publicOffer *PublicOffer
+	if offer != nil {
+		publicOffer = &PublicOffer{
+			ID:            offer.ID,
+			Name:          offer.Name,
+			DiscountType:  offer.DiscountType,
+			DiscountValue: offer.DiscountValue,
+			EndsAt:        offer.EndsAt,
+		}
+	}
+
 	return PublicProduct{
-		ID:          p.ID,
-		StoreID:     p.StoreID,
-		Name:        p.Name,
-		SKU:         p.SKU,
-		Description: p.Description,
-		Price:       p.Price,
-		Stock:       p.Stock,
-		Category:    p.Category,
-		Images:      p.Images,
-		Status:      p.Status,
+		ID:             p.ID,
+		StoreID:        p.StoreID,
+		Name:           p.Name,
+		SKU:            p.SKU,
+		Description:    p.Description,
+		Price:          p.Price,
+		EffectivePrice: effectivePrice,
+		ActiveOffer:    publicOffer,
+		Stock:          p.Stock,
+		Category:       p.Category,
+		Images:         p.Images,
+		Status:         p.Status,
 	}
 }
 
