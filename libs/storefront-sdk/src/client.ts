@@ -23,6 +23,11 @@ export class GoShoppingClient {
     this.storeSlug = config.storeSlug;
   }
 
+  // Debe coincidir con el grupo /public de apps/core/internal/router/router.go
+  private get basePath(): string {
+    return `/public/${this.storeSlug}`;
+  }
+
   // ── Productos ──────────────────────────────────────────────────────────────
 
   async getProducts(params?: {
@@ -34,12 +39,12 @@ export class GoShoppingClient {
   }): Promise<PaginatedResponse<Product>> {
     const qs = params ? this.toQueryString(params as Record<string, unknown>) : '';
     return this.fetch<PaginatedResponse<Product>>(
-      `/storefront/${this.storeSlug}/products${qs}`,
+      `${this.basePath}/products${qs}`,
     );
   }
 
   async getProduct(productId: string): Promise<Product> {
-    return this.fetch<Product>(`/storefront/${this.storeSlug}/products/${productId}`);
+    return this.fetch<Product>(`${this.basePath}/products/${productId}`);
   }
 
   async getCategories(): Promise<string[]> {
@@ -55,7 +60,7 @@ export class GoShoppingClient {
   // ── Pedidos ────────────────────────────────────────────────────────────────
 
   async createOrder(data: CreateOrderRequest): Promise<CreateOrderResponse> {
-    return this.fetch<CreateOrderResponse>(`/storefront/${this.storeSlug}/orders`, {
+    return this.fetch<CreateOrderResponse>(`${this.basePath}/orders`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -63,14 +68,14 @@ export class GoShoppingClient {
 
   async getOrderStatus(orderId: string, accessToken: string): Promise<OrderStatus> {
     return this.fetch<OrderStatus>(
-      `/storefront/${this.storeSlug}/orders/${orderId}/status?access_token=${encodeURIComponent(accessToken)}`,
+      `${this.basePath}/orders/${orderId}/status?access_token=${encodeURIComponent(accessToken)}`,
     );
   }
 
   // ── Tienda ─────────────────────────────────────────────────────────────────
 
   async getStoreConfig(): Promise<StoreConfig> {
-    return this.fetch<StoreConfig>(`/storefront/${this.storeSlug}/config`);
+    return this.fetch<StoreConfig>(`${this.basePath}/config`);
   }
 
   // ── Internal ───────────────────────────────────────────────────────────────

@@ -35,9 +35,34 @@ describe('GoShoppingClient', () => {
     await client.getProducts();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${BASE_URL}/storefront/${STORE_SLUG}/products`,
+      `${BASE_URL}/public/${STORE_SLUG}/products`,
       expect.any(Object),
     );
+  });
+
+  // El router Go solo expone /public/:storeSlug/* — ver apps/core/internal/router/router.go
+  it('todas las rutas usan el prefijo /public del router', async () => {
+    const cases: Array<[string, () => Promise<unknown>]> = [
+      [`${BASE_URL}/public/${STORE_SLUG}/products`, () => client.getProducts()],
+      [`${BASE_URL}/public/${STORE_SLUG}/products/abc`, () => client.getProduct('abc')],
+      [`${BASE_URL}/public/${STORE_SLUG}/orders`, () => client.createOrder({
+        customer: { name: 'Juan', email: 'juan@test.com', phone: '3001234567' },
+        items: [{ product_id: 'prod-1', quantity: 1 }],
+        payment_method: 'cash',
+      })],
+      [`${BASE_URL}/public/${STORE_SLUG}/orders/o-1/status?access_token=tok`, () => client.getOrderStatus('o-1', 'tok')],
+      [`${BASE_URL}/public/${STORE_SLUG}/config`, () => client.getStoreConfig()],
+    ];
+
+    for (const [expectedURL, call] of cases) {
+      const fetchMock = mockFetch({ json: async () => ({ data: [], total: 0, page: 1, per_page: 20, total_pages: 0 }) });
+      global.fetch = fetchMock;
+
+      await call();
+
+      expect(fetchMock.mock.calls[0][0]).toBe(expectedURL);
+      expect(fetchMock.mock.calls[0][0]).not.toContain('/storefront/');
+    }
   });
 
   // ── getProducts ─────────────────────────────────────────────────────────────
@@ -103,7 +128,7 @@ describe('GoShoppingClient', () => {
     await client.createOrder(orderData);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${BASE_URL}/storefront/${STORE_SLUG}/orders`,
+      `${BASE_URL}/public/${STORE_SLUG}/orders`,
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify(orderData),
