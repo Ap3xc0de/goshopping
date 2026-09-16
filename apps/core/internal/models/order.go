@@ -22,8 +22,10 @@ type Order struct {
 	Status           string          `json:"status"` // pending | paid | preparing | shipped | delivered | cancelled
 	Items            json.RawMessage `json:"items"`
 	Subtotal         Money           `json:"subtotal"`
+	DiscountTotal    Money           `json:"discount_total"`
 	Tax              Money           `json:"tax"`
 	Total            Money           `json:"total"`
+	CouponID         *uuid.UUID      `json:"coupon_id,omitempty"`
 	PaymentMethod    string          `json:"payment_method"`
 	PaymentRef       string          `json:"payment_reference"`
 	ShippingTracking string          `json:"tracking_number"`
@@ -55,6 +57,7 @@ type CreateOrderInput struct {
 	CustomerEmail string           `json:"customer_email"`
 	Items         []OrderItemInput `json:"items"`
 	PaymentMethod string           `json:"payment_method"`
+	CouponCode    *string          `json:"coupon_code,omitempty"`
 	Notes         string           `json:"notes"`
 }
 

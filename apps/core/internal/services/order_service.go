@@ -45,16 +45,22 @@ type OrderDetail struct {
 
 // OrderService handles business logic for orders.
 type OrderService struct {
-	db       *pgxpool.Pool
-	cfg      *config.Config
-	eventSvc *EventService
-	custSvc  *CustomerService
-	prodSvc  *ProductService
+	db        *pgxpool.Pool
+	cfg       *config.Config
+	eventSvc  *EventService
+	custSvc   *CustomerService
+	prodSvc   *ProductService
+	offerSvc  *OfferService
+	couponSvc *CouponService
 }
 
 // NewOrderService creates a new OrderService.
 func NewOrderService(db *pgxpool.Pool, cfg *config.Config, eventSvc *EventService, custSvc *CustomerService, prodSvc *ProductService) *OrderService {
-	return &OrderService{db: db, cfg: cfg, eventSvc: eventSvc, custSvc: custSvc, prodSvc: prodSvc}
+	return &OrderService{
+		db: db, cfg: cfg, eventSvc: eventSvc, custSvc: custSvc, prodSvc: prodSvc,
+		offerSvc:  NewOfferService(db),
+		couponSvc: NewCouponService(db),
+	}
 }
 
 // ListOrdersResult holds paginated orders.
@@ -111,7 +117,7 @@ func (s *OrderService) ListOrders(storeID uuid.UUID, page, perPage int, status, 
 
 	args = append(args, perPage, offset)
 	query := fmt.Sprintf(`
-		SELECT o.id, o.store_id, o.customer_id, o.status, o.items, o.subtotal, o.tax, o.total,
+		SELECT o.id, o.store_id, o.customer_id, o.status, o.items, o.subtotal, o.discount_total, o.tax, o.total, o.coupon_id,
 		       COALESCE(o.payment_method,'') AS payment_method,
 		       COALESCE(o.payment_ref,'')    AS payment_ref,
 		       COALESCE(o.shipping_tracking,'') AS shipping_tracking,
@@ -136,8 +142,8 @@ func (s *OrderService) ListOrders(storeID uuid.UUID, page, perPage int, status, 
 	orders := []models.Order{}
 	for rows.Next() {
 		var o models.Order
-		if err := rows.Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items,
-			&o.Subtotal, &o.Tax, &o.Total, &o.PaymentMethod, &o.PaymentRef,
+		if err := rows.Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items, &o.Subtotal, &o.DiscountTotal,
+			&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 			&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
 			&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
@@ -157,7 +163,7 @@ func (s *OrderService) GetOrder(storeID, orderID uuid.UUID) (*OrderDetail, error
 	ctx := context.Background()
 	var o models.Order
 	err := s.db.QueryRow(ctx, `
-		SELECT o.id, o.store_id, o.customer_id, o.status, o.items, o.subtotal, o.tax, o.total,
+		SELECT o.id, o.store_id, o.customer_id, o.status, o.items, o.subtotal, o.discount_total, o.tax, o.total, o.coupon_id,
 		       COALESCE(o.payment_method,'')     AS payment_method,
 		       COALESCE(o.payment_ref,'')        AS payment_ref,
 		       COALESCE(o.shipping_tracking,'')  AS shipping_tracking,
@@ -171,8 +177,8 @@ func (s *OrderService) GetOrder(storeID, orderID uuid.UUID) (*OrderDetail, error
 		LEFT JOIN customers c ON o.customer_id = c.id
 		WHERE o.id = $1 AND o.store_id = $2`,
 		orderID, storeID,
-	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items,
-		&o.Subtotal, &o.Tax, &o.Total, &o.PaymentMethod, &o.PaymentRef,
+	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items, &o.Subtotal, &o.DiscountTotal,
+		&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 		&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
 		&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress)
 	if err != nil {
@@ -194,7 +200,7 @@ func (s *OrderService) GetOrderByIDOnly(orderID uuid.UUID) (*OrderDetail, error)
 	ctx := context.Background()
 	var o models.Order
 	err := s.db.QueryRow(ctx, `
-		SELECT o.id, o.store_id, o.customer_id, o.status, o.items, o.subtotal, o.tax, o.total,
+		SELECT o.id, o.store_id, o.customer_id, o.status, o.items, o.subtotal, o.discount_total, o.tax, o.total, o.coupon_id,
 		       COALESCE(o.payment_method,'')    AS payment_method,
 		       COALESCE(o.payment_ref,'')       AS payment_ref,
 		       COALESCE(o.shipping_tracking,'') AS shipping_tracking,
@@ -207,8 +213,8 @@ func (s *OrderService) GetOrderByIDOnly(orderID uuid.UUID) (*OrderDetail, error)
 		FROM orders o
 		LEFT JOIN customers c ON o.customer_id = c.id
 		WHERE o.id = $1`, orderID,
-	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items,
-		&o.Subtotal, &o.Tax, &o.Total, &o.PaymentMethod, &o.PaymentRef,
+	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items, &o.Subtotal, &o.DiscountTotal,
+		&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 		&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
 		&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress)
 	if err != nil {
@@ -248,15 +254,16 @@ func (s *OrderService) getTimeline(ctx context.Context, orderID uuid.UUID) ([]mo
 	return tl, rows.Err()
 }
 
-// CreateOrder creates a new pending order.
+// CreateOrder creates a new pending order with transactional guarantees.
+// Resolves offers and coupons, computes totals, validates stock, and records usage.
 func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInput, changedBy *uuid.UUID) (*OrderDetail, error) {
 	ctx := context.Background()
 	if len(req.Items) == 0 {
 		return nil, fmt.Errorf("at least one item is required")
 	}
 
-	var resolved []models.OrderItem
-	subtotal := models.MoneyZero()
+	// ── Stage 1: Resolve products and build line items
+	var lineItems []LineItem
 	for _, inp := range req.Items {
 		if inp.Quantity <= 0 {
 			return nil, fmt.Errorf("quantity must be > 0")
@@ -269,21 +276,90 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		if err != nil {
 			return nil, fmt.Errorf("product %s: %w", inp.ProductID, err)
 		}
-		lineTotal := p.Price.MulInt(inp.Quantity)
-		subtotal = subtotal.Add(lineTotal)
-		resolved = append(resolved, models.OrderItem{
-			ProductID: p.ID.String(),
-			Name:      p.Name,
+		lineItems = append(lineItems, LineItem{
+			ProductID: p.ID,
 			Quantity:  inp.Quantity,
-			Price:     p.Price,
-			Total:     lineTotal,
+			ListPrice: p.Price,
+			Category:  p.Category,
 		})
 	}
 
-	tax := subtotal.Mul(IVARate).Round2()
-	total := subtotal.Add(tax)
+	// ── Stage 2: Load active offers and resolve coupon
+	offers, err := s.offerSvc.ListActiveOffers(ctx, storeID)
+	if err != nil {
+		return nil, fmt.Errorf("load offers: %w", err)
+	}
 
-	// Resolve customer
+	var coupon *models.Coupon
+	if req.CouponCode != nil && *req.CouponCode != "" {
+		coupon, err = s.couponSvc.GetCouponByCode(ctx, storeID, *req.CouponCode)
+		if err != nil {
+			if errors.Is(err, ErrCouponNotFound) {
+				return nil, fmt.Errorf("coupon not found: %s", *req.CouponCode)
+			}
+			return nil, fmt.Errorf("resolve coupon: %w", err)
+		}
+	}
+
+	// ── Stage 3: Compute quote (pure, no DB)
+	now := time.Now()
+	quote, err := ComputeQuote(lineItems, offers, coupon, now)
+	if err != nil {
+		return nil, fmt.Errorf("compute quote: %w", err)
+	}
+
+	// ── Stage 4: BEGIN transaction
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	// ── Stage 5: Validate stock and lock products FOR UPDATE
+	for _, item := range lineItems {
+		var stock int
+		err := tx.QueryRow(ctx, `
+			SELECT stock FROM products WHERE id = $1 AND store_id = $2 FOR UPDATE`,
+			item.ProductID, storeID,
+		).Scan(&stock)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, fmt.Errorf("product not found: %s", item.ProductID)
+			}
+			return nil, fmt.Errorf("lock product %s: %w", item.ProductID, err)
+		}
+		if stock < item.Quantity {
+			return nil, fmt.Errorf("%w: product %s needs %d but has %d",
+				ErrInsufficientStock, item.ProductID, item.Quantity, stock)
+		}
+	}
+
+	// ── Stage 6: Build OrderItems with effective prices
+	resolvedItems := make([]models.OrderItem, len(lineItems))
+	for i, item := range lineItems {
+		offer := ResolveOffer(offers, item.ProductID, item.Category, item.ListPrice, now)
+		effectivePrice := ApplyOffer(item.ListPrice, offer)
+		resolvedItems[i] = models.OrderItem{
+			ProductID: item.ProductID.String(),
+			Name:      "", // Filled below
+			Quantity:  item.Quantity,
+			Price:     effectivePrice,
+			Total:     effectivePrice.MulInt(item.Quantity),
+		}
+	}
+
+	// Get product names
+	for i, lineItem := range lineItems {
+		p, _ := s.prodSvc.GetProduct(storeID, lineItem.ProductID)
+		resolvedItems[i].Name = p.Name
+	}
+
+	itemsJSON, err := json.Marshal(resolvedItems)
+	if err != nil {
+		return nil, fmt.Errorf("marshal items: %w", err)
+	}
+
+	// ── Stage 7: Resolve customer
 	var customerID *uuid.UUID
 	if req.CustomerID != nil && *req.CustomerID != "" {
 		cid, err := uuid.Parse(*req.CustomerID)
@@ -306,31 +382,72 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		customerID = &cust.ID
 	}
 
-	itemsJSON, err := json.Marshal(resolved)
-	if err != nil {
-		return nil, fmt.Errorf("marshal items: %w", err)
+	// ── Stage 8: Insert order (with discount_total and coupon_id)
+	var orderID uuid.UUID
+	couponID := (*uuid.UUID)(nil)
+	if quote.AppliedCoupon != nil {
+		couponID = &quote.AppliedCoupon.ID
 	}
 
-	var orderID uuid.UUID
-	if err = s.db.QueryRow(ctx, `
-		INSERT INTO orders (store_id, customer_id, status, items, subtotal, tax, total, payment_method, notes)
-		VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8)
+	if err = tx.QueryRow(ctx, `
+		INSERT INTO orders (store_id, customer_id, status, items, subtotal, discount_total, tax, total, coupon_id, payment_method, notes)
+		VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id`,
-		storeID, customerID, itemsJSON, subtotal, tax, total,
+		storeID, customerID, itemsJSON,
+		quote.SubtotalBeforeDiscount, quote.DiscountTotal, quote.Tax, quote.Total,
+		couponID,
 		req.PaymentMethod, req.Notes,
 	).Scan(&orderID); err != nil {
 		return nil, fmt.Errorf("insert order: %w", err)
 	}
 
-	if _, err = s.db.Exec(ctx, `
+	// ── Stage 9: Deduct stock
+	for _, item := range lineItems {
+		_, err := tx.Exec(ctx, `
+			UPDATE products
+			SET stock = stock - $1,
+			    status = CASE WHEN (stock - $1) <= 0 THEN 'out_of_stock' ELSE 'active' END,
+			    updated_at = NOW()
+			WHERE id = $2 AND store_id = $3`,
+			item.Quantity, item.ProductID, storeID)
+		if err != nil {
+			return nil, fmt.Errorf("deduct stock for %s: %w", item.ProductID, err)
+		}
+	}
+
+	// ── Stage 10: Record coupon usage if applied
+	if quote.AppliedCoupon != nil {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO coupon_usage (id, coupon_id, order_id)
+			VALUES ($1, $2, $3)`,
+			uuid.New(), quote.AppliedCoupon.ID, orderID)
+		if err != nil {
+			return nil, fmt.Errorf("record coupon usage: %w", err)
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE coupons SET used_count = used_count + 1 WHERE id = $1`,
+			quote.AppliedCoupon.ID)
+		if err != nil {
+			return nil, fmt.Errorf("increment coupon usage: %w", err)
+		}
+	}
+
+	// ── Stage 11: Insert timeline
+	if _, err = tx.Exec(ctx, `
 		INSERT INTO order_timeline (order_id, status, changed_by, notes)
 		VALUES ($1, 'pending', $2, 'Pedido creado')`, orderID, changedBy); err != nil {
 		return nil, fmt.Errorf("insert timeline: %w", err)
 	}
 
+	// ── Stage 12: COMMIT transaction
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
+	// ── Stage 13: Publish event and fetch order detail
 	_ = s.eventSvc.Publish(s.cfg.SQSOrderEventsURL, "order.created", storeID.String(), map[string]interface{}{
 		"order_id": orderID.String(),
-		"total":    total.InexactFloat64(),
+		"total":    quote.Total.InexactFloat64(),
 	})
 
 	return s.GetOrder(storeID, orderID)

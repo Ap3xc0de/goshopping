@@ -20,6 +20,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	adminSvc := services.NewAdminService(db, cfg)
 	brandingSvc := services.NewBrandingService(db, cfg)
 	offerSvc := services.NewOfferService(db)
+	couponSvc := services.NewCouponService(db)
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -34,6 +35,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db, cfg))
 	pub.Get("/:storeSlug/products", handlers.PublicListProducts(db, cfg))
 	pub.Get("/:storeSlug/products/:productId", handlers.PublicGetProduct(db, cfg))
+	pub.Post("/:storeSlug/quote", handlers.QuoteCart(db, cfg))
 	pub.Post("/:storeSlug/orders", handlers.PublicCreateOrder(db, cfg))
 	pub.Get("/:storeSlug/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
 
@@ -81,6 +83,13 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Get("/offers/:offerId", handlers.GetOffer(offerSvc))
 	store.Put("/offers/:offerId", handlers.UpdateOffer(offerSvc))
 	store.Delete("/offers/:offerId", handlers.DeleteOffer(offerSvc))
+
+	// Coupons
+	store.Get("/coupons", handlers.ListCoupons(couponSvc))
+	store.Post("/coupons", handlers.CreateCoupon(couponSvc))
+	store.Get("/coupons/:couponId", handlers.GetCoupon(couponSvc))
+	store.Put("/coupons/:couponId", handlers.UpdateCoupon(couponSvc))
+	store.Delete("/coupons/:couponId", handlers.DeleteCoupon(couponSvc))
 
 	// Reports
 	store.Get("/reports/sales", handlers.GetReportsSales(dashSvc))
