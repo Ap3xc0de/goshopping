@@ -169,22 +169,31 @@ func PublicOrderStatus(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 }
 
 // PublicStoreConfig handles GET /public/:storeSlug/config
-func PublicStoreConfig(db *pgxpool.Pool) fiber.Handler {
+func PublicStoreConfig(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		slug := c.Params("storeSlug")
 		ctx := c.Context()
 
 		var store struct {
-			ID     uuid.UUID `json:"id"`
-			Name   string    `json:"name"`
-			Slug   string    `json:"slug"`
-			Status string    `json:"status"`
+			ID       uuid.UUID             `json:"id"`
+			Name     string                `json:"name"`
+			Slug     string                `json:"slug"`
+			Status   string                `json:"status"`
+			Branding *models.StoreBranding `json:"branding"`
 		}
 		if err := db.QueryRow(ctx, `
 			SELECT id, name, slug, status FROM stores WHERE slug = $1 AND status = 'active'`, slug,
 		).Scan(&store.ID, &store.Name, &store.Slug, &store.Status); err != nil {
 			return fiber.NewError(fiber.StatusNotFound, "store not found")
 		}
+
+		brandingSvc := services.NewBrandingService(db, cfg)
+		branding, err := brandingSvc.GetBranding(ctx, store.ID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+		store.Branding = branding
+
 		return c.JSON(store)
 	}
 }

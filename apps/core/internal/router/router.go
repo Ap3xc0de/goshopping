@@ -18,6 +18,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	orderSvc := services.NewOrderService(db, cfg, eventSvc, custSvc, prodSvc)
 	dashSvc := services.NewDashboardService(db, cfg)
 	adminSvc := services.NewAdminService(db, cfg)
+	brandingSvc := services.NewBrandingService(db, cfg)
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -29,7 +30,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 
 	// Public storefront (no auth)
 	pub := app.Group("/public")
-	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db))
+	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db, cfg))
 	pub.Get("/:storeSlug/products", handlers.PublicListProducts(db, cfg))
 	pub.Get("/:storeSlug/products/:productId", handlers.PublicGetProduct(db, cfg))
 	pub.Post("/:storeSlug/orders", handlers.PublicCreateOrder(db, cfg))
@@ -67,6 +68,11 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 
 	// Dashboard
 	store.Get("/dashboard", handlers.GetDashboard(dashSvc))
+
+	// Branding
+	store.Get("/branding", handlers.GetBranding(brandingSvc))
+	store.Put("/branding", handlers.UpdateBranding(brandingSvc))
+	store.Post("/branding/logo", handlers.BrandingLogoUpload(brandingSvc))
 
 	// Reports
 	store.Get("/reports/sales", handlers.GetReportsSales(dashSvc))
