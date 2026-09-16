@@ -4,13 +4,43 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/goshopping/core/internal/config"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+// resolveMigrationsDir locates the migrations/ directory by walking up from the
+// working directory.
+//
+// The previous "file://migrations" literal resolved against the process working
+// directory, so it only worked when the binary was started from apps/core. Under
+// `go test` each package runs with its own source directory as the working
+// directory, which is why every test that reached this function from
+// internal/services failed with `open .: file does not exist`.
+func resolveMigrationsDir() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to read working directory: %w", err)
+	}
+
+	start := dir
+	for {
+		candidate := filepath.Join(dir, "migrations")
+		if info, statErr := os.Stat(candidate); statErr == nil && info.IsDir() {
+			return candidate, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("no migrations directory found from %s upwards", start)
+		}
+		dir = parent
+	}
+}
 
 // RunMigrations executes all pending up migrations from the migrations/ directory.
 func RunMigrations(cfg *config.Config) {
@@ -30,7 +60,20 @@ func RunMigrations(cfg *config.Config) {
 		log.Fatalf("migrations: failed to create driver: %v", err)
 	}
 
-	m, err := migrate.NewWithDatabaseInstance("file://migrations", "postgres", driver)
+	migrationsDir, err := resolveMigrationsDir()
+	if err != nil {
+		log.Fatalf("migrations: %v", err)
+	}
+
+	// iofs + os.DirFS instead of a "file://" URL: on Windows an absolute path
+	// such as C:\... parses with "C:" as the URL host and the source driver
+	// fails to open it.
+	src, err := iofs.New(os.DirFS(migrationsDir), ".")
+	if err != nil {
+		log.Fatalf("migrations: failed to open migrations dir %s: %v", migrationsDir, err)
+	}
+
+	m, err := migrate.NewWithInstance("iofs", src, "postgres", driver)
 	if err != nil {
 		log.Fatalf("migrations: failed to initialise migrate: %v", err)
 	}
