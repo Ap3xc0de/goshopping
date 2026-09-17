@@ -1,64 +1,63 @@
 'use client';
 
 import { useState } from 'react';
-import { TemplateGalleryStep } from './TemplateGalleryStep';
 import { BrandingStep, type BrandingDraft } from './BrandingStep';
 import { DomainStep } from './DomainStep';
 import { useStore } from '@/lib/hooks/useStore';
 import { api } from '@/lib/api';
 
-type WizardStep = 1 | 2 | 3;
+type WizardStep = 1 | 2;
 
 interface WizardState {
   step: WizardStep;
-  templateId: string | null;
   submitting: boolean;
   error: string | null;
 }
 
 const STEPS: Array<{ id: WizardStep; label: string }> = [
-  { id: 1, label: 'Plantilla' },
-  { id: 2, label: 'Marca' },
-  { id: 3, label: 'Dominio' },
+  { id: 1, label: 'Marca' },
+  { id: 2, label: 'Dominio' },
 ];
 
 /**
- * 3-step store creation wizard (REQ-ADMIN-01), replacing the old AI chat
- * flow (ChatAssistant/GenerationProgress/ChatMessage/StyleSelector/
- * StoreConfigSummary — removed in the next commit of this same slice).
+ * 2-step store creation wizard (CATALOG-03/ADMIN-05, Slice 9) — the old
+ * step 1 (TemplateGalleryStep) was removed: `minimal` is now the only
+ * active template (CATALOG-01), and migration 008 already sets
+ * `stores.template_id DEFAULT 'minimal'`, so every new store is created
+ * with the right template with zero wizard involvement. This intentionally
+ * drops the `PUT /stores/:storeId/template` call entirely instead of
+ * keeping it hardcoded to 'minimal' — fewer moving parts, one less network
+ * call that could fail on step 1, and no behavior change (the DB default
+ * already produces the same result).
+ *
+ * Replaces the old 3-step AI chat flow (ChatAssistant/GenerationProgress/
+ * ChatMessage/StyleSelector/StoreConfigSummary — removed in an earlier
+ * commit of this same slice).
  *
  * Local useState state machine — no new state library, matching the rest
- * of the repo. Confirming step 2 fires PUT /template and PUT /branding in
- * parallel; if either fails, the wizard stays on step 2 showing the error
- * (no partial state is persisted client-side that would block a retry).
+ * of the repo. Confirming step 1 (Marca) persists branding; if it fails,
+ * the wizard stays on step 1 showing the error (no partial state is
+ * persisted client-side that would block a retry).
  */
 export function CreateStoreWizard() {
   const { storeId } = useStore();
   const [state, setState] = useState<WizardState>({
     step: 1,
-    templateId: null,
     submitting: false,
     error: null,
   });
   const [hostname, setHostname] = useState<string | null>(null);
 
-  const handleTemplateSelect = (templateId: string) => {
-    setState((s) => ({ ...s, step: 2, templateId, error: null }));
-  };
-
   const handleBrandingConfirm = async (branding: BrandingDraft) => {
-    if (!storeId || !state.templateId) return;
+    if (!storeId) return;
     setState((s) => ({ ...s, submitting: true, error: null }));
     try {
-      await Promise.all([
-        api.updateStoreTemplate(storeId, state.templateId),
-        api.updateBranding(storeId, { colors: branding.colors, fonts: branding.fonts }),
-      ]);
-      setState((s) => ({ ...s, step: 3, submitting: false }));
+      await api.updateBranding(storeId, { colors: branding.colors, fonts: branding.fonts });
+      setState((s) => ({ ...s, step: 2, submitting: false }));
 
       // Fetched after the step advances rather than awaited alongside the
-      // writes: the hostname is informational, so a slow or failing read
-      // should leave step 3 in its pending state, never block reaching it.
+      // write: the hostname is informational, so a slow or failing read
+      // should leave step 2 in its pending state, never block reaching it.
       api
         .getStoreDomain(storeId)
         .then((domain) => setHostname(domain.hostname))
@@ -95,15 +94,9 @@ export function CreateStoreWizard() {
         </p>
       )}
 
-      {state.step === 1 && (
-        <TemplateGalleryStep selectedTemplateId={state.templateId} onSelect={handleTemplateSelect} />
-      )}
+      {state.step === 1 && <BrandingStep onConfirm={handleBrandingConfirm} />}
 
-      {state.step === 2 && <BrandingStep onConfirm={handleBrandingConfirm} />}
-
-      {state.step === 3 && (
-        <DomainStep hostname={hostname} />
-      )}
+      {state.step === 2 && <DomainStep hostname={hostname} />}
     </div>
   );
 }

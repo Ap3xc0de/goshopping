@@ -48,6 +48,16 @@ describe('BrandingStep', () => {
     expect(screen.getByTestId('font-error')).toHaveTextContent('Comic Sans');
   });
 
+  // CATALOG-03/ADMIN-05 (Slice 9): the wizard's Marca step is a quick
+  // first-time setup, not the full editor — it should point users to
+  // "Mi Tienda" (apps/admin/src/app/dashboard/my-store) for the complete
+  // set of colors/fonts/radius controls.
+  it('links to Mi Tienda for full branding customization', () => {
+    render(<BrandingStep onConfirm={jest.fn()} />);
+    const link = screen.getByRole('link', { name: /Mi Tienda/i });
+    expect(link).toHaveAttribute('href', '/dashboard/my-store');
+  });
+
   it('accepts a whitelisted font and includes it in the confirmed branding', () => {
     const onConfirm = jest.fn();
     render(<BrandingStep onConfirm={onConfirm} />);

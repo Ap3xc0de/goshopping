@@ -2,7 +2,7 @@ import { CreateStoreWizard } from '@/components/store-builder/CreateStoreWizard'
 
 export const metadata = {
   title: 'Crear tienda — GoShopping Admin',
-  description: 'Elegí una plantilla, personalizá tu marca y tu tienda estará lista en minutos.',
+  description: 'Personalizá tu marca y tu tienda estará lista en minutos.',
 };
 
 export default function CreateStorePage() {
@@ -30,7 +30,7 @@ export default function CreateStorePage() {
           <div>
             <h1 className="text-lg font-bold text-gray-900">Crear tienda</h1>
             <p className="text-sm text-gray-500">
-              Elegí una plantilla, personalizá tu marca y publicá en minutos.
+              Personalizá tu marca y publicá en minutos.
             </p>
           </div>
         </div>

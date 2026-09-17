@@ -6,7 +6,7 @@ jest.mock('@/components/store-builder/CreateStoreWizard', () => ({
 }));
 
 describe('CreateStorePage', () => {
-  it('mounts the 3-step wizard', () => {
+  it('mounts the 2-step wizard', () => {
     render(<CreateStorePage />);
     expect(screen.getByTestId('stub-wizard')).toBeInTheDocument();
   });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ColorPicker } from './ColorPicker';
 
 /**
@@ -132,6 +133,15 @@ export function BrandingStep({ category, onConfirm }: BrandingStepProps) {
           {fontError}
         </p>
       )}
+
+      <p className="text-xs text-gray-500">
+        Esto es un punto de partida rápido. Podés afinar cada detalle (colores de
+        navegación, radios, tipografías) más tarde en{' '}
+        <Link href="/dashboard/my-store" className="text-brand-700 underline">
+          Mi Tienda
+        </Link>
+        .
+      </p>
 
       <button
         type="button"
