@@ -1,0 +1,41 @@
+name: Template Catalog
+
+on:
+  pull_request:
+    paths:
+      - 'libs/template-catalog/**'
+      - 'apps/core/catalog.json'
+      - '.github/workflows/template-catalog.yml'
+
+jobs:
+  catalog-sync:
+    name: Verify catalog.json is in sync with the registry
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: libs/template-catalog
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: Regenerate catalog.json
+        run: npm run generate:catalog
+
+      - name: Fail if catalog.json is out of sync
+        working-directory: .
+        run: |
+          git diff --exit-code -- libs/template-catalog/catalog.json apps/core/catalog.json || {
+            echo "::error::catalog.json is out of sync — run 'npm run generate:catalog' in libs/template-catalog and commit the result."
+            exit 1
+          }
