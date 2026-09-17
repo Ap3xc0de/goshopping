@@ -20,4 +20,8 @@ variable "api_domain_name"    { type = string }
 variable "frontend_certificate_arn" { type = string }
 variable "admin_domain_name"       { type = string }
 variable "superadmin_domain_name"  { type = string }
+
+# Host-header match pattern for the storefront ALB rule. As of Slice 1 this is
+# a wildcard (e.g. "*.staging.vettacode.com"), not a single fixed hostname —
+# see the root module's storefront_wildcard_pattern local.
 variable "storefront_domain_name"  { type = string }

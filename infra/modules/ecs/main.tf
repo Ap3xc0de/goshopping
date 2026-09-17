@@ -225,6 +225,29 @@ resource "aws_lb_target_group" "storefront" {
   }
 }
 
+# Explicit rule for core/API. Required as of Slice 1: once "storefront" below
+# moves from a fixed host_header to a wildcard, it would otherwise swallow
+# api_domain_name too (ALB evaluates rules by ascending priority; the listener
+# default_action only fires when NO rule matches). This rule MUST ship in the
+# same apply as the storefront wildcard change below — splitting them across
+# two applies leaves a window where api_domain_name matches no rule and the
+# default_action races the wildcard rule, breaking the API.
+resource "aws_lb_listener_rule" "core" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 99
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.core.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.api_domain_name]
+    }
+  }
+}
+
 resource "aws_lb_listener_rule" "admin" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 100
@@ -266,6 +289,12 @@ resource "aws_lb_listener_rule" "storefront" {
     target_group_arn = aws_lb_target_group.storefront.arn
   }
 
+  # var.storefront_domain_name now carries a wildcard host-header pattern
+  # (e.g. "*.staging.vettacode.com"), not a single fixed hostname — see
+  # variables.tf. The legacy fixed hostname ("app.<env>.<base>") still
+  # matches this wildcard, so no separate rule is needed for it; the
+  # decision to keep serving it (vs. a 404/redirect) lives in
+  # apps/storefront/src/middleware.ts, not here.
   condition {
     host_header {
       values = [var.storefront_domain_name]
