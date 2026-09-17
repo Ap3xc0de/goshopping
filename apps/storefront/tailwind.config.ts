@@ -26,6 +26,10 @@ const config: Config = {
           'secondary-fg': 'hsl(var(--brand-secondary-foreground))',
           accent: 'hsl(var(--brand-accent))',
           'accent-fg': 'hsl(var(--brand-accent-foreground))',
+          // BRAND-05/BRAND-06: dedicated Navbar colors, independent of the
+          // other brand tokens above.
+          nav: 'hsl(var(--brand-nav-bg))',
+          'nav-fg': 'hsl(var(--brand-nav-text))',
         },
       },
       borderRadius: {

@@ -27,8 +27,8 @@ function isSet(value: string | undefined | null): value is string {
 export function mergeField<TplKey extends string, BrandKey extends string>(
   fieldMap: ReadonlyArray<readonly [TplKey, BrandKey]>,
   brand: Partial<Record<BrandKey, string>> | undefined,
-  template: Record<TplKey, string>,
-): Record<TplKey, string> {
+  template: Partial<Record<TplKey, string>>,
+): Partial<Record<TplKey, string>> {
   const merged = { ...template };
   for (const [templateKey, brandKey] of fieldMap) {
     const value = brand?.[brandKey];
@@ -49,6 +49,13 @@ const COLOR_FIELD_MAP = [
   ['background', 'background'],
   ['foreground', 'foreground'],
   ['muted', 'muted'],
+  // BRAND-04: dedicated Navbar colors merge with the same isSet rule as the
+  // other 9 — optional on both sides (TemplateManifest.colors.navBackground/
+  // navText are optional, unlike the 9 required colors above), since
+  // archived templates may have no default (BuildTemplateCSSVars applies
+  // the background/foreground fallback for those — not this merge step).
+  ['navBackground', 'nav_background'],
+  ['navText', 'nav_text'],
 ] as const satisfies ReadonlyArray<
   readonly [keyof TemplateManifest['colors'], keyof NonNullable<StoreBranding['colors']>]
 >;
@@ -76,13 +83,13 @@ export interface ResolvedTheme {
  * Merges a store's branding over its template's defaults.
  *
  * Not merged into `ResolvedTheme` in this slice: `StoreBranding.radius`
- * ("sm"|"md"|"lg"|"xl") and `social_links`. `radius` has no defined mapping
- * onto `TemplateManifest.style.borderRadius` ("sharp"|"rounded"|"pill") —
- * the two enums don't share a domain, and neither the spec nor the design
- * defines the conversion table. Left as an explicit open question rather
- * than guessing one. `logo_url`/`favicon_url` are consumed directly from
- * `branding` by callers that need them (no template default applies —
- * "logo is 100% brand").
+ * ("sm"|"md"|"lg"|"xl") and `social_links`. `radius` selects one of the
+ * template's own border-radius presets rather than a `TemplateManifest`
+ * field — it's applied directly as a `buildTemplateCSSVars(manifest,
+ * { brandRadius })` option by callers (e.g. `[storeSlug]/layout.tsx`),
+ * not merged into the manifest here (BRAND-08). `logo_url`/`favicon_url`
+ * are consumed directly from `branding` by callers that need them (no
+ * template default applies — "logo is 100% brand").
  */
 export function mergeThemeConfig(
   branding: StoreBranding | undefined,
@@ -93,7 +100,14 @@ export function mergeThemeConfig(
   const tagline = isSet(branding?.tagline) ? (branding!.tagline as string) : template.description;
 
   return {
-    manifest: { ...template, colors, fonts },
+    // `colors`/`fonts` come back typed as `Partial<...>` because `mergeField`
+    // is generic over any field map, including the optional navBackground/
+    // navText pair — but by construction every *required* TemplateManifest
+    // field (primary, primaryForeground, ..., heading, body) is always
+    // present: mergeField starts from `{ ...template }`, which already has
+    // them, and only ever overwrites (never deletes) a key. The cast is
+    // narrowing back to what's runtime-true, not asserting something new.
+    manifest: { ...template, colors, fonts } as TemplateManifest,
     tagline,
   };
 }

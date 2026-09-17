@@ -1,6 +1,11 @@
 import type { TemplateManifest } from './types';
 
-/** Maps a Google Font name to the CSS variable defined in layout.tsx */
+/**
+ * Maps a Google Font name to the CSS variable defined in layout.tsx.
+ * Mirrors `AllowedFonts` in `apps/core/internal/models/branding.go` — all 11
+ * entries there MUST have an entry here (BRAND-07). Poppins/Outfit are valid
+ * in Go but were missing here until this map was extended (design decision 10).
+ */
 const FONT_VAR_MAP: Record<string, string> = {
   'Inter': 'var(--font-inter)',
   'Playfair Display': 'var(--font-playfair-display)',
@@ -11,6 +16,8 @@ const FONT_VAR_MAP: Record<string, string> = {
   'DM Sans': 'var(--font-dm-sans)',
   'Nunito': 'var(--font-nunito)',
   'Nunito Sans': 'var(--font-nunito-sans)',
+  'Poppins': 'var(--font-poppins)',
+  'Outfit': 'var(--font-outfit)',
 };
 
 const BORDER_RADIUS_MAP: Record<TemplateManifest['style']['borderRadius'], Record<string, string>> = {
@@ -69,15 +76,26 @@ const SHADOW_MAP: Record<TemplateManifest['style']['shadows'], Record<string, st
  * package (design decision 10/11) so `apps/admin`'s "Mi Tienda" preview
  * (Slice 8) can reuse the exact same CSS var derivation as the real
  * storefront SSR render, instead of duplicating the logic.
+ *
+ * `options.brandRadius` ("sm"|"md"|"lg"|"xl", mirrors `StoreBranding.radius`
+ * in branding.go) selects WHICH value of the template's own
+ * `BORDER_RADIUS_MAP` family becomes the generic `--radius` var that
+ * Tailwind's `rounded-lg/md/sm` utilities actually consume (see
+ * `tailwind.config.ts`'s `borderRadius` block) — BRAND-08. Defaults to "md"
+ * (unset branding keeps today's fixed look).
  */
 export function buildTemplateCSSVars(
   config: TemplateManifest,
+  options: { brandRadius?: 'sm' | 'md' | 'lg' | 'xl' } = {},
 ): Record<string, string> {
   const headingFont =
     FONT_VAR_MAP[config.fonts.heading] ??
     `'${config.fonts.heading}', sans-serif`;
   const bodyFont =
     FONT_VAR_MAP[config.fonts.body] ?? `'${config.fonts.body}', sans-serif`;
+
+  const radiusFamily = BORDER_RADIUS_MAP[config.style.borderRadius];
+  const brandRadius = options.brandRadius ?? 'md';
 
   return {
     '--brand-primary': config.colors.primary,
@@ -86,13 +104,23 @@ export function buildTemplateCSSVars(
     '--brand-secondary-foreground': config.colors.secondaryForeground,
     '--brand-accent': config.colors.accent,
     '--brand-accent-foreground': config.colors.accentForeground,
+    // BRAND-05: dedicated Navbar colors, independent of the other brand
+    // tokens. Falls back to background/foreground when the manifest (e.g.
+    // an archived template that never got nav colors) has none set — see
+    // CATALOG-02, which requires archived templates to keep resolving
+    // without error.
+    '--brand-nav-bg': config.colors.navBackground ?? config.colors.background,
+    '--brand-nav-text': config.colors.navText ?? config.colors.foreground,
     '--surface-background': config.colors.background,
     '--surface-foreground': config.colors.foreground,
     '--surface-muted': config.colors.muted,
     '--font-heading': headingFont,
     '--font-body': bodyFont,
     '--section-spacing': config.style.sectionSpacing,
-    ...BORDER_RADIUS_MAP[config.style.borderRadius],
+    // BRAND-08: generic `--radius` (consumed by Tailwind's rounded-lg/md/sm)
+    // picks one preset from this template's own radius family.
+    '--radius': radiusFamily[`--radius-${brandRadius}`],
+    ...radiusFamily,
     ...SHADOW_MAP[config.style.shadows],
   };
 }

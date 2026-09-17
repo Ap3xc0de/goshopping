@@ -76,4 +76,42 @@ describe('Navbar', () => {
     const nav = container.querySelector('[class*="sticky"], [class*="fixed"]');
     expect(nav).toBeTruthy();
   });
+
+  // BRAND-06: Navbar must use the themeable --brand-nav-bg/--brand-nav-text
+  // CSS vars instead of a hardcoded bg-white, for every variant.
+  describe('themed nav colors (BRAND-06)', () => {
+    it('solid variant uses --brand-nav-bg instead of bg-white', () => {
+      const { container } = render(<Navbar {...BASE_PROPS} variant="solid" />);
+      const nav = container.querySelector('nav');
+      expect(nav?.className).not.toContain('bg-white');
+      expect(nav?.className).toContain('bg-[hsl(var(--brand-nav-bg))]');
+      expect(nav?.className).toContain('text-[hsl(var(--brand-nav-text))]');
+    });
+
+    it('floating variant uses --brand-nav-bg instead of bg-white', () => {
+      const { container } = render(<Navbar {...BASE_PROPS} variant="floating" />);
+      const nav = container.querySelector('nav');
+      expect(nav?.className).not.toContain('bg-white');
+      expect(nav?.className).toContain('bg-[hsl(var(--brand-nav-bg))]');
+    });
+
+    it('transparent variant (not scrolled) has no nav background classes', () => {
+      const { container } = render(<Navbar {...BASE_PROPS} variant="transparent" />);
+      const nav = container.querySelector('nav');
+      expect(nav?.className).not.toContain('bg-white');
+      expect(nav?.className).toContain('bg-transparent');
+    });
+
+    it('transparent variant (scrolled) uses --brand-nav-bg, not bg-white/95', () => {
+      const { container } = render(<Navbar {...BASE_PROPS} variant="transparent" />);
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: 40, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      });
+      const nav = container.querySelector('nav');
+      expect(nav?.className).not.toContain('bg-white/95');
+      expect(nav?.className).toContain('bg-[hsl(var(--brand-nav-bg))]/95');
+      expect(nav?.className).toContain('text-[hsl(var(--brand-nav-text))]');
+    });
+  });
 });

@@ -78,6 +78,8 @@ describe('mergeThemeConfig', () => {
         background: '7 7% 7%',
         foreground: '8 8% 8%',
         muted: '9 9% 9%',
+        nav_background: '10 10% 10%',
+        nav_text: '11 11% 11%',
       },
       fonts: { heading: 'Poppins', body: 'Outfit' },
     };
@@ -92,8 +94,31 @@ describe('mergeThemeConfig', () => {
       background: '7 7% 7%',
       foreground: '8 8% 8%',
       muted: '9 9% 9%',
+      navBackground: '10 10% 10%',
+      navText: '11 11% 11%',
     });
     expect(theme.manifest.fonts).toEqual({ heading: 'Poppins', body: 'Outfit' });
+  });
+
+  // BRAND-04
+  it('nav_background/nav_text win over the manifest defaults when set', () => {
+    const branding: StoreBranding = { colors: { nav_background: '0 0% 20%', nav_text: '0 0% 90%' } };
+    const theme = mergeThemeConfig(branding, minimal);
+    expect(theme.manifest.colors.navBackground).toBe('0 0% 20%');
+    expect(theme.manifest.colors.navText).toBe('0 0% 90%');
+  });
+
+  it('empty nav_background/nav_text fall back to the manifest defaults', () => {
+    const branding: StoreBranding = { colors: { nav_background: '', nav_text: '' } };
+    const theme = mergeThemeConfig(branding, minimal);
+    expect(theme.manifest.colors.navBackground).toBe(minimal.colors.navBackground);
+    expect(theme.manifest.colors.navText).toBe(minimal.colors.navText);
+  });
+
+  it('undefined branding.colors leaves the manifest nav defaults untouched', () => {
+    const theme = mergeThemeConfig(undefined, minimal);
+    expect(theme.manifest.colors.navBackground).toBe(minimal.colors.navBackground);
+    expect(theme.manifest.colors.navText).toBe(minimal.colors.navText);
   });
 
   it('composition (components/homeSections/style) is always the template\'s, regardless of branding content', () => {

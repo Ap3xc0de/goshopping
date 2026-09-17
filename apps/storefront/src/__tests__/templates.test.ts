@@ -306,14 +306,15 @@ describe('buildTemplateCSSVars()', () => {
   });
 
   // Regression: `buildTemplateCSSVars` (plus its FONT_VAR_MAP/BORDER_RADIUS_MAP/
-  // SHADOW_MAP internals) is being extracted to `libs/template-catalog` so
-  // `apps/admin` can reuse it (design decision 10/11). This locks the exact
-  // SSR `:root{...}` string that `[storeSlug]/layout.tsx` emits for the
-  // `minimal` template with no branding overrides — captured BEFORE the
-  // extraction and re-run AFTER it (once nav-color/radius additions land in
-  // a later commit, this exact string will change and this test will be
-  // updated alongside that commit, not silently left stale).
-  it('produces the exact SSR :root{} string for minimal (extraction regression baseline)', () => {
+  // SHADOW_MAP internals) was extracted to `libs/template-catalog` so
+  // `apps/admin` can reuse it (design decision 10/11). This first locked the
+  // exact SSR `:root{...}` string emitted for `minimal` BEFORE the move —
+  // confirmed byte-identical right after the extraction commit. This slice's
+  // next commit (BRAND-04..08) intentionally changes that string by adding
+  // `--brand-nav-bg`/`--brand-nav-text` and the generic `--radius` var, so
+  // the golden string below reflects that new, intentional shape rather than
+  // silently going stale.
+  it('produces the exact SSR :root{} string for minimal (nav colors + brand radius)', () => {
     const vars = buildTemplateCSSVars(getTemplate('minimal'));
     const inlineStyle = `:root{${Object.entries(vars)
       .map(([key, value]) => `${key}:${value};`)
@@ -326,12 +327,15 @@ describe('buildTemplateCSSVars()', () => {
         '--brand-secondary-foreground:0 0% 9%;' +
         '--brand-accent:39 45% 62%;' +
         '--brand-accent-foreground:0 0% 9%;' +
+        '--brand-nav-bg:0 0% 100%;' +
+        '--brand-nav-text:0 0% 9%;' +
         '--surface-background:0 0% 100%;' +
         '--surface-foreground:0 0% 9%;' +
         '--surface-muted:0 0% 96%;' +
         '--font-heading:var(--font-playfair-display);' +
         '--font-body:var(--font-inter);' +
         '--section-spacing:6rem;' +
+        '--radius:0.25rem;' +
         '--radius-sm:0.125rem;' +
         '--radius-md:0.25rem;' +
         '--radius-lg:0.375rem;' +

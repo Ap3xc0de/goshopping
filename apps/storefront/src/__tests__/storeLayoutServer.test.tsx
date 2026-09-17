@@ -117,4 +117,42 @@ describe('[storeSlug] server layout', () => {
     mockGetStoreConfig.mockResolvedValue({ ...baseStoreConfig, template_id: 'no-existe' });
     await expect(renderLayout(<div />)).resolves.toBeDefined();
   });
+
+  // BRAND-04/BRAND-05: nav colors must reach the SSR'd :root{} style tag.
+  it('includes --brand-nav-bg/--brand-nav-text in the injected CSS vars', async () => {
+    const { container } = await renderLayout(<div />);
+    const style = container.querySelector('style')!.innerHTML;
+    expect(style).toContain('--brand-nav-bg');
+    expect(style).toContain('--brand-nav-text');
+  });
+
+  it('branding nav_background overrides the template default in the injected CSS vars', async () => {
+    mockGetStoreConfig.mockResolvedValue({
+      ...baseStoreConfig,
+      branding: { colors: { nav_background: '10 10% 10%' } },
+    });
+    const { container } = await renderLayout(<div />);
+    expect(container.querySelector('style')!.innerHTML).toContain('--brand-nav-bg:10 10% 10%');
+  });
+
+  // BRAND-08: branding.radius selects the generic --radius var.
+  it('defaults --radius to "md" when branding has no radius set', async () => {
+    const { container } = await renderLayout(<div />);
+    const style = container.querySelector('style')!.innerHTML;
+    expect(style).toMatch(/--radius:0\.25rem;/); // minimal's "sharp" family, --radius-md
+  });
+
+  it('uses branding.radius to select the --radius value from the template family', async () => {
+    mockGetStoreConfig.mockResolvedValue({ ...baseStoreConfig, branding: { radius: 'lg' } });
+    const { container } = await renderLayout(<div />);
+    const style = container.querySelector('style')!.innerHTML;
+    expect(style).toMatch(/--radius:0\.375rem;/); // minimal's "sharp" family, --radius-lg
+  });
+
+  it('ignores an invalid branding.radius value and falls back to "md"', async () => {
+    mockGetStoreConfig.mockResolvedValue({ ...baseStoreConfig, branding: { radius: 'huge' } });
+    const { container } = await renderLayout(<div />);
+    const style = container.querySelector('style')!.innerHTML;
+    expect(style).toMatch(/--radius:0\.25rem;/);
+  });
 });

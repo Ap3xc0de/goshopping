@@ -12,6 +12,10 @@
   --brand-secondary-foreground: 0 0% 100%;
   --brand-accent: 24 95% 53%;
   --brand-accent-foreground: 0 0% 100%;
+  /* Navbar-only colors (BRAND-05/BRAND-06) — SSR always overrides these per
+     store via buildTemplateCSSVars; these are just the design-system default. */
+  --brand-nav-bg: 0 0% 100%;
+  --brand-nav-text: 222 47% 11%;
 
   /* ── Surfaces ── */
   --surface-background: 0 0% 100%;

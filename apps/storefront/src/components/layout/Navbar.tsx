@@ -63,11 +63,18 @@ export function Navbar({
 
   const getNavbarClasses = () => {
     const base = "sticky top-0 z-50 w-full transition-all duration-300";
+    // BRAND-06: themeable Navbar background/text — bg-[hsl(var(--brand-nav-bg))]
+    // replaces the previously hardcoded bg-white in every variant, sourced
+    // from buildTemplateCSSVars' --brand-nav-bg/--brand-nav-text (BRAND-05).
+    const navBg = "bg-[hsl(var(--brand-nav-bg))]";
+    const navText = "text-[hsl(var(--brand-nav-text))]";
 
     if (variant === "floating") {
       return cn(
         base,
-        "mt-4 mx-4 rounded-xl border shadow-lg bg-white",
+        "mt-4 mx-4 rounded-xl border shadow-lg",
+        navBg,
+        navText,
         "max-w-screen-xl xl:mx-auto"
       );
     }
@@ -76,12 +83,12 @@ export function Navbar({
       return cn(
         base,
         isScrolled
-          ? "bg-white/95 backdrop-blur-md shadow-sm"
+          ? cn(`${navBg}/95`, "backdrop-blur-md shadow-sm", navText)
           : "bg-transparent"
       );
     }
 
-    return cn(base, "bg-white shadow-sm");
+    return cn(base, navBg, navText, "shadow-sm");
   };
 
   const LogoComponent = (

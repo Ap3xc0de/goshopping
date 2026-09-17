@@ -9,6 +9,8 @@ import {
   DM_Sans,
   Nunito,
   Nunito_Sans,
+  Poppins,
+  Outfit,
 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "@/app/globals.css";
@@ -53,6 +55,15 @@ const nunitoSans = Nunito_Sans({
   variable: "--font-nunito-sans",
 });
 
+// BRAND-07: valid in Go's AllowedFonts (branding.go) but missing from this
+// static map until now — completes the 11-font allow-list end-to-end.
+const poppins = Poppins({
+  subsets: ["latin"],
+  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
+});
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
+
 export const metadata: Metadata = {
   title: "Storefront — Go Shopping",
   description: "Motor de tiendas Go Shopping",
@@ -73,6 +84,8 @@ export default function RootLayout({
     dmSans.variable,
     nunito.variable,
     nunitoSans.variable,
+    poppins.variable,
+    outfit.variable,
   ].join(" ");
 
   return (
