@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -11,11 +12,31 @@ interface CheckoutSuccessItem {
   price: number;
 }
 
+interface CheckoutSuccessShippingAddress {
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  country?: string;
+}
+
 interface CheckoutSuccessProps {
   orderNumber: string;
   items: CheckoutSuccessItem[];
   total: number;
-  onContinueShopping: () => void;
+  /** Either provide a real href (renders a `<Link>`, preferred for
+   * CHECKOUT-06) or an onClick callback (kept for the design-system demo,
+   * which has no route to navigate to). */
+  onContinueShopping?: () => void;
+  continueShoppingHref?: string;
+  /** CHECKOUT-06: order fulfillment status label, e.g. "Pendiente". */
+  orderStatus?: string;
+  /** CHECKOUT-06: payment status label, e.g. "Pago pendiente". */
+  paymentStatus?: string;
+  /** CHECKOUT-06: short explanation shown next to paymentStatus (e.g. "te
+   * contactaremos para coordinar el pago"). */
+  paymentStatusNote?: string;
+  shippingAddress?: CheckoutSuccessShippingAddress;
 }
 
 export function CheckoutSuccess({
@@ -23,6 +44,11 @@ export function CheckoutSuccess({
   items,
   total,
   onContinueShopping,
+  continueShoppingHref,
+  orderStatus,
+  paymentStatus,
+  paymentStatusNote,
+  shippingAddress,
 }: CheckoutSuccessProps) {
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -60,6 +86,23 @@ export function CheckoutSuccess({
         <p className="text-sm text-muted-foreground mt-2">
           Recibirás un email de confirmación con los detalles de tu pedido
         </p>
+        {(orderStatus || paymentStatus) && (
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+            {orderStatus && (
+              <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                Estado del pedido: {orderStatus}
+              </span>
+            )}
+            {paymentStatus && (
+              <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                Estado del pago: {paymentStatus}
+              </span>
+            )}
+          </div>
+        )}
+        {paymentStatusNote && (
+          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">{paymentStatusNote}</p>
+        )}
       </motion.div>
 
       <motion.div
@@ -91,19 +134,46 @@ export function CheckoutSuccess({
         </div>
       </motion.div>
 
+      {shippingAddress && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+          className="bg-muted/30 rounded-lg p-6 mb-8"
+        >
+          <h2 className="font-semibold text-lg mb-2">Dirección de envío</h2>
+          <p className="text-sm text-muted-foreground">
+            {shippingAddress.street}, {shippingAddress.city}, {shippingAddress.state}{' '}
+            {shippingAddress.zip}
+            {shippingAddress.country ? `, ${shippingAddress.country}` : ''}
+          </p>
+        </motion.div>
+      )}
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7, duration: 0.6 }}
         className="flex flex-col sm:flex-row gap-4 justify-center"
       >
-        <Button
-          size="lg"
-          className="bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90 text-white"
-          onClick={onContinueShopping}
-        >
-          Seguir comprando
-        </Button>
+        {continueShoppingHref ? (
+          <Link href={continueShoppingHref}>
+            <Button
+              size="lg"
+              className="w-full bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90 text-white"
+            >
+              Seguir comprando
+            </Button>
+          </Link>
+        ) : (
+          <Button
+            size="lg"
+            className="bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90 text-white"
+            onClick={onContinueShopping}
+          >
+            Seguir comprando
+          </Button>
+        )}
         <Button size="lg" variant="outline">
           Ver mis pedidos
         </Button>
