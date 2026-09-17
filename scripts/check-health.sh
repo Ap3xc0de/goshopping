@@ -29,7 +29,6 @@ check_service() {
 }
 
 check_service "Core API"    "http://$IP:3000/health"
-check_service "AI Engine"   "http://$IP:3002/health"
 check_service "SuperAdmin"  "http://$IP:3003"
 check_service "Admin Panel" "http://$IP:3010"
 check_service "Storefront"  "http://$IP:3004"

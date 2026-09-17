@@ -41,11 +41,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
           NEXT_PUBLIC_API_URL: https://api.${{ github.ref == 'refs/heads/main' && 'vettacode.com' || 'staging.vettacode.com' }}
-          NEXT_PUBLIC_AI_ENGINE_URL: https://api.${{ github.ref == 'refs/heads/main' && 'vettacode.com' || 'staging.vettacode.com' }}
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
-            --build-arg NEXT_PUBLIC_AI_ENGINE_URL=$NEXT_PUBLIC_AI_ENGINE_URL \
             -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPO:latest \
             apps/admin

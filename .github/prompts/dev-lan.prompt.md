@@ -14,7 +14,6 @@ Levanta todo GoShopping en LAN para pruebas de QA entre dispositivos, reutilizan
 4. Verifica salud HTTP de estos endpoints:
    - `http://localhost:3000/health`
    - `http://localhost:3001/health`
-   - `http://localhost:3002/health`
    - `http://localhost:3003`
    - `http://localhost:3004`
    - `http://localhost:3005`
@@ -22,7 +21,6 @@ Levanta todo GoShopping en LAN para pruebas de QA entre dispositivos, reutilizan
 6. Si algún servicio falla, revisa logs del terminal correspondiente y aplica fix mínimo para dejarlo arriba.
 
 ## Garantía de backend actualizado
-- `scripts/dev-all-lan.ps1` ejecuta `docker compose ... up -d --build ai-engine` para reconstruir AI Engine en cada arranque.
 - Core e Integrations se inician desde código fuente local, por lo que siempre corren la última versión del workspace.
 
 ## Salida esperada

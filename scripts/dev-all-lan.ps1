@@ -120,7 +120,6 @@ Write-Host ''
 Write-Host 'Stack iniciado. URLs locales:' -ForegroundColor Green
 Write-Host '  Core:         http://localhost:3000/health'
 Write-Host '  Integrations: http://localhost:3001/health'
-Write-Host '  AI Engine:    http://localhost:3002/health'
 Write-Host '  Superadmin:   http://localhost:3003'
 Write-Host '  Admin:        http://localhost:3004'
 Write-Host '  Storefront:   http://localhost:3005'
@@ -129,7 +128,6 @@ Write-Host ''
 Write-Host "URLs LAN para QA:"
 Write-Host ("  Core:         http://{0}:3000/health" -f $lanIp)
 Write-Host ("  Integrations: http://{0}:3001/health" -f $lanIp)
-Write-Host ("  AI Engine:    http://{0}:3002/health" -f $lanIp)
 Write-Host ("  Superadmin:   http://{0}:3003" -f $lanIp)
 Write-Host ("  Admin:        http://{0}:3004" -f $lanIp)
 Write-Host ("  Storefront:   http://{0}:3005" -f $lanIp)

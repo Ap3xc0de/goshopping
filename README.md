@@ -9,7 +9,6 @@ goshopping/
 ├── apps/
 │   ├── core/           # API principal — Go + Fiber          :3000
 │   ├── integrations/   # Servicio de integraciones — NestJS   :3001
-│   ├── ai-engine/      # Motor de IA — Go                     :3002
 │   ├── superadmin/     # Panel interno — Next.js               :3003
 │   ├── admin/          # Panel del vendedor — Next.js          :3004
 │   └── storefront/     # Motor de tiendas — Next.js            :3005

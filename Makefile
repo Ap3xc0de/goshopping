@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: dev dev-lan dev-all-lan stop-lan dev-core dev-integrations dev-superadmin dev-admin dev-ai dev-storefront migrate migrate-down build-core build-integrations build-superadmin build-admin test-core test-ai clean
+.PHONY: dev dev-lan dev-all-lan stop-lan dev-core dev-integrations dev-superadmin dev-admin dev-storefront migrate migrate-down build-core build-integrations build-superadmin build-admin test-core clean
 
 # ── Development ──
 dev:
@@ -30,9 +30,6 @@ test-core:
 	  JWT_SECRET=test-secret-for-goshopping-tests APP_ENV=development \
 	  go test -p 1 ./internal/... -timeout 120s
 
-test-ai:
-	cd apps/ai-engine && npm test
-
 dev-integrations:
 	cd apps/integrations && PORT=3001 npm run start:dev
 
@@ -41,9 +38,6 @@ dev-superadmin:
 
 dev-admin:
 	cd apps/admin && npm run dev
-
-dev-ai:
-	cd apps/ai-engine && npm run dev
 
 dev-storefront:
 	cd apps/storefront && npm run dev
