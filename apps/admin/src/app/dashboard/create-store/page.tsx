@@ -1,16 +1,13 @@
-import { ChatAssistant } from '@/components/store-builder/ChatAssistant';
+import { CreateStoreWizard } from '@/components/store-builder/CreateStoreWizard';
 
 export const metadata = {
-  title: 'Crear tienda con IA — GoShopping Admin',
-  description: 'Crea tu tienda online en minutos con nuestro asistente de inteligencia artificial.',
+  title: 'Crear tienda — GoShopping Admin',
+  description: 'Elegí una plantilla, personalizá tu marca y tu tienda estará lista en minutos.',
 };
 
 export default function CreateStorePage() {
-  // In a real setup this would come from the auth session
-  const storeId = 'new-store';
-
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-64px)]">
+    <div className="flex flex-col h-full max-h-[calc(100vh-64px)] overflow-y-auto">
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b border-gray-200 bg-white flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -31,17 +28,17 @@ export default function CreateStorePage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Crear tienda con IA</h1>
+            <h1 className="text-lg font-bold text-gray-900">Crear tienda</h1>
             <p className="text-sm text-gray-500">
-              Respondé unas preguntas y tu tienda estará lista en minutos.
+              Elegí una plantilla, personalizá tu marca y publicá en minutos.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 overflow-hidden px-6 py-4">
-        <ChatAssistant storeId={storeId} />
+      {/* Wizard */}
+      <div className="flex-1 px-6 py-6">
+        <CreateStoreWizard />
       </div>
     </div>
   );
