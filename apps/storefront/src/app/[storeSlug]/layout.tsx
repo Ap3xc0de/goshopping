@@ -1,6 +1,5 @@
 import { GoShoppingClient } from '@goshopping/storefront-sdk/client';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import { StorefrontChrome } from '@/components/layout/StorefrontChrome';
 import { resolveTemplate, DEFAULT_TEMPLATE_ID } from '@/lib/resolve-template';
 import { mergeThemeConfig } from '@/lib/theme-merge';
 import { buildTemplateCSSVars } from '@/lib/template-css';
@@ -60,17 +59,20 @@ export default async function StoreLayout({
     <>
       {/* eslint-disable-next-line react/no-danger */}
       <style dangerouslySetInnerHTML={{ __html: inlineStyle }} />
-      <Navbar
-        variant={theme.manifest.components.navbar}
+      {/* CART-01..06: StorefrontChrome is the Client Component that wires the
+          real, localStorage-backed cart (useCart) into Navbar/CartDrawer —
+          this Server Component only instantiates it (design decision 12). */}
+      <StorefrontChrome
+        storeSlug={storeSlug}
+        navbarVariant={theme.manifest.components.navbar}
+        footerVariant={theme.manifest.components.footer}
         logo={{ text: storeConfig.name, href: `/${storeSlug}` }}
-        links={navLinks}
-      />
-      <main>{children}</main>
-      <Footer
-        variant={theme.manifest.components.footer}
+        navLinks={navLinks}
         storeName={storeConfig.name}
         tagline={theme.tagline}
-      />
+      >
+        {children}
+      </StorefrontChrome>
     </>
   );
 }

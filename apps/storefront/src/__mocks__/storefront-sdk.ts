@@ -3,6 +3,12 @@
  * Provides default jest.fn() implementations that tests can override with mockReturnValue.
  */
 
+// Error classes are plain, side-effect-free classes (no React) — re-exported
+// from the real module via the "./errors" subpath so tests can do
+// `new StockError(...)` / `instanceof StockError` without needing to also
+// mock production code paths that only throw/catch these.
+export { StockError, NetworkError, NotFoundError, ValidationError, GoShoppingError } from '@goshopping/storefront-sdk/errors';
+
 export const useStoreConfig = jest.fn(() => ({
   config: null,
   loading: false,
@@ -30,10 +36,16 @@ export const useProduct = jest.fn(() => ({
 }));
 
 export const useCart = jest.fn(() => ({
-  cart: { items: [], total: 0 },
+  cart: { items: [], subtotal: 0, tax: 0, total: 0, itemCount: 0 },
+  itemCount: 0,
+  isEmpty: true,
+  subtotal: 0,
+  tax: 0,
+  total: 0,
   addItem: jest.fn(),
   removeItem: jest.fn(),
   updateQuantity: jest.fn(),
+  clearCart: jest.fn(),
 }));
 
 export const useOrderStatus = jest.fn(() => ({
