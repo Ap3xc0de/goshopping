@@ -5,6 +5,12 @@ import type { TemplateManifest } from '../../types';
  * Inspirado en Notion, Slack, Headspace.
  *
  * Ported 1:1 from apps/storefront/src/templates/fresh/config.ts (Slice 6).
+ *
+ * ARCHIVED (CATALOG-01, Slice 9): the storefront moved to a single active
+ * template (`minimal`). Kept registered — NOT deleted — so any store still
+ * assigned to `fresh` keeps resolving its theme without error (CATALOG-02),
+ * and reactivating it later only requires `archived: false` + regenerating
+ * catalog.json (no code loss).
  */
 export const freshManifest: TemplateManifest = {
   id: 'fresh',
@@ -19,6 +25,7 @@ export const freshManifest: TemplateManifest = {
     'Mascotas',
     'Hogar',
   ],
+  archived: true,
 
   colors: {
     primary: '161 72% 31%',

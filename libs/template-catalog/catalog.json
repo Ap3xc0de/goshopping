@@ -26,7 +26,7 @@
         "Streetwear"
       ],
       "preview_image": null,
-      "archived": false
+      "archived": true
     },
     {
       "id": "elegant",
@@ -40,7 +40,7 @@
         "Perfumería"
       ],
       "preview_image": null,
-      "archived": false
+      "archived": true
     },
     {
       "id": "urban",
@@ -54,7 +54,7 @@
         "Sneakers"
       ],
       "preview_image": null,
-      "archived": false
+      "archived": true
     },
     {
       "id": "fresh",
@@ -69,7 +69,7 @@
         "Hogar"
       ],
       "preview_image": null,
-      "archived": false
+      "archived": true
     }
   ]
 }

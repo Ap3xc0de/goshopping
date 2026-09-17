@@ -5,6 +5,12 @@ import type { TemplateManifest } from '../../types';
  * Inspirado en Dior, Nespresso, Four Seasons.
  *
  * Ported 1:1 from apps/storefront/src/templates/elegant/config.ts (Slice 6).
+ *
+ * ARCHIVED (CATALOG-01, Slice 9): the storefront moved to a single active
+ * template (`minimal`). Kept registered — NOT deleted — so any store still
+ * assigned to `elegant` keeps resolving its theme without error (CATALOG-02),
+ * and reactivating it later only requires `archived: false` + regenerating
+ * catalog.json (no code loss).
  */
 export const elegantManifest: TemplateManifest = {
   id: 'elegant',
@@ -12,6 +18,7 @@ export const elegantManifest: TemplateManifest = {
   description:
     'Serif, fondos oscuros opcionales, transiciones suaves. Sofisticación y lujo.',
   category: ['Vinos', 'Gastronomía', 'Hoteles', 'Moda de lujo', 'Perfumería'],
+  archived: true,
 
   colors: {
     primary: '37 43% 57%',

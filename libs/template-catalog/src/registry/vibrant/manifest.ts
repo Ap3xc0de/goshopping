@@ -5,6 +5,12 @@ import type { TemplateManifest } from '../../types';
  * Inspirado en Nike, Adidas, Best Buy.
  *
  * Ported 1:1 from apps/storefront/src/templates/vibrant/config.ts (Slice 6).
+ *
+ * ARCHIVED (CATALOG-01, Slice 9): the storefront moved to a single active
+ * template (`minimal`). Kept registered — NOT deleted — so any store still
+ * assigned to `vibrant` keeps resolving its theme without error (CATALOG-02),
+ * and reactivating it later only requires `archived: false` + regenerating
+ * catalog.json (no code loss).
  */
 export const vibrantManifest: TemplateManifest = {
   id: 'vibrant',
@@ -12,6 +18,7 @@ export const vibrantManifest: TemplateManifest = {
   description:
     'Colores fuertes, energía, CTAs agresivos. Para marcas que quieren vender mucho y rápido.',
   category: ['Deportes', 'Tecnología', 'Gadgets', 'Fitness', 'Streetwear'],
+  archived: true,
 
   colors: {
     primary: '217 91% 60%',

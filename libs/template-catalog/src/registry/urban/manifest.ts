@@ -5,6 +5,12 @@ import type { TemplateManifest } from '../../types';
  * Inspirado en Supreme, Palace, Bape.
  *
  * Ported 1:1 from apps/storefront/src/templates/urban/config.ts (Slice 6).
+ *
+ * ARCHIVED (CATALOG-01, Slice 9): the storefront moved to a single active
+ * template (`minimal`). Kept registered — NOT deleted — so any store still
+ * assigned to `urban` keeps resolving its theme without error (CATALOG-02),
+ * and reactivating it later only requires `archived: false` + regenerating
+ * catalog.json (no code loss).
  */
 export const urbanManifest: TemplateManifest = {
   id: 'urban',
@@ -12,6 +18,7 @@ export const urbanManifest: TemplateManifest = {
   description:
     'Sans-serif bold, grids asimétricos, estilo streetwear. Joven y atrevido.',
   category: ['Streetwear', 'Skate', 'Música', 'Arte urbano', 'Sneakers'],
+  archived: true,
 
   colors: {
     primary: '0 0% 5%',

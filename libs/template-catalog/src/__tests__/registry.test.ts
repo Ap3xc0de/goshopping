@@ -22,8 +22,11 @@ describe('template-catalog registry', () => {
     expect(() => getTemplate('does-not-exist')).toThrow(/not found/i);
   });
 
-  it('none of the registered templates is archived by default', () => {
-    getAllTemplates().forEach((t) => expect(t.archived).toBeFalsy());
+  // CATALOG-01: minimal is the only active template post single-template
+  // rollout — see catalog-v1-contents.test.ts for the full active/archived
+  // breakdown of all 5 registered manifests.
+  it('minimal is not archived', () => {
+    expect(getTemplate('minimal').archived).toBeFalsy();
   });
 
   it('getTemplatesForCategory filters by category membership', () => {
@@ -42,5 +45,19 @@ describe('template-catalog registry', () => {
     const minimal = getTemplate('minimal');
     expect(minimal.colors.navBackground).toBe('0 0% 100%');
     expect(minimal.colors.navText).toBe('0 0% 9%');
+  });
+
+  // CATALOG-01/CATALOG-02: single-template rollout archives vibrant/elegant/
+  // urban/fresh instead of deleting them, so a future rollback only flips
+  // `archived` back to false + regenerates catalog.json (no code deletion,
+  // no data migration for stores already assigned to one of them).
+  it('getTemplate still resolves an archived template by id (rollback safety)', () => {
+    const archived = getTemplate('vibrant');
+    expect(archived.id).toBe('vibrant');
+    expect(archived.archived).toBe(true);
+  });
+
+  it('getAllTemplates includes archived templates (registry keeps every manifest)', () => {
+    expect(getAllTemplates().some((t) => t.archived)).toBe(true);
   });
 });
