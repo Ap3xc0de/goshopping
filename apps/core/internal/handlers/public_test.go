@@ -159,6 +159,70 @@ func TestPublicListProducts(t *testing.T) {
 	})
 }
 
+// TestPublicListProductsPagination covers the fix for public.go's
+// PublicListProducts hardcoding page=1, per_page=50 regardless of query
+// params. Mirrors the admin ListProducts handler's parsing, but with
+// public-safe bounds: default page=1, default per_page=24, per_page clamped
+// to [1,100], invalid/non-numeric input falls back to defaults (no 400).
+func TestPublicListProductsPagination(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	t.Run("no query params defaults to page 1 and per_page 24", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, float64(1), data["page"])
+		assert.Equal(t, float64(24), data["per_page"])
+	})
+
+	t.Run("per_page above 100 is clamped to 100", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products?per_page=999", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, float64(100), data["per_page"])
+	})
+
+	t.Run("non-numeric per_page falls back to default 24", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products?per_page=abc", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, float64(24), data["per_page"])
+	})
+
+	t.Run("page and per_page are honored across pages", func(t *testing.T) {
+		a := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Pagination A"))
+		b := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Pagination B"))
+
+		page1Resp := app.GET(t, "/public/"+slug+"/products?page=1&per_page=1", "")
+		testutil.AssertStatus(t, page1Resp, http.StatusOK)
+		page1 := testutil.AssertJSON(t, page1Resp)
+		page1Items, _ := page1["data"].([]interface{})
+		require.Len(t, page1Items, 1, "per_page=1 should return exactly one item")
+		assert.Equal(t, float64(1), page1["page"])
+		assert.Equal(t, float64(1), page1["per_page"])
+
+		page2Resp := app.GET(t, "/public/"+slug+"/products?page=2&per_page=1", "")
+		testutil.AssertStatus(t, page2Resp, http.StatusOK)
+		page2 := testutil.AssertJSON(t, page2Resp)
+		page2Items, _ := page2["data"].([]interface{})
+		require.Len(t, page2Items, 1, "per_page=1 should return exactly one item")
+		assert.Equal(t, float64(2), page2["page"], "page field should reflect the requested page")
+
+		page1Item, _ := page1Items[0].(map[string]interface{})
+		page2Item, _ := page2Items[0].(map[string]interface{})
+		assert.NotEqual(t, page1Item["id"], page2Item["id"], "page 1 and page 2 must return different products")
+
+		gotIDs := map[string]bool{page1Item["id"].(string): true, page2Item["id"].(string): true}
+		assert.True(t, gotIDs[a.ID.String()], "seeded product A should appear across the two pages")
+		assert.True(t, gotIDs[b.ID.String()], "seeded product B should appear across the two pages")
+	})
+}
+
 func TestPublicGetProduct(t *testing.T) {
 	app := testutil.SetupTestApp(t)
 	defer app.Cleanup()

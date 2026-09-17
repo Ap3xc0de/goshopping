@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -72,7 +73,9 @@ func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 		prodSvc := services.NewProductService(db, cfg, eventSvc)
 		offerSvc := services.NewOfferService(db)
 
-		result, err := prodSvc.ListProducts(storeID, 1, 50, c.Query("category"), "active", c.Query("search"))
+		page, perPage := parsePublicPagination(c.Query("page", "1"), c.Query("per_page", "24"))
+
+		result, err := prodSvc.ListProducts(storeID, page, perPage, c.Query("category"), "active", c.Query("search"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
@@ -323,6 +326,26 @@ func PublicConfigByDomain(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 func computeETag(storeID uuid.UUID, lastStoreUpdate, lastDomainUpdate time.Time) string {
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d", storeID, lastStoreUpdate.UnixNano(), lastDomainUpdate.UnixNano())))
 	return `"` + hex.EncodeToString(sum[:]) + `"`
+}
+
+// parsePublicPagination mirrors the admin ListProducts handler's page/per_page
+// parsing (see product.go's ListProducts), but with public-safe bounds:
+// default page=1, default per_page=24, per_page clamped to [1,100], page
+// clamped to >=1. Invalid/non-numeric input silently falls back to defaults
+// instead of returning a 400 — this is a public, unauthenticated endpoint.
+func parsePublicPagination(pageRaw, perPageRaw string) (page, perPage int) {
+	page, err := strconv.Atoi(pageRaw)
+	if err != nil || page < 1 {
+		page = 1
+	}
+	perPage, err = strconv.Atoi(perPageRaw)
+	if err != nil || perPage < 1 {
+		perPage = 24
+	}
+	if perPage > 100 {
+		perPage = 100
+	}
+	return page, perPage
 }
 
 func resolveStoreBySlug(ctx context.Context, db *pgxpool.Pool, slug string) (uuid.UUID, error) {
