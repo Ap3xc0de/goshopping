@@ -52,6 +52,14 @@ type Config struct {
 	// per environment: "goshopping.com" in production, "staging.goshopping.com"
 	// in staging.
 	StorefrontBaseDomain string
+
+	// Origin secret (REQ-INFRA-04 / RESOLVE-06). Validated by
+	// middleware.RequireOriginSecret against the header Cloudflare injects
+	// via a Transform Rule for storefront traffic. Two values support
+	// rotation without a hard cutover — see infra Slice 1 and
+	// decisions-infra #1098 rev.2 for why this is the only defense layer.
+	OriginSharedSecretCurrent  string
+	OriginSharedSecretPrevious string
 }
 
 func getEnv(key, fallback string) string {
@@ -101,6 +109,9 @@ func Load() *Config {
 		S3Endpoint:     getEnv("S3_ENDPOINT", ""),
 
 		StorefrontBaseDomain: getEnv("STOREFRONT_BASE_DOMAIN", "goshopping.com"),
+
+		OriginSharedSecretCurrent:  getEnv("ORIGIN_SHARED_SECRET_CURRENT", ""),
+		OriginSharedSecretPrevious: getEnv("ORIGIN_SHARED_SECRET_PREVIOUS", ""),
 	}
 
 	if cfg.AppEnv == "staging" || cfg.AppEnv == "production" {
@@ -140,6 +151,22 @@ func (c *Config) loadFromAWS() {
 			c.JWTSecret = creds.Key
 		} else {
 			c.JWTSecret = val
+		}
+	})
+	c.loadSecret(ctx, smClient, "goshopping/third-party-api-keys", func(val string) {
+		var creds struct {
+			OriginSharedSecretCurrent  string `json:"origin_shared_secret_current"`
+			OriginSharedSecretPrevious string `json:"origin_shared_secret_previous"`
+		}
+		if err := json.Unmarshal([]byte(val), &creds); err != nil {
+			log.Printf("[WARN] Could not parse secret %q, using env var fallback: %v", "goshopping/third-party-api-keys", err)
+			return
+		}
+		if creds.OriginSharedSecretCurrent != "" {
+			c.OriginSharedSecretCurrent = creds.OriginSharedSecretCurrent
+		}
+		if creds.OriginSharedSecretPrevious != "" {
+			c.OriginSharedSecretPrevious = creds.OriginSharedSecretPrevious
 		}
 	})
 

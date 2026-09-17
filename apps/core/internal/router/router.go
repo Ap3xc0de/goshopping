@@ -31,8 +31,12 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	authGroup.Post("/login", handlers.Login(authSvc))
 	authGroup.Post("/refresh", handlers.Refresh(authSvc))
 
-	// Public storefront (no auth)
-	pub := app.Group("/public")
+	// Public storefront (no auth, but origin-secret gated — see
+	// middleware.RequireOriginSecret and decisions-infra #1098 rev.2)
+	pub := app.Group("/public", middleware.RequireOriginSecret(
+		cfg.OriginSharedSecretCurrent,
+		cfg.OriginSharedSecretPrevious,
+	))
 	pub.Get("/by-domain/:host/config", handlers.PublicConfigByDomain(db, cfg))
 	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db, cfg))
 	pub.Get("/:storeSlug/products", handlers.PublicListProducts(db, cfg))
