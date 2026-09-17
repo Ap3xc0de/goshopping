@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/goshopping/core/internal/catalog"
 	"github.com/goshopping/core/internal/config"
 	"github.com/goshopping/core/internal/database"
 	"github.com/goshopping/core/internal/middleware"
@@ -25,6 +26,14 @@ func main() {
 
 	// 3. Run migrations
 	database.RunMigrations(cfg)
+
+	// 3.5. Load the template catalog — fail fast if catalog.json is missing
+	// or malformed. A backend without its whitelist would otherwise accept
+	// any template_id and silently corrupt data.
+	cat, err := catalog.LoadFromWorkingDir()
+	if err != nil {
+		log.Fatalf("catalog: %v", err)
+	}
 
 	// 4. Initialise AWS services
 	eventSvc := services.NewEventService(cfg)
@@ -44,7 +53,7 @@ func main() {
 	}))
 
 	// 7. Setup routes
-	router.Setup(app, cfg, db, eventSvc)
+	router.Setup(app, cfg, db, eventSvc, cat)
 
 	// 8. Graceful shutdown
 	quit := make(chan os.Signal, 1)

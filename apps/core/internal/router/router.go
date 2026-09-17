@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/goshopping/core/internal/catalog"
 	"github.com/goshopping/core/internal/config"
 	"github.com/goshopping/core/internal/handlers"
 	"github.com/goshopping/core/internal/middleware"
@@ -10,7 +11,7 @@ import (
 )
 
 // Setup registers all routes on the Fiber app.
-func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *services.EventService) {
+func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *services.EventService, cat *catalog.Catalog) {
 	// ── Services ─────────────────────────────────────────────────────────────
 	authSvc := services.NewAuthService(db, cfg)
 	prodSvc := services.NewProductService(db, cfg, eventSvc)
@@ -76,6 +77,9 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Get("/branding", handlers.GetBranding(brandingSvc))
 	store.Put("/branding", handlers.UpdateBranding(brandingSvc))
 	store.Post("/branding/logo", handlers.BrandingLogoUpload(brandingSvc))
+
+	// Template
+	store.Put("/template", handlers.UpdateStoreTemplate(db, cat))
 
 	// Offers
 	store.Get("/offers", handlers.ListOffers(offerSvc))

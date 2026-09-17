@@ -16,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/goshopping/core/internal/catalog"
 	"github.com/goshopping/core/internal/config"
 	"github.com/goshopping/core/internal/database"
 	"github.com/goshopping/core/internal/router"
@@ -56,7 +57,11 @@ func SetupTestApp(t *testing.T) *TestApp {
 	})
 
 	eventSvc := services.NewEventService(cfg)
-	router.Setup(app, cfg, db, eventSvc)
+	cat, err := catalog.LoadFromWorkingDir()
+	if err != nil {
+		t.Fatalf("SetupTestApp: load catalog: %v", err)
+	}
+	router.Setup(app, cfg, db, eventSvc, cat)
 
 	ta := &TestApp{App: app, DB: db, Config: cfg}
 	ta.CleanDB(t)

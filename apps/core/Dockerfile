@@ -13,5 +13,6 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /server .
 COPY migrations/ ./migrations/
+COPY catalog.json ./catalog.json
 EXPOSE 3000
 CMD ["./server"]
