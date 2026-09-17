@@ -1,10 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { GoShoppingClient } from './client';
-import { CartManager } from './cart';
+import { CartManager, EMPTY_CART } from './cart';
 import type {
-  Cart,
   OrderStatus,
   Product,
   ProductParams,
@@ -37,13 +36,23 @@ export function useCart(storeSlug: string) {
     return cartCache.get(storeSlug)!;
   }, [storeSlug]);
 
-  const [cart, setCart] = useState<Cart>(() => manager.getCart());
+  // W1 (hardening slice 10): `useState(() => manager.getCart())`'s lazy
+  // initializer ran BOTH during SSR (server: no localStorage → empty cart)
+  // and again during client hydration (real localStorage → possibly
+  // non-empty cart) — a structural hydration mismatch for returning
+  // visitors on the Navbar badge (conditionally rendered only when
+  // cartCount > 0). `useSyncExternalStore` fixes this the React-approved
+  // way: `getServerSnapshot` always returns the frozen `EMPTY_CART`
+  // (matches what the server actually rendered), and React re-syncs to the
+  // real client snapshot right after hydration instead of during it.
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => manager.subscribe(onStoreChange),
+    [manager],
+  );
+  const getSnapshot = useCallback(() => manager.getCart(), [manager]);
+  const getServerSnapshot = useCallback(() => EMPTY_CART, []);
 
-  useEffect(() => {
-    setCart(manager.getCart());
-    const unsub = manager.subscribe(setCart);
-    return unsub;
-  }, [manager]);
+  const cart = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const addItem = useCallback(
     (product: Product, quantity?: number) => manager.addItem(product, quantity),

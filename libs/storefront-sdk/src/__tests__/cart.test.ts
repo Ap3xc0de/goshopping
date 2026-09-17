@@ -1,4 +1,4 @@
-import { CartManager } from '../cart';
+import { CartManager, EMPTY_CART } from '../cart';
 import { StockError } from '../errors';
 import type { Product } from '../types';
 
@@ -201,6 +201,43 @@ describe('CartManager', () => {
     expect(cart.isEmpty).toBe(true);
     cart.addItem(makeProduct());
     expect(cart.isEmpty).toBe(false);
+  });
+
+  // ── W1 (hardening slice 10): contrato de useSyncExternalStore ──────────────
+  // useCart usa getCart() como `getSnapshot` — React exige que devuelva la
+  // MISMA referencia entre llamadas si nada cambió (si no, loop infinito de
+  // renders / warning "getSnapshot should be cached").
+
+  it('getCart() devuelve la misma referencia entre llamadas si el carrito no cambió', () => {
+    cart.addItem(makeProduct());
+    const first = cart.getCart();
+    const second = cart.getCart();
+    expect(second).toBe(first);
+  });
+
+  it('getCart() devuelve una referencia distinta después de una mutación', () => {
+    const first = cart.getCart();
+    cart.addItem(makeProduct());
+    const second = cart.getCart();
+    expect(second).not.toBe(first);
+  });
+
+  it('un CartManager recién creado (recupera de localStorage) también es estable entre llamadas repetidas', () => {
+    cart.addItem(makeProduct(), 2);
+    const reloaded = new CartManager(STORE_SLUG);
+    const first = reloaded.getCart();
+    const second = reloaded.getCart();
+    expect(second).toBe(first);
+  });
+
+  it('EMPTY_CART es una constante congelada y estable — sirve de getServerSnapshot', () => {
+    expect(EMPTY_CART).toEqual({ items: [], subtotal: 0, tax: 0, total: 0, itemCount: 0 });
+    expect(Object.isFrozen(EMPTY_CART)).toBe(true);
+    // Debe ser SIEMPRE la misma referencia entre "renders" del servidor —
+    // no una fábrica que crea un objeto nuevo cada vez que se importa/usa.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { EMPTY_CART: reimported } = require('../cart');
+    expect(reimported).toBe(EMPTY_CART);
   });
 
   // ── Precisión decimal ───────────────────────────────────────────────────────

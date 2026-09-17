@@ -1,10 +1,35 @@
 import type { Cart, CartItem, Product } from './types';
 import { StockError } from './errors';
 
+/**
+ * W1 (hardening slice 10): stable empty-cart snapshot for
+ * `useSyncExternalStore`'s `getServerSnapshot`. SSR always sees an empty
+ * cart (no `localStorage`) — this constant guarantees the SAME reference is
+ * returned on every server render/hydration check, which is required by
+ * React (`getServerSnapshot` must not create a new object on every call or
+ * React reports an infinite-loop warning). Frozen so a caller mutating the
+ * "empty" cart can't corrupt the shared singleton.
+ */
+export const EMPTY_CART: Cart = Object.freeze({
+  items: [],
+  subtotal: 0,
+  tax: 0,
+  total: 0,
+  itemCount: 0,
+});
+
 export class CartManager {
   private storageKey: string;
   private taxRate: number;
   private listeners: Set<(cart: Cart) => void>;
+  /**
+   * Cached snapshot returned by `getCart()` — required for React's
+   * `useSyncExternalStore` (W1, hardening slice 10): `getSnapshot` MUST
+   * return a referentially stable value across calls when nothing changed,
+   * or React throws/loops ("getSnapshot should be cached"). Invalidated
+   * (recomputed) only inside `saveAndNotify`, i.e. on real mutations.
+   */
+  private cachedCart: Cart | null = null;
 
   constructor(storeSlug: string, taxRate: number = 0.19) {
     this.storageKey = `goshopping_cart_${storeSlug}`;
@@ -62,13 +87,16 @@ export class CartManager {
   }
 
   getCart(): Cart {
-    const items = this.readItems();
-    const totals = this.calculateTotals(items);
-    return {
-      items,
-      ...totals,
-      itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
-    };
+    if (this.cachedCart === null) {
+      const items = this.readItems();
+      const totals = this.calculateTotals(items);
+      this.cachedCart = {
+        items,
+        ...totals,
+        itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+      };
+    }
+    return this.cachedCart;
   }
 
   // ── Cálculos ───────────────────────────────────────────────────────────────
@@ -126,6 +154,7 @@ export class CartManager {
       itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
     };
 
+    this.cachedCart = cart;
     this.listeners.forEach((fn) => fn(cart));
     return cart;
   }
