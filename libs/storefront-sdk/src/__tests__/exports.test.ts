@@ -17,12 +17,17 @@ describe('storefront-sdk package exports map', () => {
     return JSON.parse(raw);
   }
 
-  it('declares an exports map with the barrel, client, and hooks subpaths', () => {
+  it('declares an exports map with the barrel, client, hooks, and errors subpaths', () => {
     const pkg = readPackageJson();
+    // "./errors" (Slice 5, CART/PRODUCT wiring): lets consumer-side jest
+    // mocks of the barrel re-export the real error classes (e.g. StockError)
+    // via `export { StockError } from '@goshopping/storefront-sdk/errors'`
+    // without dragging in hooks.ts — same rationale as "./client" above.
     expect(pkg.exports).toEqual({
       '.': './src/index.ts',
       './client': './src/client.ts',
       './hooks': './src/hooks.ts',
+      './errors': './src/errors.ts',
     });
   });
 });

@@ -2,20 +2,28 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useProducts } from '@goshopping/storefront-sdk';
+import { useProducts, useCart } from '@goshopping/storefront-sdk';
 import { ProductGrid } from '@/components/product/ProductGrid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import type { ProductCardProps } from '@/components/product/ProductCard';
 import { toProductCard } from '@/lib/product-image';
+import { addToCartWithFeedback } from '@/lib/add-to-cart-feedback';
 
 export default function CatalogPage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
   const [search, setSearch] = useState('');
   const { products, loading, setSearch: doSearch, total } = useProducts(storeSlug);
+  const { addItem } = useCart(storeSlug);
 
-  const productCards: ProductCardProps[] = products.map((p) => toProductCard(p, storeSlug));
+  // CART wiring: the card's quick "agregar" action goes through the same
+  // useCart hook StorefrontChrome reads, so the navbar badge updates
+  // immediately without navigating to the product detail page.
+  const productCards: ProductCardProps[] = products.map((p) => ({
+    ...toProductCard(p, storeSlug),
+    onAddToCart: () => addToCartWithFeedback(addItem, p),
+  }));
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

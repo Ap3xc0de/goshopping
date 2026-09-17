@@ -13,6 +13,7 @@ import {
   Outfit,
 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner";
 import "@/app/globals.css";
 import "@/styles/theme.css";
 
@@ -98,6 +99,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          {/* PRODUCT-04: mounts the sonner toaster once so every "add to
+              cart" feedback (product page, catalog quick-add) actually
+              renders — addToCartWithFeedback only calls the toast() API,
+              it doesn't render anything by itself. */}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
