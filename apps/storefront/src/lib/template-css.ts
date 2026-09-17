@@ -1,4 +1,4 @@
-import type { TemplateConfig } from '@/templates/types';
+import type { TemplateManifest } from '@goshopping/template-catalog';
 
 /** Maps a Google Font name to the CSS variable defined in layout.tsx */
 const FONT_VAR_MAP: Record<string, string> = {
@@ -13,7 +13,7 @@ const FONT_VAR_MAP: Record<string, string> = {
   'Nunito Sans': 'var(--font-nunito-sans)',
 };
 
-const BORDER_RADIUS_MAP: Record<TemplateConfig['style']['borderRadius'], Record<string, string>> = {
+const BORDER_RADIUS_MAP: Record<TemplateManifest['style']['borderRadius'], Record<string, string>> = {
   sharp: {
     '--radius-sm': '0.125rem',
     '--radius-md': '0.25rem',
@@ -34,7 +34,7 @@ const BORDER_RADIUS_MAP: Record<TemplateConfig['style']['borderRadius'], Record<
   },
 };
 
-const SHADOW_MAP: Record<TemplateConfig['style']['shadows'], Record<string, string>> = {
+const SHADOW_MAP: Record<TemplateManifest['style']['shadows'], Record<string, string>> = {
   none: {
     '--shadow-sm': 'none',
     '--shadow-md': 'none',
@@ -66,7 +66,7 @@ const SHADOW_MAP: Record<TemplateConfig['style']['shadows'], Record<string, stri
  * Suitable for spreading into an element's `style` prop.
  */
 export function buildTemplateCSSVars(
-  config: TemplateConfig,
+  config: TemplateManifest,
 ): Record<string, string> {
   const headingFont =
     FONT_VAR_MAP[config.fonts.heading] ??
@@ -97,7 +97,7 @@ export function buildTemplateCSSVars(
  * Call from a useEffect in client components.
  */
 export function applyTemplateCSSVars(
-  config: TemplateConfig,
+  config: TemplateManifest,
   element: HTMLElement = document.documentElement,
 ): void {
   const vars = buildTemplateCSSVars(config);

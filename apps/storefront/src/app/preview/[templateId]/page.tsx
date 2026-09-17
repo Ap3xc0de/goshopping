@@ -5,8 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
-import { getTemplate, templateList } from "@/templates";
+import { getTemplate, getAllTemplates } from "@goshopping/template-catalog";
 import { buildTemplateCSSVars } from "@/lib/template-css";
+
+const templateList = getAllTemplates();
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";

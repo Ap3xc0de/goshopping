@@ -1,38 +1,33 @@
 /**
- * Tests for the storefront template system.
+ * Tests for the storefront's consumption of the shared template catalog.
  *
  * Covers:
- * - Each config exports a valid TemplateConfig with all required fields
+ * - @goshopping/template-catalog exposes a valid TemplateManifest for every
+ *   registered template (storefront-side contract, not a re-test of the
+ *   catalog package's own internal tests)
  * - getTemplate() returns the correct template by ID
  * - getTemplatesForCategory() filters correctly
- * - buildTemplateCSSVars() generates the expected CSS variable map
+ * - buildTemplateCSSVars() (storefront-only logic) generates the expected
+ *   CSS variable map from a catalog manifest
+ *
+ * Slice 6: the legacy apps/storefront/src/templates/{id}/config.ts registry
+ * was archived — this file now exercises the storefront's usage of
+ * @goshopping/template-catalog directly instead of the old local registry.
  */
 
 import {
-  minimalConfig,
-  vibrantConfig,
-  elegantConfig,
-  urbanConfig,
-  freshConfig,
-  templateList,
+  getAllTemplates,
   getTemplate,
   getTemplatesForCategory,
-  getAllCategories,
-} from '@/templates';
-import type { TemplateConfig } from '@/templates/types';
+} from '@goshopping/template-catalog';
+import type { TemplateManifest } from '@goshopping/template-catalog';
 import { buildTemplateCSSVars } from '@/lib/template-css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-const ALL_CONFIGS: TemplateConfig[] = [
-  minimalConfig,
-  vibrantConfig,
-  elegantConfig,
-  urbanConfig,
-  freshConfig,
-];
+const ALL_TEMPLATES: TemplateManifest[] = getAllTemplates();
 
-const REQUIRED_COLOR_KEYS: (keyof TemplateConfig['colors'])[] = [
+const REQUIRED_COLOR_KEYS: (keyof TemplateManifest['colors'])[] = [
   'primary',
   'primaryForeground',
   'secondary',
@@ -44,110 +39,110 @@ const REQUIRED_COLOR_KEYS: (keyof TemplateConfig['colors'])[] = [
   'muted',
 ];
 
-const REQUIRED_COMPONENT_KEYS: (keyof TemplateConfig['components'])[] = [
+const REQUIRED_COMPONENT_KEYS: (keyof TemplateManifest['components'])[] = [
   'navbar',
   'hero',
   'footer',
   'productCard',
 ];
 
-// ── Template config field validation ─────────────────────────────────────
+// ── Template manifest field validation ────────────────────────────────────
 
-describe('Template configs — required fields', () => {
-  ALL_CONFIGS.forEach((config) => {
-    describe(`${config.name} (id: ${config.id})`, () => {
+describe('Template manifests — required fields', () => {
+  ALL_TEMPLATES.forEach((template) => {
+    describe(`${template.name} (id: ${template.id})`, () => {
       it('has a non-empty id', () => {
-        expect(config.id).toBeTruthy();
-        expect(typeof config.id).toBe('string');
+        expect(template.id).toBeTruthy();
+        expect(typeof template.id).toBe('string');
       });
 
       it('has a non-empty name', () => {
-        expect(config.name).toBeTruthy();
+        expect(template.name).toBeTruthy();
       });
 
       it('has a non-empty description', () => {
-        expect(config.description).toBeTruthy();
+        expect(template.description).toBeTruthy();
       });
 
       it('has at least one industry category', () => {
-        expect(config.category).toBeInstanceOf(Array);
-        expect(config.category.length).toBeGreaterThan(0);
+        expect(template.category).toBeInstanceOf(Array);
+        expect(template.category.length).toBeGreaterThan(0);
       });
 
       it('has all required color keys', () => {
         REQUIRED_COLOR_KEYS.forEach((key) => {
-          expect(config.colors[key]).toBeTruthy();
+          expect(template.colors[key]).toBeTruthy();
         });
       });
 
       it('has valid font heading and body', () => {
-        expect(config.fonts.heading).toBeTruthy();
-        expect(config.fonts.body).toBeTruthy();
+        expect(template.fonts.heading).toBeTruthy();
+        expect(template.fonts.body).toBeTruthy();
       });
 
       it('has all required component variant keys', () => {
         REQUIRED_COMPONENT_KEYS.forEach((key) => {
-          expect(config.components[key]).toBeTruthy();
+          expect(template.components[key]).toBeTruthy();
         });
       });
 
       it('has valid navbar variant', () => {
         expect(['transparent', 'solid', 'floating']).toContain(
-          config.components.navbar,
+          template.components.navbar,
         );
       });
 
       it('has valid hero variant', () => {
         expect(['centered', 'split', 'slider', 'minimal', 'video']).toContain(
-          config.components.hero,
+          template.components.hero,
         );
       });
 
       it('has valid footer variant', () => {
-        expect(['full', 'minimal']).toContain(config.components.footer);
+        expect(['full', 'minimal']).toContain(template.components.footer);
       });
 
       it('has valid productCard variant', () => {
-        expect(['compact', 'expanded']).toContain(config.components.productCard);
+        expect(['compact', 'expanded']).toContain(template.components.productCard);
       });
 
       it('has at least one homeSections entry', () => {
-        expect(config.homeSections).toBeInstanceOf(Array);
-        expect(config.homeSections.length).toBeGreaterThan(0);
+        expect(template.homeSections).toBeInstanceOf(Array);
+        expect(template.homeSections.length).toBeGreaterThan(0);
       });
 
       it('has valid borderRadius style', () => {
-        expect(['sharp', 'rounded', 'pill']).toContain(config.style.borderRadius);
+        expect(['sharp', 'rounded', 'pill']).toContain(template.style.borderRadius);
       });
 
       it('has valid shadows style', () => {
         expect(['none', 'subtle', 'medium', 'dramatic']).toContain(
-          config.style.shadows,
+          template.style.shadows,
         );
       });
 
       it('has a non-empty sectionSpacing', () => {
-        expect(config.style.sectionSpacing).toBeTruthy();
+        expect(template.style.sectionSpacing).toBeTruthy();
       });
     });
   });
 });
 
-// ── templateList ──────────────────────────────────────────────────────────
+// ── getAllTemplates() ─────────────────────────────────────────────────────
 
-describe('templateList', () => {
+describe('getAllTemplates()', () => {
   it('contains all 5 templates', () => {
-    expect(templateList).toHaveLength(5);
+    expect(getAllTemplates()).toHaveLength(5);
   });
 
   it('contains each template exactly once', () => {
-    const ids = templateList.map((t) => t.id);
+    const ids = getAllTemplates().map((t) => t.id);
     const uniqueIds = new Set(ids);
     expect(uniqueIds.size).toBe(5);
   });
 
   it('includes minimal, vibrant, elegant, urban, fresh', () => {
-    const ids = new Set(templateList.map((t) => t.id));
+    const ids = new Set(getAllTemplates().map((t) => t.id));
     expect(ids.has('minimal')).toBe(true);
     expect(ids.has('vibrant')).toBe(true);
     expect(ids.has('elegant')).toBe(true);
@@ -159,24 +154,28 @@ describe('templateList', () => {
 // ── getTemplate() ─────────────────────────────────────────────────────────
 
 describe('getTemplate()', () => {
-  it('returns minimalConfig for id "minimal"', () => {
-    expect(getTemplate('minimal')).toBe(minimalConfig);
+  it('returns the manifest with id "minimal" for id "minimal"', () => {
+    expect(getTemplate('minimal').id).toBe('minimal');
   });
 
-  it('returns vibrantConfig for id "vibrant"', () => {
-    expect(getTemplate('vibrant')).toBe(vibrantConfig);
+  it('returns the manifest with id "vibrant" for id "vibrant"', () => {
+    expect(getTemplate('vibrant').id).toBe('vibrant');
   });
 
-  it('returns elegantConfig for id "elegant"', () => {
-    expect(getTemplate('elegant')).toBe(elegantConfig);
+  it('returns the manifest with id "elegant" for id "elegant"', () => {
+    expect(getTemplate('elegant').id).toBe('elegant');
   });
 
-  it('returns urbanConfig for id "urban"', () => {
-    expect(getTemplate('urban')).toBe(urbanConfig);
+  it('returns the manifest with id "urban" for id "urban"', () => {
+    expect(getTemplate('urban').id).toBe('urban');
   });
 
-  it('returns freshConfig for id "fresh"', () => {
-    expect(getTemplate('fresh')).toBe(freshConfig);
+  it('returns the manifest with id "fresh" for id "fresh"', () => {
+    expect(getTemplate('fresh').id).toBe('fresh');
+  });
+
+  it('returns the same reference on repeated calls (referential stability)', () => {
+    expect(getTemplate('minimal')).toBe(getTemplate('minimal'));
   });
 
   it('throws for an unknown id', () => {
@@ -228,74 +227,57 @@ describe('getTemplatesForCategory()', () => {
   });
 });
 
-// ── getAllCategories() ────────────────────────────────────────────────────
-
-describe('getAllCategories()', () => {
-  it('returns a non-empty sorted array', () => {
-    const cats = getAllCategories();
-    expect(cats.length).toBeGreaterThan(0);
-    for (let i = 1; i < cats.length; i++) {
-      expect(cats[i] >= cats[i - 1]).toBe(true);
-    }
-  });
-
-  it('has no duplicates', () => {
-    const cats = getAllCategories();
-    expect(cats.length).toBe(new Set(cats).size);
-  });
-});
-
 // ── buildTemplateCSSVars() ────────────────────────────────────────────────
 
 describe('buildTemplateCSSVars()', () => {
   it('returns an object with --brand-primary', () => {
-    const vars = buildTemplateCSSVars(minimalConfig);
+    const vars = buildTemplateCSSVars(getTemplate('minimal'));
     expect(vars['--brand-primary']).toBeDefined();
-    expect(vars['--brand-primary']).toBe(minimalConfig.colors.primary);
+    expect(vars['--brand-primary']).toBe(getTemplate('minimal').colors.primary);
   });
 
-  it('returns --brand-accent matching config accent color', () => {
-    const vars = buildTemplateCSSVars(vibrantConfig);
-    expect(vars['--brand-accent']).toBe(vibrantConfig.colors.accent);
+  it('returns --brand-accent matching manifest accent color', () => {
+    const vars = buildTemplateCSSVars(getTemplate('vibrant'));
+    expect(vars['--brand-accent']).toBe(getTemplate('vibrant').colors.accent);
   });
 
-  it('returns --section-spacing matching config', () => {
-    const vars = buildTemplateCSSVars(minimalConfig);
-    expect(vars['--section-spacing']).toBe(minimalConfig.style.sectionSpacing);
+  it('returns --section-spacing matching manifest', () => {
+    const vars = buildTemplateCSSVars(getTemplate('minimal'));
+    expect(vars['--section-spacing']).toBe(getTemplate('minimal').style.sectionSpacing);
   });
 
   it('maps Playfair Display font to --font-playfair-display var', () => {
-    const vars = buildTemplateCSSVars(minimalConfig);
+    const vars = buildTemplateCSSVars(getTemplate('minimal'));
     expect(vars['--font-heading']).toContain('--font-playfair-display');
   });
 
   it('maps Bebas Neue font to --font-bebas-neue var', () => {
-    const vars = buildTemplateCSSVars(urbanConfig);
+    const vars = buildTemplateCSSVars(getTemplate('urban'));
     expect(vars['--font-heading']).toContain('--font-bebas-neue');
   });
 
   it('applies sharp radius values for "sharp" borderRadius', () => {
-    const vars = buildTemplateCSSVars(minimalConfig); // sharp
+    const vars = buildTemplateCSSVars(getTemplate('minimal')); // sharp
     expect(vars['--radius-md']).toBe('0.25rem');
   });
 
   it('applies pill radius values for "pill" borderRadius', () => {
-    const vars = buildTemplateCSSVars(freshConfig); // pill
+    const vars = buildTemplateCSSVars(getTemplate('fresh')); // pill
     expect(vars['--radius-md']).toBe('1.25rem');
   });
 
   it('applies none shadow values for "none" shadows', () => {
-    const vars = buildTemplateCSSVars(minimalConfig); // none
+    const vars = buildTemplateCSSVars(getTemplate('minimal')); // none
     expect(vars['--shadow-md']).toBe('none');
   });
 
   it('applies non-none shadow values for "dramatic" shadows', () => {
-    const vars = buildTemplateCSSVars(urbanConfig); // dramatic
+    const vars = buildTemplateCSSVars(getTemplate('urban')); // dramatic
     expect(vars['--shadow-md']).not.toBe('none');
   });
 
   it('returns all required CSS variable keys', () => {
-    const vars = buildTemplateCSSVars(elegantConfig);
+    const vars = buildTemplateCSSVars(getTemplate('elegant'));
     const requiredKeys = [
       '--brand-primary',
       '--brand-primary-foreground',

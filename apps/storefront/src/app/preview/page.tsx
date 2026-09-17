@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Palette } from "lucide-react";
-import { templateList } from "@/templates";
+import { getAllTemplates } from "@goshopping/template-catalog";
 import { buildTemplateCSSVars } from "@/lib/template-css";
+
+const templateList = getAllTemplates();
 
 // -- Template card color swatch -----------------------------------------
 
