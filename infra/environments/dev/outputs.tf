@@ -23,11 +23,6 @@ output "storefront_url" {
   value       = "http://${aws_eip.dev.public_ip}:3004"
 }
 
-output "ai_engine_url" {
-  description = "URL del AI Engine"
-  value       = "http://${aws_eip.dev.public_ip}:3002"
-}
-
 output "ssh_command" {
   description = "Comando SSH (si se configuró key pair)"
   value       = var.key_pair_name != "" ? "ssh -i ~/.ssh/${var.key_pair_name}.pem ubuntu@${aws_eip.dev.public_ip}" : "SSH no configurado (sin key pair)"
@@ -40,6 +35,5 @@ output "all_urls" {
     "  Admin Panel: http://${aws_eip.dev.public_ip}:3010  →  vendedor@demo.co / demo123456",
     "  Storefront:  http://${aws_eip.dev.public_ip}:3004",
     "  Core API:    http://${aws_eip.dev.public_ip}:3000/health",
-    "  AI Engine:   http://${aws_eip.dev.public_ip}:3002/health",
   ])
 }

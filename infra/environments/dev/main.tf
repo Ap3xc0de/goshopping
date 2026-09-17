@@ -53,15 +53,6 @@ resource "aws_security_group" "dev" {
     description = "Core API"
   }
 
-  # AI Engine
-  ingress {
-    from_port   = 3002
-    to_port     = 3002
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "AI Engine"
-  }
-
   # SuperAdmin Panel
   ingress {
     from_port   = 3003
@@ -218,9 +209,7 @@ resource "aws_instance" "dev" {
     encrypted   = true
   }
 
-  user_data = templatefile("${path.module}/user-data.sh", {
-    anthropic_api_key = var.anthropic_api_key
-  })
+  user_data = templatefile("${path.module}/user-data.sh", {})
 
   # Esperar a que el S3 bundle esté subido antes de crear la instancia
   depends_on = [aws_s3_object.app_bundle]

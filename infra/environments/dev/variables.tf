@@ -27,10 +27,3 @@ variable "allowed_ssh_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
-
-variable "anthropic_api_key" {
-  description = "API key de Anthropic para el AI Engine (dejar vacío si no se usa)"
-  type        = string
-  default     = ""
-  sensitive   = true
-}

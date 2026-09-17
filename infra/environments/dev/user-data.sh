@@ -7,8 +7,6 @@ echo "  Go Shopping — Dev Environment Setup"
 echo "════════════════════════════════════════"
 
 # ── Variables ──
-# ${anthropic_api_key} es sustituido por Terraform templatefile
-ANTHROPIC_API_KEY="${anthropic_api_key}"
 APP_DIR="/opt/goshopping"
 
 # ── 1. Actualizar sistema ──
@@ -107,19 +105,13 @@ JWT_SECRET=goshopping-dev-secret-2026-change-in-prod
 APP_ENV=development
 PORT=3000
 
-# ── AI Engine ──
-ANTHROPIC_API_KEY=$$ANTHROPIC_API_KEY
-AI_ENGINE_URL=http://ai-engine:3002
-
 # ── Frontend URLs (build-time via Docker ARG) ──
 NEXT_PUBLIC_API_URL=http://$$PUBLIC_IP:3000
-NEXT_PUBLIC_AI_ENGINE_URL=http://$$PUBLIC_IP:3002
 ENVEOF
 
 # Crear .env.local para los frontends (build time Next.js)
 cat > $$APP_DIR/.env.frontend << FRONTEOF
 NEXT_PUBLIC_API_URL=http://$$PUBLIC_IP:3000
-NEXT_PUBLIC_AI_ENGINE_URL=http://$$PUBLIC_IP:3002
 FRONTEOF
 
 cp $$APP_DIR/.env.frontend $$APP_DIR/apps/admin/.env.local 2>/dev/null || true
@@ -227,6 +219,5 @@ echo "  🟣 Storefront:  http://$$PUBLIC_IP:3004"
 echo "     → /preview para design system"
 echo ""
 echo "  🔴 Core API:    http://$$PUBLIC_IP:3000/health"
-echo "  🤖 AI Engine:   http://$$PUBLIC_IP:3002/health"
 echo ""
 echo "════════════════════════════════════════"

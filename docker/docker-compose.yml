@@ -46,30 +46,6 @@ services:
       - localstack_data:/var/lib/localstack
       - ./localstack-init:/etc/localstack/init/ready.d
 
-  ai-engine:
-    build:
-      context: ../apps/ai-engine
-      dockerfile: Dockerfile
-    ports:
-      - "3002:3002"
-    environment:
-      - NODE_ENV=development
-      - PORT=3002
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
-      - STORES_PATH=/data/stores
-      - STOREFRONT_BASE_URL=${STOREFRONT_BASE_URL:-http://localhost:3004}
-      - STOREFRONT_PUBLIC_URL=${STOREFRONT_PUBLIC_URL:-https://goshopping.co}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3003,http://localhost:3004}
-    volumes:
-      - store_data:/data/stores
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   pgdata:
   localstack_data:
-  store_data:
