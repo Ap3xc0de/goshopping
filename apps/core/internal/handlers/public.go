@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -270,6 +272,53 @@ func PublicStoreConfig(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 		}
 		return c.JSON(resp)
 	}
+}
+
+// PublicConfigByDomain handles GET /public/by-domain/:host/config. It must be
+// registered in the "pub" router group, before the authenticated group — an
+// unknown host has to 404, never fall through to the auth middleware's 401
+// (REQ-RESOLVE-01).
+func PublicConfigByDomain(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		host := normalizeHost(c.Params("host"))
+		ctx := c.Context()
+
+		var storeID uuid.UUID
+		var lastStoreUpdate, lastDomainUpdate time.Time
+		if err := db.QueryRow(ctx, `
+			SELECT s.id, s.updated_at, d.updated_at
+			FROM store_domains d JOIN stores s ON s.id = d.store_id
+			WHERE d.hostname = $1 AND s.status = 'active'`, host,
+		).Scan(&storeID, &lastStoreUpdate, &lastDomainUpdate); err != nil {
+			return fiber.NewError(fiber.StatusNotFound, "store not found")
+		}
+
+		resp, err := buildPublicStoreConfig(ctx, db, cfg, storeID)
+		if err != nil {
+			if errors.Is(err, errPublicStoreNotFound) {
+				return fiber.NewError(fiber.StatusNotFound, "store not found")
+			}
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		etag := computeETag(storeID, lastStoreUpdate, lastDomainUpdate)
+		c.Set("Cache-Control", "public, max-age=60")
+		c.Set("ETag", etag)
+		if c.Get("If-None-Match") == etag {
+			return c.SendStatus(fiber.StatusNotModified)
+		}
+		return c.JSON(resp)
+	}
+}
+
+// computeETag derives an opaque, quoted ETag from storeID plus the most
+// recent updated_at across stores and store_domains. Branding is persisted as
+// a subdocument under stores.config (see StoreBranding's doc comment), so a
+// branding change already bumps stores.updated_at — no third timestamp needed
+// (REQ-RESOLVE-04).
+func computeETag(storeID uuid.UUID, lastStoreUpdate, lastDomainUpdate time.Time) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d", storeID, lastStoreUpdate.UnixNano(), lastDomainUpdate.UnixNano())))
+	return `"` + hex.EncodeToString(sum[:]) + `"`
 }
 
 func resolveStoreBySlug(ctx context.Context, db *pgxpool.Pool, slug string) (uuid.UUID, error) {

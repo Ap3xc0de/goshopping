@@ -33,6 +33,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 
 	// Public storefront (no auth)
 	pub := app.Group("/public")
+	pub.Get("/by-domain/:host/config", handlers.PublicConfigByDomain(db, cfg))
 	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db, cfg))
 	pub.Get("/:storeSlug/products", handlers.PublicListProducts(db, cfg))
 	pub.Get("/:storeSlug/products/:productId", handlers.PublicGetProduct(db, cfg))

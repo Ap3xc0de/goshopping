@@ -174,6 +174,21 @@ func (ta *TestApp) GET(t *testing.T, path, authHeader string) *http.Response {
 	return resp
 }
 
+// GETWithHeaders is like GET but lets the caller set arbitrary request
+// headers (e.g. If-None-Match for conditional-request tests).
+func (ta *TestApp) GETWithHeaders(t *testing.T, path string, headers map[string]string) *http.Response {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := ta.App.Test(req, 10000)
+	if err != nil {
+		t.Fatalf("GET %s: %v", path, err)
+	}
+	return resp
+}
+
 func (ta *TestApp) POST(t *testing.T, path string, body interface{}, authHeader string) *http.Response {
 	t.Helper()
 	return ta.doJSON(t, http.MethodPost, path, body, authHeader)
