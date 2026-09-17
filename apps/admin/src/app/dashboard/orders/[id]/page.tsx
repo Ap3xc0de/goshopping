@@ -7,6 +7,7 @@ import { useOrder } from '@/lib/hooks/useOrders';
 import { OrderTimeline } from '@/components/orders/OrderTimeline';
 import { OrderStatusActions } from '@/components/orders/OrderStatusActions';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { PaymentStatusBadge } from '@/components/ui/PaymentStatusBadge';
 import { PageLoader } from '@/components/ui/LoadingSpinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
@@ -29,8 +30,9 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           <h1 className="text-xl font-bold text-gray-900">Pedido #{order.order_number}</h1>
           <p className="text-sm text-gray-500">{formatDateTime(order.created_at)}</p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           <StatusBadge status={order.status} />
+          <PaymentStatusBadge status={order.payment_status} />
         </div>
       </div>
 

@@ -44,6 +44,21 @@ describe('OrdersTable', () => {
     expect(screen.getByText('Pendiente')).toBeInTheDocument();
   });
 
+  // W3 (hardening slice 10): payment_status existed on the Order type but
+  // was never rendered — design decision 4 said it should back a badge.
+  it('renders "Pago pendiente" for a pending payment_status', () => {
+    render(<OrdersTable orders={[makeOrder({ payment_status: 'pending' })]} page={1} totalPages={1} onPageChange={jest.fn()} />);
+    expect(screen.getByText('Pago pendiente')).toBeInTheDocument();
+  });
+
+  it('renders nothing for the payment column when payment_status is absent', () => {
+    render(<OrdersTable orders={[makeOrder()]} page={1} totalPages={1} onPageChange={jest.fn()} />);
+    // The "Pago" column header is always present — only the badge itself
+    // (one of the PAYMENT_STATUS_LABELS values) must be absent.
+    expect(screen.queryByText('Pago pendiente')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pagado')).not.toBeInTheDocument();
+  });
+
   it('renders multiple orders', () => {
     const orders = [
       makeOrder({ id: 'o1', order_number: 'ORD-001' }),

@@ -1,6 +1,8 @@
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { OrderStatus } from './types';
+import type { Order, OrderStatus } from './types';
+
+type PaymentStatus = NonNullable<Order['payment_status']>;
 
 // ─── Currency ────────────────────────────────────────────────────────────────
 
@@ -67,6 +69,25 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   shipped:   'bg-purple-100 text-purple-800',
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
+};
+
+// ─── Payment Status (W3, hardening slice 10) ──────────────────────────────────
+// `payment_status` is independent of the order `status` state machine above
+// (CORE-02 in apps/core/internal/models/order.go) — added to the admin
+// `Order` type in Slice 1/8 but never surfaced in the UI until now.
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pending:  'Pago pendiente',
+  paid:     'Pagado',
+  failed:   'Pago fallido',
+  refunded: 'Reembolsado',
+};
+
+export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+  pending:  'bg-yellow-100 text-yellow-800',
+  paid:     'bg-green-100 text-green-800',
+  failed:   'bg-red-100 text-red-800',
+  refunded: 'bg-gray-200 text-gray-800',
 };
 
 export const ORDER_NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {

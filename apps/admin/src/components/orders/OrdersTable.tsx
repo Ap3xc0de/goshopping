@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { PaymentStatusBadge } from '@/components/ui/PaymentStatusBadge';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
@@ -25,7 +26,7 @@ export function OrdersTable({ orders, page, totalPages, onPageChange }: OrdersTa
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">
-              {['Pedido', 'Cliente', 'Estado', 'Total', 'Fecha'].map((h) => (
+              {['Pedido', 'Cliente', 'Estado', 'Pago', 'Total', 'Fecha'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   {h}
                 </th>
@@ -43,6 +44,9 @@ export function OrdersTable({ orders, page, totalPages, onPageChange }: OrdersTa
                 <td className="px-4 py-3 text-gray-700">{order.customer_name}</td>
                 <td className="px-4 py-3">
                   <StatusBadge status={order.status} />
+                </td>
+                <td className="px-4 py-3">
+                  <PaymentStatusBadge status={order.payment_status} />
                 </td>
                 <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
                   {formatCurrency(order.total)}
