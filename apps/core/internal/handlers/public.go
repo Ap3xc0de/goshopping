@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,6 +15,20 @@ import (
 	"github.com/goshopping/core/internal/services"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// normalizeHost canonicalizes a request host into the form persisted in
+// store_domains.hostname: lowercase, no port, no trailing dot, no "www."
+// prefix. Defense in depth — it does not assume the caller already
+// normalized the host (REQ-RESOLVE-02).
+func normalizeHost(raw string) string {
+	h := strings.ToLower(raw)
+	if i := strings.IndexByte(h, ':'); i != -1 {
+		h = h[:i]
+	}
+	h = strings.TrimSuffix(h, ".")
+	h = strings.TrimPrefix(h, "www.")
+	return h
+}
 
 // PublicProduct is the public-facing product (no cost field).
 type PublicProduct struct {
@@ -197,33 +212,63 @@ func PublicOrderStatus(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	}
 }
 
+// PublicStoreConfigResponse is the shape shared by GET /public/:storeSlug/config
+// and GET /public/by-domain/:host/config — template_id is the only field this
+// change adds to what the slug endpoint returned before it (REQ-RESOLVE-03).
+// Both endpoints MUST build their response through buildPublicStoreConfig so
+// their shape can never diverge.
+type PublicStoreConfigResponse struct {
+	ID         uuid.UUID             `json:"id"`
+	Name       string                `json:"name"`
+	Slug       string                `json:"slug"`
+	Status     string                `json:"status"`
+	Branding   *models.StoreBranding `json:"branding"`
+	TemplateID string                `json:"template_id"`
+}
+
+// errPublicStoreNotFound distinguishes "no active store matched storeID" from
+// any other failure inside buildPublicStoreConfig (e.g. a branding read
+// error), so callers can still map the two to different HTTP statuses like
+// the pre-refactor single-query handler did (404 vs 500).
+var errPublicStoreNotFound = errors.New("store not found")
+
+// buildPublicStoreConfig loads the public-facing config for an already-resolved
+// storeID. It re-checks status = 'active' itself (defense in depth) so it never
+// returns data for a store that became inactive between resolution and this call.
+func buildPublicStoreConfig(ctx context.Context, db *pgxpool.Pool, cfg *config.Config, storeID uuid.UUID) (*PublicStoreConfigResponse, error) {
+	var resp PublicStoreConfigResponse
+	if err := db.QueryRow(ctx, `
+		SELECT id, name, slug, status, template_id FROM stores WHERE id = $1 AND status = 'active'`, storeID,
+	).Scan(&resp.ID, &resp.Name, &resp.Slug, &resp.Status, &resp.TemplateID); err != nil {
+		return nil, errPublicStoreNotFound
+	}
+
+	brandingSvc := services.NewBrandingService(db, cfg)
+	branding, err := brandingSvc.GetBranding(ctx, resp.ID)
+	if err != nil {
+		return nil, err
+	}
+	resp.Branding = branding
+	return &resp, nil
+}
+
 // PublicStoreConfig handles GET /public/:storeSlug/config
 func PublicStoreConfig(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		slug := c.Params("storeSlug")
-		ctx := c.Context()
-
-		var store struct {
-			ID       uuid.UUID             `json:"id"`
-			Name     string                `json:"name"`
-			Slug     string                `json:"slug"`
-			Status   string                `json:"status"`
-			Branding *models.StoreBranding `json:"branding"`
-		}
-		if err := db.QueryRow(ctx, `
-			SELECT id, name, slug, status FROM stores WHERE slug = $1 AND status = 'active'`, slug,
-		).Scan(&store.ID, &store.Name, &store.Slug, &store.Status); err != nil {
+		storeID, err := resolveStoreBySlug(c.Context(), db, slug)
+		if err != nil {
 			return fiber.NewError(fiber.StatusNotFound, "store not found")
 		}
 
-		brandingSvc := services.NewBrandingService(db, cfg)
-		branding, err := brandingSvc.GetBranding(ctx, store.ID)
+		resp, err := buildPublicStoreConfig(c.Context(), db, cfg, storeID)
 		if err != nil {
+			if errors.Is(err, errPublicStoreNotFound) {
+				return fiber.NewError(fiber.StatusNotFound, "store not found")
+			}
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
-		store.Branding = branding
-
-		return c.JSON(store)
+		return c.JSON(resp)
 	}
 }
 

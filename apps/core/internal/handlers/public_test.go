@@ -64,6 +64,17 @@ func TestPublicStoreConfig(t *testing.T) {
 		branding, _ := data["branding"].(map[string]interface{})
 		assert.Equal(t, "Acme", branding["brand_name"])
 	})
+
+	// REQ-RESOLVE-03: template_id is the only field this change adds to the
+	// slug endpoint's response — the storefront needs it to pick a template.
+	t.Run("includes template_id", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/config", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		templateID, ok := data["template_id"]
+		assert.True(t, ok, "response must carry a template_id key")
+		assert.Equal(t, "minimal", templateID, "new stores default to the 'minimal' template")
+	})
 }
 
 func TestPublicListProducts(t *testing.T) {
