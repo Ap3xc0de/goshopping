@@ -54,6 +54,13 @@ export interface BrandColors {
   background?: string;
   foreground?: string;
   muted?: string;
+  /**
+   * Dedicated Navbar colors (independent of secondary/background) — mirrors
+   * `NavBackground`/`NavText` in apps/core/internal/models/branding.go
+   * (design decision 9 of sdd/storefront-single-template-ecommerce).
+   */
+  nav_background?: string;
+  nav_text?: string;
 }
 
 export interface BrandFonts {
@@ -128,6 +135,12 @@ export interface Order {
   tax: number;
   total: number;
   status: OrderStatus;
+  /**
+   * Independent of `status` (CORE-02 in apps/core/internal/models/order.go)
+   * — DB default `'pending'`, optional here so existing mocks/fixtures that
+   * predate this field keep type-checking.
+   */
+  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
   payment_method?: PaymentMethod;
   payment_reference?: string;
   tracking_number?: string;

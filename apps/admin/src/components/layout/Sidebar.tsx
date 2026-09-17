@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ShoppingCart,
   Sparkles,
+  Palette,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useStore } from '@/lib/hooks/useStore';
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/dashboard/customers',        label: 'Clientes',       Icon: Users },
   { href: '/dashboard/reports',          label: 'Reportes',       Icon: BarChart3 },
   { href: '/dashboard/create-store',     label: 'Crear Tienda',   Icon: Sparkles },
+  { href: '/dashboard/my-store',         label: 'Mi Tienda',      Icon: Palette },
   { href: '/dashboard/settings',         label: 'Configuración',  Icon: Settings },
 ];
 
