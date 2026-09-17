@@ -112,3 +112,35 @@ func TestLoadFromWorkingDir_FindsRealCatalog(t *testing.T) {
 		t.Error("expected the real, committed catalog.json to include the minimal template")
 	}
 }
+
+// TestLoadFromWorkingDir_SingleActiveTemplate proves the real, committed
+// catalog.json (CATALOG-01, Slice 9) treats `minimal` as the only
+// selectable template: the 4 legacy templates were archived, not deleted,
+// so this table-driven test also proves boot validation still succeeds
+// with 1 active + 4 archived entries (Load returns no error, len > 0).
+func TestLoadFromWorkingDir_SingleActiveTemplate(t *testing.T) {
+	cat, err := catalog.LoadFromWorkingDir()
+	if err != nil {
+		t.Fatalf("boot validation failed with 1 active + 4 archived templates: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		templateID string
+		wantValid bool
+	}{
+		{name: "minimal is the only active template", templateID: "minimal", wantValid: true},
+		{name: "vibrant is archived, not selectable", templateID: "vibrant", wantValid: false},
+		{name: "elegant is archived, not selectable", templateID: "elegant", wantValid: false},
+		{name: "urban is archived, not selectable", templateID: "urban", wantValid: false},
+		{name: "fresh is archived, not selectable", templateID: "fresh", wantValid: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := cat.IsValid(tt.templateID); got != tt.wantValid {
+				t.Errorf("IsValid(%q) = %v, want %v", tt.templateID, got, tt.wantValid)
+			}
+		})
+	}
+}
