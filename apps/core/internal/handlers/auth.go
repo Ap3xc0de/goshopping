@@ -31,6 +31,11 @@ func Register(svc *services.AuthService) fiber.Handler {
 					"error": "email already registered",
 				})
 			}
+			if errors.Is(err, services.ErrDomainConflict) {
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+					"error": err.Error(),
+				})
+			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "could not create account",
 			})

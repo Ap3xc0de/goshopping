@@ -26,6 +26,16 @@ var ErrEmailTaken = errors.New("email already registered")
 // ErrInvalidToken is returned when a JWT is malformed or expired.
 var ErrInvalidToken = errors.New("invalid or expired token")
 
+// ErrDomainConflict is returned when a store's generic hostname is already
+// taken.
+//
+// Not reachable through Register today: generateSlug appends a uuid fragment,
+// so the derived hostname is unique by construction. It is handled anyway
+// because the UNIQUE constraint on store_domains.hostname is real, and a
+// caller deserves a clear 409 rather than a generic 500 if slug generation
+// ever changes or a hostname is provisioned by another path.
+var ErrDomainConflict = errors.New("domain already registered")
+
 // AuthService handles account creation, login, and token management.
 type AuthService struct {
 	db  *pgxpool.Pool
@@ -89,6 +99,23 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 	)
 	if err != nil {
 		return models.AuthResponse{}, fmt.Errorf("insert store_user: %w", err)
+	}
+
+	// Provision the store's generic hostname in the same transaction. A store
+	// that exists without a canonical hostname cannot be reached by the
+	// storefront, so the two must be created together or not at all. The boot
+	// backfill only covers stores that predate this.
+	hostname := storeSlug + "." + s.cfg.StorefrontBaseDomain
+	_, err = tx.Exec(ctx, `
+		INSERT INTO store_domains (store_id, hostname, kind, status, is_primary)
+		VALUES ($1, $2, 'generic', 'active', true)`,
+		storeID, hostname,
+	)
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			return models.AuthResponse{}, fmt.Errorf("%w: %s", ErrDomainConflict, hostname)
+		}
+		return models.AuthResponse{}, fmt.Errorf("insert store_domain: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
