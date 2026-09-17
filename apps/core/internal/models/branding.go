@@ -34,6 +34,12 @@ type BrandColors struct {
 	Background          string `json:"background,omitempty"`
 	Foreground          string `json:"foreground,omitempty"`
 	Muted               string `json:"muted,omitempty"`
+	// NavBackground/NavText style the storefront's Navbar independently of
+	// the other colors — the user asked for a dedicated header color that
+	// does not silently reuse secondary/background semantics (design
+	// decision 9).
+	NavBackground string `json:"nav_background,omitempty"`
+	NavText       string `json:"nav_text,omitempty"`
 }
 
 // BrandFonts holds Google Font family names for headings and body text.
@@ -102,6 +108,8 @@ func (b *StoreBranding) Validate(allowedAssetPrefix string) error {
 		{"colors.background", b.Colors.Background},
 		{"colors.foreground", b.Colors.Foreground},
 		{"colors.muted", b.Colors.Muted},
+		{"colors.nav_background", b.Colors.NavBackground},
+		{"colors.nav_text", b.Colors.NavText},
 	}
 	for _, f := range colorFields {
 		if f.value == "" {

@@ -99,4 +99,32 @@ func TestStoreBranding_Validate(t *testing.T) {
 		assert.True(t, strings.Contains(msg, "colors.primary"), "expected colors.primary in %q", msg)
 		assert.True(t, strings.Contains(msg, "fonts.heading"), "expected fonts.heading in %q", msg)
 	})
+
+	// BRAND-01/BRAND-02: nav_background/nav_text follow the exact same HSL
+	// validation rule as the other 9 color fields (validateHSL, colorFields).
+	t.Run("valid nav_background and nav_text pass", func(t *testing.T) {
+		b := &models.StoreBranding{
+			Colors: models.BrandColors{NavBackground: "220 20% 98%", NavText: "220 20% 10%"},
+		}
+		assert.NoError(t, b.Validate(testAssetPrefix))
+	})
+
+	t.Run("invalid nav_background HSL is rejected", func(t *testing.T) {
+		b := &models.StoreBranding{Colors: models.BrandColors{NavBackground: "#fff"}}
+		err := b.Validate(testAssetPrefix)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "colors.nav_background")
+	})
+
+	t.Run("nav_text hue out of range is rejected", func(t *testing.T) {
+		b := &models.StoreBranding{Colors: models.BrandColors{NavText: "400 71% 45%"}}
+		err := b.Validate(testAssetPrefix)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "colors.nav_text")
+	})
+
+	t.Run("empty nav_background and nav_text are valid (use template default)", func(t *testing.T) {
+		b := &models.StoreBranding{}
+		assert.NoError(t, b.Validate(testAssetPrefix))
+	})
 }
