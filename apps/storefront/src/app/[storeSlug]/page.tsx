@@ -7,21 +7,14 @@ import { ProductGrid } from '@/components/product/ProductGrid';
 import { TrustBadges } from '@/components/marketing/TrustBadges';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import type { ProductCardProps } from '@/components/product/ProductCard';
+import { toProductCard } from '@/lib/product-image';
 
 export default function StorefrontHomePage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
   const { config } = useStoreConfig(storeSlug);
   const { products, loading } = useProducts(storeSlug, { limit: 8 });
 
-  const productCards: ProductCardProps[] = products.map((p) => ({
-    id: p.id,
-    name: p.name,
-    price: p.price,
-    originalPrice: p.compare_at_price,
-    image: p.images?.[0]?.url ?? '/placeholder.jpg',
-    imageAlt: p.name,
-    href: `/${storeSlug}/producto/${p.id}`,
-  }));
+  const productCards: ProductCardProps[] = products.map((p) => toProductCard(p, storeSlug));
 
   return (
     <>

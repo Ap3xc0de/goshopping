@@ -8,21 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import type { ProductCardProps } from '@/components/product/ProductCard';
+import { toProductCard } from '@/lib/product-image';
 
 export default function CatalogPage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
   const [search, setSearch] = useState('');
   const { products, loading, setSearch: doSearch, total } = useProducts(storeSlug);
 
-  const productCards: ProductCardProps[] = products.map((p) => ({
-    id: p.id,
-    name: p.name,
-    price: p.price,
-    originalPrice: p.compare_at_price,
-    image: p.images?.[0]?.url ?? '/placeholder.jpg',
-    imageAlt: p.name,
-    href: `/${storeSlug}/producto/${p.id}`,
-  }));
+  const productCards: ProductCardProps[] = products.map((p) => toProductCard(p, storeSlug));
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

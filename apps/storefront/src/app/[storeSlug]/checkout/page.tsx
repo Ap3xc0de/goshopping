@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
+import { PRODUCT_IMAGE_PLACEHOLDER } from '@/lib/product-image';
 
 export default function CheckoutPage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
@@ -43,7 +44,7 @@ export default function CheckoutPage() {
             <div key={item.productId} className="flex gap-4 p-4 border rounded-xl">
               <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                 <Image
-                  src={item.image ?? '/placeholder.jpg'}
+                  src={item.image ?? PRODUCT_IMAGE_PLACEHOLDER}
                   alt={item.name}
                   fill
                   className="object-cover"

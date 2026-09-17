@@ -7,6 +7,7 @@ import { useProduct, useCart } from '@goshopping/storefront-sdk';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, ArrowLeft } from 'lucide-react';
 import { LoadingGrid } from '@/components/states';
+import { productImage } from '@/lib/product-image';
 
 export default function ProductPage() {
   const { storeSlug, id } = useParams<{ storeSlug: string; id: string }>();
@@ -29,7 +30,7 @@ export default function ProductPage() {
     );
   }
 
-  const mainImage = product.images?.[0]?.url ?? '/placeholder.jpg';
+  const mainImage = productImage(product);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
