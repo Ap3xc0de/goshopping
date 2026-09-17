@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.10.1">
 <title data-rh="true">Capas del Sistema | Go Shopping Docs</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://docs.goshopping.co/docs/arquitectura/capas-del-sistema"><meta data-rh="true" property="og:locale" content="es"><meta data-rh="true" name="docusaurus_locale" content="es"><meta data-rh="true" name="docsearch:language" content="es"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Capas del Sistema | Go Shopping Docs"><meta data-rh="true" name="description" content="Cada capa tiene responsabilidades bien definidas. El incumplimiento de estas responsabilidades genera acoplamiento — el mayor riesgo en sistemas distribuidos."><meta data-rh="true" property="og:description" content="Cada capa tiene responsabilidades bien definidas. El incumplimiento de estas responsabilidades genera acoplamiento — el mayor riesgo en sistemas distribuidos."><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://docs.goshopping.co/docs/arquitectura/capas-del-sistema"><link data-rh="true" rel="alternate" href="https://docs.goshopping.co/docs/arquitectura/capas-del-sistema" hreflang="es"><link data-rh="true" rel="alternate" href="https://docs.goshopping.co/docs/arquitectura/capas-del-sistema" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Capas del Sistema","item":"https://docs.goshopping.co/docs/arquitectura/capas-del-sistema"}]}</script><link rel="stylesheet" href="/assets/css/styles.419e9307.css">
-<script src="/assets/js/runtime~main.764fd0bb.js" defer="defer"></script>
-<script src="/assets/js/main.8f44941d.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.b02892a0.js" defer="defer"></script>
+<script src="/assets/js/main.2c9fd089.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -50,12 +50,6 @@
 <li class="">Modules por proveedor: <code>WompiModule</code>, <code>SiigoModule</code>, <code>MetaModule</code>, etc.</li>
 <li class="">Cada módulo implementa la interfaz del adapter correspondiente</li>
 <li class="">Patrón estrategia para intercambiar proveedores</li>
-</ul>
-<p><strong>AI Engine</strong> (<code>apps/ai-engine/</code> — Go):</p>
-<ul>
-<li class="">Genera contenido de tiendas con IA</li>
-<li class="">Optimización de precios</li>
-<li class="">Recomendaciones de productos</li>
 </ul>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="capa-4--externos">Capa 4 — Externos<a href="#capa-4--externos" class="hash-link" aria-label="Enlace directo al Capa 4 — Externos" title="Enlace directo al Capa 4 — Externos" translate="no">​</a></h2>
 <p><strong>Responsabilidad</strong>: Servicios de terceros. Go Shopping no los controla.</p>

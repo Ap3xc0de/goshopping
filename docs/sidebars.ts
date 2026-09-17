@@ -96,7 +96,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'servicios/core-api',
         'servicios/integrations-service',
-        'servicios/ai-engine',
         'servicios/superadmin-panel',
         'servicios/admin-panel',
         'servicios/storefront-engine',

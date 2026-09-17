@@ -15,7 +15,7 @@ Go Shopping construye exclusivamente lo que no existe como producto independient
 | **Panel SuperAdmin** | Dashboard interno Go Shopping | ✅ Etapa 1 (boilerplate) |
 | **Pasarelas de pago** | Wompi, PayU (adapter pattern) | 🔜 Etapa 5 |
 | **Contabilidad auto** | Siigo, Alegra (factura DIAN) | 🔜 Etapa 6 |
-| **Generador de tiendas con IA** | AI Engine + Storefront | 🔜 Etapa 7 |
+| **Generador de tiendas** | Wizard + Template Catalog + Storefront | 🔜 Etapa 7 |
 | **Marketing integrado** | Meta Pixel, Google Ads, Brevo | 🔜 Etapa 8 |
 | **WhatsApp Business** | Twilio API | 🔜 Etapa 8 |
 

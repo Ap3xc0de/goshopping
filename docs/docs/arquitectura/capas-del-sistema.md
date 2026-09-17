@@ -62,11 +62,6 @@ apps/core/internal/
 - Cada módulo implementa la interfaz del adapter correspondiente
 - Patrón estrategia para intercambiar proveedores
 
-**AI Engine** (`apps/ai-engine/` — Go):
-- Genera contenido de tiendas con IA
-- Optimización de precios
-- Recomendaciones de productos
-
 ## Capa 4 — Externos
 
 **Responsabilidad**: Servicios de terceros. Go Shopping no los controla.

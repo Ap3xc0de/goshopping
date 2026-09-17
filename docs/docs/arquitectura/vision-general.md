@@ -24,7 +24,6 @@ graph TB
 
     subgraph integrations["Capa 3 — Integraciones"]
         INT["Integrations Service\nNestJS :3001"]
-        AI["AI Engine\nGo :3002"]
     end
 
     subgraph externos["Capa 4 — Externos"]
@@ -51,7 +50,6 @@ graph TB
     API -->|SDK| S3
 
     EB -->|consume| INT
-    EB -->|consume| AI
 
     INT --> WOMPI
     INT --> SIIGO
@@ -83,7 +81,6 @@ El corazón del sistema. Contiene toda la lógica de negocio.
 Consumidores de eventos y adaptadores hacia servicios externos.
 
 - **Integrations Service** `:3001` — NestJS. Consume eventos SQS, llama a Wompi/Siigo/Meta/etc.
-- **AI Engine** `:3002` — Go. Consume eventos para procesamiento con IA, genera contenido.
 
 ### Capa 4: Externos
 Servicios de terceros que Go Shopping conecta, pero no construye.

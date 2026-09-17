@@ -36,11 +36,6 @@ goshopping/
 │   │   ├── package.json
 │   │   └── Dockerfile
 │   │
-│   ├── ai-engine/             # Go — motor de IA (placeholder)
-│   │   ├── cmd/server/main.go
-│   │   ├── go.mod
-│   │   └── Dockerfile
-│   │
 │   ├── superadmin/            # Next.js — panel Go Shopping
 │   │   ├── src/app/
 │   │   ├── package.json
@@ -98,7 +93,6 @@ goshopping/
 │   ├── infra.yml              # Terraform plan/apply
 │   ├── core.yml               # Build + push + deploy Core API
 │   ├── integrations.yml       # Build + push + deploy Integrations
-│   ├── ai-engine.yml          # Build + push + deploy AI Engine
 │   ├── superadmin.yml         # Build + push + deploy SuperAdmin
 │   └── admin.yml              # Build + push + deploy Admin
 │

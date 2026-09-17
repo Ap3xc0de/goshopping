@@ -4,19 +4,19 @@ sidebar_position: 8
 
 # Templates de Storefront
 
-GoShopping incluye 5 templates visuales preconfigurados. Cada template define la personalidad completa de una tienda: colores, tipografía, estructura de la homepage y variantes de componentes. El AI Engine los usa como punto de partida para la personalización.
+GoShopping incluye 5 templates visuales preconfigurados, gestionados como manifiestos en `libs/template-catalog`. Cada template define la personalidad completa de una tienda: colores, tipografía, estructura de la homepage y variantes de componentes. El wizard de creación de tiendas (`apps/admin`) los usa como punto de partida para la personalización.
 
 ## ¿Cómo funciona?
 
 ```mermaid
 graph LR
-    A[Vendedor elige template] --> B[IA personaliza colores y textos]
+    A[Vendedor elige template en TemplateGalleryStep] --> B[BrandingStep ajusta colores y marca]
     B --> C[Preview en /preview/templateId]
     C --> D[Vendedor aprueba]
     D --> E[Storefront generado]
 ```
 
-La personalización es **solo CSS variables** — el código no cambia. El AI Engine modifica los tokens en `theme.css` y el Design System se adapta automáticamente.
+La personalización es **solo CSS variables** — el código no cambia. El wizard modifica los tokens en `theme.css` (vía el manifest de `libs/template-catalog`) y el Design System se adapta automáticamente.
 
 ## Los 5 Templates
 
@@ -177,30 +177,37 @@ La personalización es **solo CSS variables** — el código no cambia. El AI En
 
 ## Estructura de archivos
 
+Los templates viven en `libs/template-catalog` (lib compartida, `@goshopping/template-catalog`), no en `apps/storefront`. Tanto `apps/storefront` como `apps/admin` la consumen vía dependencia `file:` en su `package.json`:
+
 ```
-apps/storefront/src/templates/
-├── types.ts              ← Interfaz TemplateConfig
-├── index.ts              ← Exports: templates, getTemplate(), getTemplatesForCategory()
-├── minimal/
-│   └── config.ts
-├── vibrant/
-│   └── config.ts
-├── elegant/
-│   └── config.ts
-├── urban/
-│   └── config.ts
-└── fresh/
-    └── config.ts
+libs/template-catalog/
+├── src/
+│   ├── types.ts             ← Interfaz TemplateManifest
+│   ├── index.ts             ← Exports: TemplateManifest, templates, getTemplate(), getTemplatesForCategory()
+│   ├── generate-catalog.ts  ← Genera catalog.json (consumido también por apps/core)
+│   └── registry/
+│       ├── index.ts         ← Registro único de todos los manifests
+│       ├── minimal/manifest.ts
+│       ├── vibrant/manifest.ts
+│       ├── elegant/manifest.ts
+│       ├── urban/manifest.ts
+│       └── fresh/manifest.ts
+└── catalog.json             ← Generado por generate-catalog.ts (también copiado a apps/core/catalog.json)
 ```
 
-## Interfaz TemplateConfig
+## Interfaz TemplateManifest
 
 ```typescript
-interface TemplateConfig {
+interface TemplateManifest {
   id: string;
   name: string;
   description: string;
   category: string[];           // Industrias recomendadas
+
+  preview_image?: string;
+
+  /** Retira el template de asignaciones nuevas sin borrar su manifest/código. Default: false */
+  archived?: boolean;
 
   colors: {
     primary: string;            // HSL sin hsl(), e.g. "142 71% 45%"
@@ -239,17 +246,17 @@ interface TemplateConfig {
 ## API de utilidades
 
 ```typescript
-import { getTemplate, getTemplatesForCategory, templateList } from '@/templates';
+import { getTemplate, getAllTemplates, getTemplatesForCategory } from '@goshopping/template-catalog';
 
 // Obtener un template por ID
-const config = getTemplate('minimal');        // TemplateConfig
-getTemplate('nonexistent');                   // throws Error
+const manifest = getTemplate('minimal');        // TemplateManifest
+getTemplate('nonexistent');                     // throws Error
 
 // Filtrar templates por industria
-const moda = getTemplatesForCategory('Moda premium');  // TemplateConfig[]
+const moda = getTemplatesForCategory('Moda premium');  // TemplateManifest[]
 
-// Lista de todos los templates
-templateList.forEach(t => console.log(t.id));
+// Lista de todos los templates (incluye archivados)
+getAllTemplates().forEach(t => console.log(t.id));
 ```
 
 ## Cómo se aplican los CSS variables
@@ -320,16 +327,17 @@ Todas las fuentes se cargan via `next/font/google` en `layout.tsx` y se exponen 
 
 ## Cómo agregar un nuevo template
 
-1. Crear `src/templates/mi-template/config.ts` con la estructura `TemplateConfig`
-2. Importar y registrar en `src/templates/index.ts`:
+1. Crear `libs/template-catalog/src/registry/mi-template/manifest.ts` con la estructura `TemplateManifest`
+2. Registrar en `libs/template-catalog/src/registry/index.ts`:
    ```typescript
-   import { miTemplateConfig } from './mi-template/config';
-   export const templates = {
+   import { miTemplateManifest } from './mi-template/manifest';
+   export const templates: Record<string, TemplateManifest> = {
      // ...existentes
-     'mi-template': miTemplateConfig,
+     'mi-template': miTemplateManifest,
    };
    ```
-3. Agregar los Google Fonts necesarios en `src/app/layout.tsx`
-4. El template aparece automáticamente en `/preview` y funciona con `getTemplate()` y `getTemplatesForCategory()`
+3. Regenerar `catalog.json` (`npm run generate:catalog` en `libs/template-catalog`) — el gate de CI (REQ-CATALOG-03) rechaza el PR si el `catalog.json` committeado no coincide con el que generan los manifests
+4. Agregar los Google Fonts necesarios en `apps/storefront/src/app/layout.tsx`
+5. El template aparece automáticamente en `/preview` (storefront) y en `TemplateGalleryStep` (admin), y funciona con `getTemplate()` y `getTemplatesForCategory()`
 
-No hay que tocar el código de la página de preview ni el sistema de CSS variables.
+No hay que tocar el código de la página de preview, del wizard, ni el sistema de CSS variables — ese es precisamente el contrato de escalabilidad que verifica el test de `scalability-contract.test.ts` (REQ-CATALOG-07).

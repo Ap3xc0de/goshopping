@@ -31,11 +31,11 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
-    title: 'Generador de tiendas con IA',
+    title: 'Generador de tiendas',
     description: (
       <>
-        El AI Engine genera tiendas personalizadas por sector con catálogo, precios y
-        contenido optimizado para Colombia y Latam.
+        Un catálogo de plantillas y un wizard guiado generan tiendas personalizadas por
+        sector, listas para vender en Colombia y Latam.
       </>
     ),
   },

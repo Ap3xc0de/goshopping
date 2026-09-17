@@ -64,3 +64,15 @@ The team is small (< 10 engineers). Monorepo overhead only becomes a problem at 
 
 1. **Full polyrepo** — rejected. Too much coordination overhead for a 3-person engineering team.
 2. **Turborepo/Nx monorepo** — considered. Deferred to Etapa 2 when build caching becomes a pain point. Current `make` + GitHub Actions is sufficient.
+
+---
+
+## Update (2026-09) — `apps/ai-engine` removed
+
+`apps/ai-engine` (listed above as originally planned) was built, then fully
+removed as part of the `storefront-templates-multidomain` change. The
+conversational, AI-driven store generation flow it powered was replaced by a
+deterministic wizard in `apps/admin` (template gallery + branding step) backed
+by `libs/template-catalog`. The monorepo top-level structure documented above
+is otherwise unchanged — this note only retires the `ai-engine` entry rather
+than rewriting the original decision record.

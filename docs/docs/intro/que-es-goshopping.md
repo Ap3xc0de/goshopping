@@ -43,9 +43,8 @@ graph TD
 | **Core API** | Gestión de pedidos, inventario, clientes, catálogo |
 | **Panel Admin** | Dashboard para el vendedor (dueño de la tienda) |
 | **Panel SuperAdmin** | Dashboard interno del equipo Go Shopping |
-| **Motor de Tiendas** | Genera tiendas online personalizadas con IA |
+| **Motor de Tiendas** | Genera tiendas online personalizadas a partir de un catálogo de plantillas |
 | **Integraciones** | Conecta con Wompi, PayU, Siigo, Alegra, Meta, Google, WhatsApp |
-| **AI Engine** | Genera contenido, optimiza precios, recomienda productos |
 
 ## ¿Qué NO hace Go Shopping?
 

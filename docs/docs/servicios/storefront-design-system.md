@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Storefront Design System
 
-El Design System de GoShopping es una biblioteca de componentes React/Next.js profesional diseñada específicamente para e-commerce colombiano. Vive en `apps/storefront/src/components/` y es el punto de partida que el AI Engine usa para generar storefronts personalizados.
+El Design System de GoShopping es una biblioteca de componentes React/Next.js profesional diseñada específicamente para e-commerce colombiano. Vive en `apps/storefront/src/components/` y es el punto de partida que el wizard de creación de tiendas (`apps/admin`) y el catálogo de plantillas (`libs/template-catalog`) usan para generar storefronts personalizados.
 
 ## Arquitectura del Design System
 
@@ -21,15 +21,15 @@ apps/storefront/src/
 │   ├── content/         ← AboutSection, ContactForm, FAQAccordion, BlogCard
 │   └── states/          ← LoadingGrid, EmptySearch, ErrorState
 ├── styles/
-│   └── theme.css        ← Variables de personalización para el AI
+│   └── theme.css        ← Variables de personalización por plantilla/marca
 └── app/
     └── preview/
         └── page.tsx     ← Galería de componentes (Storybook-like)
 ```
 
-## Variables CSS — API de Personalización del AI
+## Variables CSS — API de Personalización
 
-El AI Engine personaliza cada storefront modificando las variables CSS en `src/styles/theme.css`. Esta es la **única API de personalización** — el AI selecciona, combina y configura, nunca diseña desde cero.
+Cada storefront se personaliza modificando las variables CSS en `src/styles/theme.css`. Esta es la **única API de personalización**: el vendedor elige una plantilla del catálogo (`libs/template-catalog`) y ajusta marca/colores en el wizard de `apps/admin` — nunca se diseña desde cero.
 
 ### Variables de Marca
 
@@ -66,7 +66,7 @@ El AI Engine personaliza cada storefront modificando las variables CSS en `src/s
 
 ### Paletas Preconfiguradas
 
-El AI selecciona entre estas paletas según el tipo de negocio:
+Las plantillas del catálogo (`libs/template-catalog`) ya traen una de estas paletas asociada a su industria recomendada:
 
 | Industria | `--brand-primary` | `--brand-secondary` | `--brand-accent` |
 |-----------|-------------------|---------------------|------------------|
@@ -152,42 +152,36 @@ Métodos de pago soportados: Tarjeta crédito/débito, PSE, Contra entrega.
 | `<EmptySearch>` | Estado vacío para búsquedas sin resultados |
 | `<ErrorState>` | Estado de error con retry |
 
-## Cómo el AI Engine Genera un Storefront
+## Cómo el Wizard de Creación Genera un Storefront
 
-El flujo de personalización del AI sigue este patrón:
+El flujo de personalización sigue este patrón (`apps/admin` — `CreateStoreWizard`):
 
 ```mermaid
 graph TD
-    A[Perfil del negocio] --> B[AI Engine analiza industria/estilo]
-    B --> C[Selecciona componentes]
-    B --> D[Define paleta de colores]
-    B --> E[Configura tipografía]
-    C --> F[Combina en templates]
-    D --> G[Modifica theme.css]
-    E --> G
-    F --> H[Storefront generado]
-    G --> H
+    A[Vendedor abre 'Crear Tienda'] --> B[TemplateGalleryStep lista libs/template-catalog]
+    B --> C[Vendedor elige un TemplateManifest]
+    C --> D[BrandingStep ajusta colores/marca]
+    D --> E[Wizard guarda template_id + branding en el store]
+    E --> F[Storefront resuelve el manifest]
+    F --> G[Modifica theme.css con los overrides de marca]
+    G --> H[Storefront renderizado]
 ```
 
-El AI **selecciona y combina** — no diseña desde cero. La calidad visual está garantizada por los componentes del Design System.
+El vendedor **selecciona y ajusta marca** sobre un `TemplateManifest` ya diseñado — nunca diseña desde cero. La calidad visual está garantizada por los componentes del Design System y por el catálogo de plantillas.
 
-### Ejemplo: AI generando un storefront de moda
+### Ejemplo: elegir un storefront de moda
 
 ```typescript
-// 1. Selección de componentes
-const storeLayout = {
-  hero: 'HeroCentered',       // Alta impacto visual
-  productGrid: 'ProductGrid', // Standard grid
-  marketing: ['PromoBanner', 'CountdownTimer', 'NewsletterSignup'],
-};
+// 1. Selección de plantilla (TemplateGalleryStep)
+import { getTemplate } from '@goshopping/template-catalog';
 
-// 2. Personalización de variables CSS
-const brandTheme = `
-  --brand-primary: 340 82% 52%;   /* Rosa moda */
-  --brand-secondary: 340 20% 15%;
-  --font-heading: 'Playfair Display', serif;
-  --radius-md: 0.25rem;           /* Bordes más cuadrados = elegancia */
-`;
+const manifest = getTemplate('minimal'); // TemplateManifest con hero/productCard/homeSections ya definidos
+
+// 2. Ajuste de marca (BrandingStep) — overrides sobre el manifest
+const brandOverrides = {
+  primary: '340 82% 52%',   // Rosa moda
+  secondary: '340 20% 15%',
+};
 ```
 
 ## Tecnologías del Design System
