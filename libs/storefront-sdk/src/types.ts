@@ -26,6 +26,10 @@ export interface BrandColors {
   background?: string;
   foreground?: string;
   muted?: string;
+  // BRAND-01/BRAND-03: dedicated Navbar colors, independent of the other
+  // fields (design decision 9) — same optional-string/HSL convention.
+  nav_background?: string;
+  nav_text?: string;
 }
 
 export interface BrandFonts {
