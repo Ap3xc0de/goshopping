@@ -13,6 +13,63 @@
       ],
       "preview_image": null,
       "archived": false
+    },
+    {
+      "id": "vibrant",
+      "name": "Vibrant",
+      "description": "Colores fuertes, energía, CTAs agresivos. Para marcas que quieren vender mucho y rápido.",
+      "category": [
+        "Deportes",
+        "Tecnología",
+        "Gadgets",
+        "Fitness",
+        "Streetwear"
+      ],
+      "preview_image": null,
+      "archived": false
+    },
+    {
+      "id": "elegant",
+      "name": "Elegant",
+      "description": "Serif, fondos oscuros opcionales, transiciones suaves. Sofisticación y lujo.",
+      "category": [
+        "Vinos",
+        "Gastronomía",
+        "Hoteles",
+        "Moda de lujo",
+        "Perfumería"
+      ],
+      "preview_image": null,
+      "archived": false
+    },
+    {
+      "id": "urban",
+      "name": "Urban",
+      "description": "Sans-serif bold, grids asimétricos, estilo streetwear. Joven y atrevido.",
+      "category": [
+        "Streetwear",
+        "Skate",
+        "Música",
+        "Arte urbano",
+        "Sneakers"
+      ],
+      "preview_image": null,
+      "archived": false
+    },
+    {
+      "id": "fresh",
+      "name": "Fresh",
+      "description": "Colores pastel, bordes redondeados, friendly. Accesible y cálido.",
+      "category": [
+        "Alimentos",
+        "Bebidas",
+        "Productos naturales",
+        "Bebés",
+        "Mascotas",
+        "Hogar"
+      ],
+      "preview_image": null,
+      "archived": false
     }
   ]
 }

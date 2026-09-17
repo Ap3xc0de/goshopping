@@ -1,4 +1,8 @@
 import { minimalManifest } from './minimal/manifest';
+import { vibrantManifest } from './vibrant/manifest';
+import { elegantManifest } from './elegant/manifest';
+import { urbanManifest } from './urban/manifest';
+import { freshManifest } from './fresh/manifest';
 import type { TemplateManifest } from '../types';
 
 /**
@@ -8,6 +12,10 @@ import type { TemplateManifest } from '../types';
  */
 export const templates: Record<string, TemplateManifest> = {
   minimal: minimalManifest,
+  vibrant: vibrantManifest,
+  elegant: elegantManifest,
+  urban: urbanManifest,
+  fresh: freshManifest,
 };
 
 /** Returns every registered template, including archived ones. */
