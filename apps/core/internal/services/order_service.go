@@ -122,6 +122,7 @@ func (s *OrderService) ListOrders(storeID uuid.UUID, page, perPage int, status, 
 		       COALESCE(o.payment_ref,'')    AS payment_ref,
 		       COALESCE(o.shipping_tracking,'') AS shipping_tracking,
 		       COALESCE(o.notes,'') AS notes, o.created_at, o.updated_at,
+		       o.shipping_address, o.payment_status,
 		       UPPER(SUBSTRING(o.id::text, 1, 8))    AS order_number,
 		       COALESCE(c.name,'')                   AS customer_name,
 		       COALESCE(c.email,'')                  AS customer_email,
@@ -145,6 +146,7 @@ func (s *OrderService) ListOrders(storeID uuid.UUID, page, perPage int, status, 
 		if err := rows.Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items, &o.Subtotal, &o.DiscountTotal,
 			&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 			&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
+			&o.ShippingAddress, &o.PaymentStatus,
 			&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
@@ -168,6 +170,7 @@ func (s *OrderService) GetOrder(storeID, orderID uuid.UUID) (*OrderDetail, error
 		       COALESCE(o.payment_ref,'')        AS payment_ref,
 		       COALESCE(o.shipping_tracking,'')  AS shipping_tracking,
 		       COALESCE(o.notes,'')              AS notes, o.created_at, o.updated_at,
+		       o.shipping_address, o.payment_status,
 		       UPPER(SUBSTRING(o.id::text, 1, 8)) AS order_number,
 		       COALESCE(c.name,'')               AS customer_name,
 		       COALESCE(c.email,'')              AS customer_email,
@@ -180,6 +183,7 @@ func (s *OrderService) GetOrder(storeID, orderID uuid.UUID) (*OrderDetail, error
 	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items, &o.Subtotal, &o.DiscountTotal,
 		&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 		&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
+		&o.ShippingAddress, &o.PaymentStatus,
 		&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -205,6 +209,7 @@ func (s *OrderService) GetOrderByIDOnly(orderID uuid.UUID) (*OrderDetail, error)
 		       COALESCE(o.payment_ref,'')       AS payment_ref,
 		       COALESCE(o.shipping_tracking,'') AS shipping_tracking,
 		       COALESCE(o.notes,'')             AS notes, o.created_at, o.updated_at,
+		       o.shipping_address, o.payment_status,
 		       UPPER(SUBSTRING(o.id::text, 1, 8)) AS order_number,
 		       COALESCE(c.name,'')              AS customer_name,
 		       COALESCE(c.email,'')             AS customer_email,
@@ -216,6 +221,7 @@ func (s *OrderService) GetOrderByIDOnly(orderID uuid.UUID) (*OrderDetail, error)
 	).Scan(&o.ID, &o.StoreID, &o.CustomerID, &o.Status, &o.Items, &o.Subtotal, &o.DiscountTotal,
 		&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 		&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
+		&o.ShippingAddress, &o.PaymentStatus,
 		&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -260,6 +266,11 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 	ctx := context.Background()
 	if len(req.Items) == 0 {
 		return nil, fmt.Errorf("at least one item is required")
+	}
+	if req.ShippingAddress != nil {
+		if err := req.ShippingAddress.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	// ── Stage 1: Resolve products and build line items
@@ -359,6 +370,16 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		return nil, fmt.Errorf("marshal items: %w", err)
 	}
 
+	// shippingAddressJSON stays nil (→ SQL NULL) when the order has no
+	// shipping_address, since the column is nullable (CORE-01/CORE-03).
+	var shippingAddressJSON []byte
+	if req.ShippingAddress != nil {
+		shippingAddressJSON, err = json.Marshal(req.ShippingAddress)
+		if err != nil {
+			return nil, fmt.Errorf("marshal shipping address: %w", err)
+		}
+	}
+
 	// ── Stage 7: Resolve customer
 	var customerID *uuid.UUID
 	if req.CustomerID != nil && *req.CustomerID != "" {
@@ -390,13 +411,13 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 	}
 
 	if err = tx.QueryRow(ctx, `
-		INSERT INTO orders (store_id, customer_id, status, items, subtotal, discount_total, tax, total, coupon_id, payment_method, notes)
-		VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO orders (store_id, customer_id, status, items, subtotal, discount_total, tax, total, coupon_id, payment_method, notes, shipping_address, payment_status)
+		VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending')
 		RETURNING id`,
 		storeID, customerID, itemsJSON,
 		quote.SubtotalBeforeDiscount, quote.DiscountTotal, quote.Tax, quote.Total,
 		couponID,
-		req.PaymentMethod, req.Notes,
+		req.PaymentMethod, req.Notes, shippingAddressJSON,
 	).Scan(&orderID); err != nil {
 		return nil, fmt.Errorf("insert order: %w", err)
 	}

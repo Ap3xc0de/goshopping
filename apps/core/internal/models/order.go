@@ -2,6 +2,8 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,8 +32,14 @@ type Order struct {
 	PaymentRef       string          `json:"payment_reference"`
 	ShippingTracking string          `json:"tracking_number"`
 	Notes            string          `json:"notes"`
-	CreatedAt        time.Time       `json:"created_at"`
-	UpdatedAt        time.Time       `json:"updated_at"`
+	// ShippingAddress is the order's own delivery address (see
+	// ShippingAddress doc comment) — nullable, stored as raw JSONB so the
+	// service layer decides when to unmarshal it. PaymentStatus tracks the
+	// payment lifecycle independently of Status (order fulfillment).
+	ShippingAddress json.RawMessage `json:"shipping_address,omitempty"`
+	PaymentStatus   string          `json:"payment_status"` // pending | paid | failed | refunded
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
 }
 
 // OrderItem is a line-item within an order stored in JSONB.
@@ -58,7 +66,46 @@ type CreateOrderInput struct {
 	Items         []OrderItemInput `json:"items"`
 	PaymentMethod string           `json:"payment_method"`
 	CouponCode    *string          `json:"coupon_code,omitempty"`
-	Notes         string           `json:"notes"`
+	// ShippingAddress is the destination for this specific order. It is
+	// intentionally NOT persisted onto the customer record (see
+	// order_service.go CreateOrder, Stage 7) — an order's delivery address
+	// can differ from any address stored elsewhere, and future orders from
+	// the same customer must not silently inherit it.
+	ShippingAddress *ShippingAddress `json:"shipping_address,omitempty"`
+	Notes           string           `json:"notes"`
+}
+
+// ShippingAddress is the delivery address captured per order.
+type ShippingAddress struct {
+	Street  string `json:"street"`
+	City    string `json:"city"`
+	State   string `json:"state"`
+	Zip     string `json:"zip"`
+	Country string `json:"country,omitempty"`
+	Notes   string `json:"notes,omitempty"`
+}
+
+// Validate checks that street/city/state/zip are all present. Called only
+// when a ShippingAddress is provided at all — it is optional on
+// CreateOrderInput, but once present it must be complete enough to ship to.
+func (a *ShippingAddress) Validate() error {
+	var missing []string
+	if strings.TrimSpace(a.Street) == "" {
+		missing = append(missing, "street")
+	}
+	if strings.TrimSpace(a.City) == "" {
+		missing = append(missing, "city")
+	}
+	if strings.TrimSpace(a.State) == "" {
+		missing = append(missing, "state")
+	}
+	if strings.TrimSpace(a.Zip) == "" {
+		missing = append(missing, "zip")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("shipping_address missing required field(s): %s", strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 // UpdateOrderStatusInput is the DTO for changing order status.
