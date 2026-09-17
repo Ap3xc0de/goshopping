@@ -1,11 +1,23 @@
 interface PartialStoreConfig {
   name?: string;
-  style?: string;
   colors?: { primary?: string; secondary?: string; accent?: string };
 }
 
+interface StorePreviewFonts {
+  heading: string;
+  body: string;
+}
+
+const DEFAULT_FONTS: StorePreviewFonts = { heading: 'Inter', body: 'Inter' };
+
 interface StorePreviewProps {
   storeConfig?: PartialStoreConfig;
+  /**
+   * Fonts come straight from the template manifest (`@goshopping/template-catalog`)
+   * so adding template #6 never requires touching this file — REQ-CATALOG-07.
+   * Replaces the old `style?: string` + hardcoded `FONT_MAP` (5 legacy ids only).
+   */
+  fonts?: StorePreviewFonts;
   loading?: boolean;
 }
 
@@ -26,15 +38,7 @@ function hslToHex(hsl: string): string {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-const FONT_MAP: Record<string, { heading: string; body: string }> = {
-  minimal: { heading: 'Inter', body: 'Inter' },
-  vibrant: { heading: 'Poppins', body: 'Inter' },
-  elegant: { heading: 'Cormorant Garamond', body: 'Lato' },
-  urban: { heading: 'Space Grotesk', body: 'Space Grotesk' },
-  fresh: { heading: 'Nunito', body: 'Nunito' },
-};
-
-export function StorePreview({ storeConfig, loading }: StorePreviewProps) {
+export function StorePreview({ storeConfig, fonts: fontsProp, loading }: StorePreviewProps) {
   const primaryColor = storeConfig?.colors?.primary
     ? hslToHex(storeConfig.colors.primary)
     : '#3b82f6';
@@ -42,8 +46,7 @@ export function StorePreview({ storeConfig, loading }: StorePreviewProps) {
     ? hslToHex(storeConfig.colors.secondary)
     : '#f8fafc';
   const storeName = storeConfig?.name || 'Tu Tienda';
-  const style = storeConfig?.style || 'minimal';
-  const fonts = FONT_MAP[style] ?? FONT_MAP.minimal;
+  const fonts = fontsProp ?? DEFAULT_FONTS;
 
   return (
     <div
