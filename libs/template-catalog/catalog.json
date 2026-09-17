@@ -1,0 +1,18 @@
+{
+  "templates": [
+    {
+      "id": "minimal",
+      "name": "Minimal",
+      "description": "Limpio, tipografía grande, mucho espacio blanco. Para marcas premium que quieren elegancia sin ruido.",
+      "category": [
+        "Moda premium",
+        "Joyería",
+        "Cosmética",
+        "Arte",
+        "Diseño"
+      ],
+      "preview_image": null,
+      "archived": false
+    }
+  ]
+}
