@@ -26,6 +26,10 @@ export const minimalManifest: TemplateManifest = {
     background: '0 0% 100%',
     foreground: '0 0% 9%',
     muted: '0 0% 96%',
+    // BRAND-05: mirrors background/foreground — matches the current
+    // hardcoded `bg-white` Navbar look until BRAND-06 (Slice 4) wires it up.
+    navBackground: '0 0% 100%',
+    navText: '0 0% 9%',
   },
 
   fonts: {

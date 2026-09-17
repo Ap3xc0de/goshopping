@@ -33,4 +33,14 @@ describe('template-catalog registry', () => {
     expect(results.map((t) => t.id)).toContain('minimal');
     expect(getTemplatesForCategory('categoria-inexistente')).toEqual([]);
   });
+
+  // BRAND-03/BRAND-05: TemplateManifest.colors gains optional navBackground/
+  // navText; the reference `minimal` template ships sensible defaults
+  // (white bg / dark text) matching its current hardcoded Navbar look
+  // (background/foreground below already are '0 0% 100%'/'0 0% 9%').
+  it('minimal template declares navBackground/navText matching its current white-nav look', () => {
+    const minimal = getTemplate('minimal');
+    expect(minimal.colors.navBackground).toBe('0 0% 100%');
+    expect(minimal.colors.navText).toBe('0 0% 9%');
+  });
 });

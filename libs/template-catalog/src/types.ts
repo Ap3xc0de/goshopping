@@ -28,6 +28,12 @@ export interface TemplateManifest {
     background: string;
     foreground: string;
     muted: string;
+    /**
+     * Optional dedicated Navbar colors (BRAND-01/BRAND-05). When absent,
+     * consumers (e.g. buildTemplateCSSVars) fall back to background/foreground.
+     */
+    navBackground?: string;
+    navText?: string;
   };
 
   /** Google Font names */
