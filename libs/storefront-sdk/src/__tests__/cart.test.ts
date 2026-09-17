@@ -135,6 +135,42 @@ describe('CartManager', () => {
     expect(result.items[0].quantity).toBe(3);
   });
 
+  // CART-05: prueba de persistencia end-to-end para el wiring de Slice 5 — un
+  // CartManager nuevo (simula el remount del hook `useCart` tras un reload de
+  // página) recupera TODOS los items con sus cantidades exactas, no solo el
+  // primero. Es una prueba de aprobación (no cambia producción: la
+  // persistencia ya existe desde antes de esta slice — ver decisión 8 del
+  // design) que documenta el contrato que StorefrontChrome/Navbar/CartDrawer
+  // dependen de él.
+  it('CART-05: sobrevive completo (múltiples items) a un nuevo CartManager que simula un reload de página', () => {
+    cart.addItem(makeProduct({ id: 'p1', name: 'Camiseta' }), 2);
+    cart.addItem(makeProduct({ id: 'p2', name: 'Pantalón' }), 1);
+
+    const reloaded = new CartManager(STORE_SLUG);
+    const result = reloaded.getCart();
+
+    expect(result.items).toHaveLength(2);
+    expect(result.items.map((i) => [i.product.id, i.quantity])).toEqual([
+      ['p1', 2],
+      ['p2', 1],
+    ]);
+    expect(result.itemCount).toBe(3);
+  });
+
+  // CART-06: dos tiendas distintas usan claves de localStorage distintas
+  // (`goshopping_cart_${storeSlug}`) — un carrito de la tienda A jamás debe
+  // aparecer en el carrito de la tienda B.
+  it('CART-06: aísla carritos por storeSlug — la tienda B no ve items de la tienda A', () => {
+    const cartA = new CartManager('tienda-a');
+    const cartB = new CartManager('tienda-b');
+
+    cartA.addItem(makeProduct({ id: 'solo-en-a' }), 2);
+
+    expect(cartA.getCart().items).toHaveLength(1);
+    expect(cartB.getCart().items).toHaveLength(0);
+    expect(cartB.itemCount).toBe(0);
+  });
+
   // ── Listeners ───────────────────────────────────────────────────────────────
 
   it('notifica listeners al cambiar', () => {

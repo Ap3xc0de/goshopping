@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Sheet,
   SheetContent,
@@ -10,15 +11,16 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ShoppingBag } from "lucide-react";
-import { CartItem, CartItemProps } from "./CartItem";
+import { CartItem, CartItemData } from "./CartItem";
 
 interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
-  items: CartItemProps[];
+  items: CartItemData[];
   onQuantityChange: (id: string, quantity: number) => void;
   onRemove: (id: string) => void;
-  onCheckout: () => void;
+  /** CART-02: builds the "Ir a pagar" / catalog CTA hrefs for this store. */
+  storeSlug: string;
 }
 
 export function CartDrawer({
@@ -27,7 +29,7 @@ export function CartDrawer({
   items,
   onQuantityChange,
   onRemove,
-  onCheckout,
+  storeSlug,
 }: CartDrawerProps) {
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -57,7 +59,9 @@ export function CartDrawer({
             <p className="text-sm text-muted-foreground text-center mb-6">
               Agrega productos para comenzar tu compra
             </p>
-            <Button onClick={onClose}>Continuar comprando</Button>
+            <Link href={`/${storeSlug}/catalogo`} onClick={onClose}>
+              <Button>Ir al catálogo</Button>
+            </Link>
           </div>
         ) : (
           <>
@@ -93,13 +97,14 @@ export function CartDrawer({
                 </div>
               </div>
 
-              <Button
-                size="lg"
-                className="w-full bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90 text-white"
-                onClick={onCheckout}
-              >
-                Ir al checkout
-              </Button>
+              <Link href={`/${storeSlug}/checkout`} onClick={onClose} className="block">
+                <Button
+                  size="lg"
+                  className="w-full bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90 text-white"
+                >
+                  Ir a pagar
+                </Button>
+              </Link>
             </div>
           </>
         )}

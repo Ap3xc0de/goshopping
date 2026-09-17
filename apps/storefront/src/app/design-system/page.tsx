@@ -473,7 +473,7 @@ export default function PreviewPage() {
         items={cartItems}
         onQuantityChange={handleQuantityChange}
         onRemove={handleRemove}
-        onCheckout={() => { setCartOpen(false); console.log("checkout"); }}
+        storeSlug="demo"
       />
     </div>
   );
