@@ -25,5 +25,13 @@ resource "aws_secretsmanager_secret_version" "third_party_api_keys" {
     alegra_token         = ""
     meta_access_token    = ""
     google_ads_dev_token = ""
+    # Read by Config.loadFromAWS() (apps/core) and validated by
+    # middleware.RequireOriginSecret. Two keys support rotation without a
+    # hard cutover; the Cloudflare Transform Rule (cloudflare_ruleset in each
+    # environment's main.tf) must be updated in the SAME apply that rotates
+    # origin_shared_secret_current, since both come from the same Terraform
+    # variables.
+    origin_shared_secret_current  = var.origin_shared_secret_current
+    origin_shared_secret_previous = var.origin_shared_secret_previous
   })
 }

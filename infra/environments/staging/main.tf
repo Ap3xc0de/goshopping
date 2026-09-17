@@ -38,6 +38,10 @@ locals {
   superadmin_domain_name = "superadmin.${local.environment_prefix}${var.base_domain}"
   storefront_domain_name = "app.${local.environment_prefix}${var.base_domain}"
   cdn_domain_name        = "cdn.${local.environment_prefix}${var.base_domain}"
+
+  # Slice 1: per-store storefront hostnames are wildcard subdomains, not a
+  # single fixed host. Covers the legacy storefront_domain_name too.
+  storefront_wildcard_pattern = "*.${local.environment_prefix}${var.base_domain}"
 }
 
 resource "aws_acm_certificate" "api" {
@@ -73,6 +77,11 @@ resource "aws_acm_certificate" "frontend" {
     local.superadmin_domain_name,
     local.storefront_domain_name,
     local.cdn_domain_name,
+    # Slice 1: required so the ALB presents a matching cert for per-store
+    # subdomains once Cloudflare proxies them under Full (strict) SSL mode —
+    # without this SAN, Cloudflare would reject the origin's certificate for
+    # any hostname other than the ones listed above.
+    local.storefront_wildcard_pattern,
   ]
   validation_method = "DNS"
 
@@ -133,9 +142,11 @@ module "sqs" {
 }
 
 module "secrets" {
-  source          = "../../modules/secrets"
-  environment     = "staging"
-  jwt_signing_key = var.jwt_signing_key
+  source                        = "../../modules/secrets"
+  environment                   = "staging"
+  jwt_signing_key               = var.jwt_signing_key
+  origin_shared_secret_current  = var.origin_shared_secret_current
+  origin_shared_secret_previous = var.origin_shared_secret_previous
 }
 
 module "ecs" {
@@ -154,7 +165,7 @@ module "ecs" {
   frontend_certificate_arn = aws_acm_certificate_validation.frontend.certificate_arn
   admin_domain_name        = local.admin_domain_name
   superadmin_domain_name   = local.superadmin_domain_name
-  storefront_domain_name   = local.storefront_domain_name
+  storefront_domain_name   = local.storefront_wildcard_pattern # wildcard pattern — see ecs module's variables.tf
 }
 
 module "ssm" {
@@ -225,11 +236,44 @@ resource "cloudflare_dns_record" "superadmin" {
 
 resource "cloudflare_dns_record" "storefront" {
   zone_id = data.cloudflare_zone.primary.zone_id
-  name    = replace(local.storefront_domain_name, ".${var.cloudflare_zone_name}", "")
+  name    = replace(local.storefront_wildcard_pattern, ".${var.cloudflare_zone_name}", "")
   type    = "CNAME"
   content = module.ecs.alb_dns_name
   ttl     = 1
-  proxied = false
+  # Only this record is proxied (decisions-infra #1098 rev.2). api, admin,
+  # superadmin and cdn stay proxied = false above — the ALB security group
+  # can't be restricted to Cloudflare's ranges while those bypass the proxy,
+  # so the shared secret header (cloudflare_ruleset below +
+  # middleware.RequireOriginSecret in apps/core) is the only defense layer.
+  # Prerequisite for this record, done manually in the Cloudflare dashboard
+  # before applying: SSL/TLS mode for this zone must be "Full (strict)", or
+  # Cloudflare will reject the ALB's certificate / create a redirect loop.
+  proxied = true
+}
+
+# Injects the shared secret header for every request Cloudflare proxies in
+# this zone. In practice this only affects the storefront wildcard above —
+# api/admin/superadmin/cdn are proxied = false, so their traffic never
+# reaches Cloudflare's edge and this rule never runs for them.
+resource "cloudflare_ruleset" "origin_secret_header" {
+  zone_id = data.cloudflare_zone.primary.zone_id
+  name    = "inject-origin-shared-secret"
+  kind    = "zone"
+  phase   = "http_request_late_transform"
+
+  rules = [{
+    action = "rewrite"
+    action_parameters = {
+      headers = {
+        "X-Origin-Shared-Secret" = {
+          operation = "set"
+          value     = var.origin_shared_secret_current
+        }
+      }
+    }
+    expression = "true"
+    enabled    = true
+  }]
 }
 
 resource "cloudflare_dns_record" "cdn" {
