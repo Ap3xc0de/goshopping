@@ -109,16 +109,22 @@ func TestMigrations007And008DownAreReversible(t *testing.T) {
 	}
 
 	// down_008_drops_column
-	if err := m.Steps(-1); err != nil {
-		t.Fatalf("down step for 008 failed: %v", err)
+	//
+	// Migrate(7) targets the absolute post-007 version instead of a relative
+	// Steps(-1): this test must keep exercising 007/008's down scripts
+	// specifically, regardless of how many migrations exist above 008 at
+	// HEAD (e.g. 009_orders_shipping_payment.up.sql) — Steps(-1) would have
+	// undone whatever the newest migration is instead.
+	if err := m.Migrate(7); err != nil {
+		t.Fatalf("migrate down to version 7 failed: %v", err)
 	}
 	if columnExists(t, db, "stores", "template_id") {
 		t.Fatal("down_008_drops_column: expected stores.template_id to be gone after down 008")
 	}
 
 	// down_007_drops_table
-	if err := m.Steps(-1); err != nil {
-		t.Fatalf("down step for 007 failed: %v", err)
+	if err := m.Migrate(6); err != nil {
+		t.Fatalf("migrate down to version 6 failed: %v", err)
 	}
 	if tableExists(t, db, "store_domains") {
 		t.Fatal("down_007_drops_table: expected store_domains to be gone after down 007")
