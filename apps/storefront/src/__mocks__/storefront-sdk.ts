@@ -49,7 +49,20 @@ export const useCart = jest.fn(() => ({
 }));
 
 export const useOrderStatus = jest.fn(() => ({
-  order: null,
+  status: null,
   loading: false,
   error: null,
+  refresh: jest.fn(),
+}));
+
+// CHECKOUT-03: checkout/page.tsx calls `useGoShopping(storeSlug).createOrder(...)`
+// directly (there's no dedicated `useCreateOrder` hook) — tests override
+// `createOrder`/`getOrderStatus` per-case via `mockReturnValue`.
+export const useGoShopping = jest.fn(() => ({
+  createOrder: jest.fn(),
+  getOrderStatus: jest.fn(),
+  getProducts: jest.fn(),
+  getProduct: jest.fn(),
+  getCategories: jest.fn(),
+  getStoreConfig: jest.fn(),
 }));

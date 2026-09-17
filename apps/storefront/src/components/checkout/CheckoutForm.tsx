@@ -1,94 +1,73 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, Landmark, Wallet } from "lucide-react";
 
+// CHECKOUT-01: guest checkout only needs a single "nombre" field (not
+// first/last) — this is a deliberate simplification versus the original
+// orphan CheckoutForm, matching the flat `customer_name` the Go DTO expects
+// (design decision 5). Payment method is fixed to "pago pendiente" at the
+// page level (no online payment integration yet), so it's not a form field.
 export interface CheckoutData {
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
   phone: string;
-  address: string;
+  street: string;
   city: string;
-  department: string;
-  postalCode: string;
-  paymentMethod: "credit_card" | "pse" | "cash_on_delivery";
-  notes?: string;
+  state: string;
+  zip: string;
+  country: string;
+  notes: string;
 }
 
+export type CheckoutErrors = Partial<Record<keyof CheckoutData, string>>;
+
 interface CheckoutFormProps {
-  onSubmit: (data: CheckoutData) => void;
+  data: CheckoutData;
+  errors?: CheckoutErrors;
+  onChange: (field: keyof CheckoutData, value: string) => void;
+  onSubmit: (e: React.FormEvent | React.MouseEvent) => void;
   isLoading?: boolean;
   cartSummary?: React.ReactNode;
 }
 
 export function CheckoutForm({
+  data,
+  errors = {},
+  onChange,
   onSubmit,
   isLoading = false,
   cartSummary,
 }: CheckoutFormProps) {
-  const [formData, setFormData] = useState<CheckoutData>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    department: "",
-    postalCode: "",
-    paymentMethod: "credit_card",
-    notes: "",
-  });
+  const handleInput =
+    (field: keyof CheckoutData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      onChange(field, e.target.value);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const fieldError = (field: keyof CheckoutData) =>
+    errors[field] ? (
+      <p className="text-sm text-destructive mt-1">{errors[field]}</p>
+    ) : null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit(e);
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="lg:col-span-7 space-y-8"
-      >
+      <form onSubmit={handleSubmit} noValidate className="lg:col-span-7 space-y-8">
         {/* Contact Information */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Datos de contacto</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="firstName">Nombre *</Label>
-              <Input
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="lastName">Apellido *</Label>
-              <Input
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                required
-              />
-            </div>
+          <div>
+            <Label htmlFor="name">Nombre completo *</Label>
+            <Input id="name" name="name" value={data.name} onChange={handleInput("name")} />
+            {fieldError("name")}
           </div>
           <div>
             <Label htmlFor="email">Email *</Label>
@@ -96,10 +75,10 @@ export function CheckoutForm({
               id="email"
               name="email"
               type="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
+              value={data.email}
+              onChange={handleInput("email")}
             />
+            {fieldError("email")}
           </div>
           <div>
             <Label htmlFor="phone">Teléfono *</Label>
@@ -107,10 +86,10 @@ export function CheckoutForm({
               id="phone"
               name="phone"
               type="tel"
-              value={formData.phone}
-              onChange={handleChange}
-              required
+              value={data.phone}
+              onChange={handleInput("phone")}
             />
+            {fieldError("phone")}
           </div>
         </div>
 
@@ -120,95 +99,44 @@ export function CheckoutForm({
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Dirección de envío</h2>
           <div>
-            <Label htmlFor="address">Dirección *</Label>
+            <Label htmlFor="street">Dirección *</Label>
             <Input
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
+              id="street"
+              name="street"
+              value={data.street}
+              onChange={handleInput("street")}
               placeholder="Calle, número, apartamento, etc."
-              required
             />
+            {fieldError("street")}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="city">Ciudad *</Label>
-              <Input
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                required
-              />
+              <Input id="city" name="city" value={data.city} onChange={handleInput("city")} />
+              {fieldError("city")}
             </div>
             <div>
-              <Label htmlFor="department">Departamento *</Label>
+              <Label htmlFor="state">Departamento *</Label>
+              <Input id="state" name="state" value={data.state} onChange={handleInput("state")} />
+              {fieldError("state")}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="zip">Código postal *</Label>
+              <Input id="zip" name="zip" value={data.zip} onChange={handleInput("zip")} />
+              {fieldError("zip")}
+            </div>
+            <div>
+              <Label htmlFor="country">País</Label>
               <Input
-                id="department"
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                required
+                id="country"
+                name="country"
+                value={data.country}
+                onChange={handleInput("country")}
               />
             </div>
           </div>
-          <div>
-            <Label htmlFor="postalCode">Código Postal *</Label>
-            <Input
-              id="postalCode"
-              name="postalCode"
-              value={formData.postalCode}
-              onChange={handleChange}
-              required
-            />
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Payment Method */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Método de pago</h2>
-          <RadioGroup
-            value={formData.paymentMethod}
-            onValueChange={(value) =>
-              setFormData((prev) => ({
-                ...prev,
-                paymentMethod: value as CheckoutData["paymentMethod"],
-              }))
-            }
-          >
-            <div className="flex items-center space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
-              <RadioGroupItem value="credit_card" id="credit_card" />
-              <Label
-                htmlFor="credit_card"
-                className="flex items-center gap-3 cursor-pointer flex-1"
-              >
-                <CreditCard className="w-5 h-5" />
-                <span>Tarjeta de crédito</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
-              <RadioGroupItem value="pse" id="pse" />
-              <Label
-                htmlFor="pse"
-                className="flex items-center gap-3 cursor-pointer flex-1"
-              >
-                <Landmark className="w-5 h-5" />
-                <span>PSE (Débito bancario)</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
-              <RadioGroupItem value="cash_on_delivery" id="cash_on_delivery" />
-              <Label
-                htmlFor="cash_on_delivery"
-                className="flex items-center gap-3 cursor-pointer flex-1"
-              >
-                <Wallet className="w-5 h-5" />
-                <span>Pago contra entrega</span>
-              </Label>
-            </div>
-          </RadioGroup>
         </div>
 
         <Separator />
@@ -217,14 +145,12 @@ export function CheckoutForm({
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Notas del pedido</h2>
           <div>
-            <Label htmlFor="notes">
-              Notas adicionales (opcional)
-            </Label>
+            <Label htmlFor="notes">Notas adicionales (opcional)</Label>
             <Textarea
               id="notes"
               name="notes"
-              value={formData.notes}
-              onChange={handleChange}
+              value={data.notes}
+              onChange={handleInput("notes")}
               placeholder="Instrucciones especiales de entrega, referencias, etc."
               rows={4}
             />
@@ -239,7 +165,7 @@ export function CheckoutForm({
             className="w-full bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90 text-white"
             disabled={isLoading}
           >
-            {isLoading ? "Procesando..." : "Finalizar compra"}
+            {isLoading ? "Procesando..." : "Pagar ahora"}
           </Button>
         </div>
       </form>
@@ -248,16 +174,16 @@ export function CheckoutForm({
       <div className="lg:col-span-5">
         <div className="lg:sticky lg:top-24 space-y-6">
           {cartSummary}
-          {/* Submit Button - Desktop */}
+          {/* Submit Button - Desktop (outside <form>, needs its own handler) */}
           <div className="hidden lg:block">
             <Button
-              type="submit"
+              type="button"
               size="lg"
               className="w-full bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90 text-white"
               disabled={isLoading}
               onClick={handleSubmit}
             >
-              {isLoading ? "Procesando..." : "Finalizar compra"}
+              {isLoading ? "Procesando..." : "Pagar ahora"}
             </Button>
           </div>
         </div>

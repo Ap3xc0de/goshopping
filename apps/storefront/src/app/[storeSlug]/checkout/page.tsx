@@ -1,22 +1,64 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useCart } from '@goshopping/storefront-sdk';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import Image from 'next/image';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
-import { PRODUCT_IMAGE_PLACEHOLDER } from '@/lib/product-image';
+import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import { useCart, useGoShopping, GoShoppingError } from '@goshopping/storefront-sdk';
+import type { CreateOrderRequest } from '@goshopping/storefront-sdk';
+import { Button } from '@/components/ui/button';
+import { CheckoutForm, type CheckoutData, type CheckoutErrors } from '@/components/checkout/CheckoutForm';
+import { CartSummary } from '@/components/cart/CartSummary';
+import { toCartItemProps } from '@/lib/cart-adapter';
+
+const EMPTY_FORM: CheckoutData = {
+  name: '',
+  email: '',
+  phone: '',
+  street: '',
+  city: '',
+  state: '',
+  zip: '',
+  country: 'CO',
+  notes: '',
+};
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const GENERIC_ERROR = 'No se pudo procesar tu pedido. Intenta de nuevo.';
+
+// CHECKOUT-01: client-side validation with clear inline errors in Spanish.
+// No react-hook-form/zod in apps/storefront's package.json — plain
+// controlled state + a validate() function is the right-sized tool here.
+function validate(data: CheckoutData): CheckoutErrors {
+  const errors: CheckoutErrors = {};
+  if (!data.name.trim()) errors.name = 'El nombre es obligatorio';
+  if (!data.email.trim()) errors.email = 'El email es obligatorio';
+  else if (!EMAIL_RE.test(data.email.trim())) errors.email = 'Ingresa un email válido';
+  if (!data.phone.trim()) errors.phone = 'El teléfono es obligatorio';
+  if (!data.street.trim()) errors.street = 'La dirección es obligatoria';
+  if (!data.city.trim()) errors.city = 'La ciudad es obligatoria';
+  if (!data.state.trim()) errors.state = 'El departamento es obligatorio';
+  if (!data.zip.trim()) errors.zip = 'El código postal es obligatorio';
+  return errors;
+}
 
 export default function CheckoutPage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
-  const { cart, removeItem, updateQuantity } = useCart(storeSlug);
-  const [email, setEmail] = useState('');
+  const router = useRouter();
+  const { cart, clearCart } = useCart(storeSlug);
+  const client = useGoShopping(storeSlug);
 
-  const total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const [data, setData] = useState<CheckoutData>(EMPTY_FORM);
+  const [errors, setErrors] = useState<CheckoutErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const handleChange = (field: keyof CheckoutData, value: string) => {
+    setData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // CHECKOUT-02: guard the whole page — empty cart never renders the form.
   if (cart.items.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
@@ -33,69 +75,81 @@ export default function CheckoutPage() {
     );
   }
 
+  const handleSubmit = async () => {
+    const nextErrors = validate(data);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    // CHECKOUT-03: flat DTO matching Go's CreateOrderInput (design decision
+    // 5) — payment_method is fixed to "cash" (pago contra entrega / pendiente):
+    // there is no online payment integration yet and Go does not validate
+    // payment_method against a fixed list, so this reuses the same value
+    // already exercised by apps/core's own tests/fixtures rather than
+    // inventing a new one.
+    const payload: CreateOrderRequest = {
+      customer_name: data.name.trim(),
+      customer_email: data.email.trim(),
+      customer_phone: data.phone.trim(),
+      items: cart.items.map((item) => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+      })),
+      payment_method: 'cash',
+      shipping_address: {
+        street: data.street.trim(),
+        city: data.city.trim(),
+        state: data.state.trim(),
+        zip: data.zip.trim(),
+        country: data.country.trim() || 'CO',
+      },
+      ...(data.notes.trim() ? { notes: data.notes.trim() } : {}),
+    };
+
+    try {
+      const response = await client.createOrder(payload);
+      clearCart();
+      router.replace(
+        `/${storeSlug}/pedido/${response.id}?token=${encodeURIComponent(response.access_token)}`,
+      );
+    } catch (error) {
+      // CHECKOUT-04: keep the form filled and the cart intact — only surface
+      // the error inline (StockError/4xx/network all extend GoShoppingError).
+      if (error instanceof GoShoppingError) {
+        setSubmitError(error.message || GENERIC_ERROR);
+      } else {
+        setSubmitError(GENERIC_ERROR);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const summaryItems = cart.items.map(toCartItemProps);
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
+    <div className="max-w-6xl mx-auto px-4 py-12">
       <h1 className="text-3xl font-heading font-bold mb-8">Checkout</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Cart items */}
-        <div className="space-y-4">
-          {cart.items.map((item) => (
-            <div key={item.productId} className="flex gap-4 p-4 border rounded-xl">
-              <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                <Image
-                  src={item.image ?? PRODUCT_IMAGE_PLACEHOLDER}
-                  alt={item.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{item.name}</p>
-                <p className="text-sm text-muted-foreground">${item.price.toLocaleString('es-CO')}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) => updateQuantity(item.productId, Number(e.target.value))}
-                    className="w-16 h-7 text-sm"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={() => removeItem(item.productId)}
-                className="text-muted-foreground hover:text-destructive transition-colors"
-                aria-label="Eliminar"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+      {submitError && (
+        <div
+          role="alert"
+          className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {submitError}
         </div>
+      )}
 
-        {/* Order summary */}
-        <div className="bg-muted/50 rounded-xl p-6 space-y-4 h-fit">
-          <h2 className="font-semibold text-lg">Resumen del pedido</h2>
-          <div className="flex justify-between text-sm">
-            <span>Subtotal</span>
-            <span>${total.toLocaleString('es-CO')}</span>
-          </div>
-          <div className="flex justify-between font-semibold border-t pt-4">
-            <span>Total</span>
-            <span>${total.toLocaleString('es-CO')}</span>
-          </div>
-          <Input
-            type="email"
-            placeholder="tu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button className="w-full" size="lg" disabled={!email}>
-            Pagar ahora
-          </Button>
-        </div>
-      </div>
+      <CheckoutForm
+        data={data}
+        errors={errors}
+        onChange={handleChange}
+        onSubmit={handleSubmit}
+        isLoading={submitting}
+        cartSummary={<CartSummary items={summaryItems} />}
+      />
     </div>
   );
 }
