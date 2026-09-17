@@ -313,11 +313,6 @@ resource "aws_cloudwatch_log_group" "integrations" {
   retention_in_days = 30
 }
 
-resource "aws_cloudwatch_log_group" "ai_engine" {
-  name              = "/ecs/goshopping-ai-engine-${var.environment}"
-  retention_in_days = 30
-}
-
 # --- Task Definitions ---
 resource "aws_ecs_task_definition" "core" {
   family                   = "goshopping-core-${var.environment}"
@@ -378,35 +373,6 @@ resource "aws_ecs_task_definition" "integrations" {
   }])
 }
 
-resource "aws_ecs_task_definition" "ai_engine" {
-  family                   = "goshopping-ai-engine-${var.environment}"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = var.task_cpu
-  memory                   = var.task_memory
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
-
-  container_definitions = jsonencode([{
-    name      = "ai-engine"
-    image     = "${var.ecr_urls["goshopping-ai-engine"]}:latest"
-    essential = true
-    portMappings = [{ containerPort = 3002, protocol = "tcp" }]
-    environment = [
-      { name = "APP_ENV", value = var.environment },
-      { name = "PORT",    value = "3002" },
-    ]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.ai_engine.name
-        "awslogs-region"        = data.aws_region.current.name
-        "awslogs-stream-prefix" = "ecs"
-      }
-    }
-  }])
-}
-
 # --- ECS Services ---
 resource "aws_ecs_service" "core" {
   name            = "goshopping-core"
@@ -438,24 +404,6 @@ resource "aws_ecs_service" "integrations" {
   name            = "goshopping-integrations"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.integrations.arn
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = var.private_subnet_ids
-    security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = false
-  }
-
-  lifecycle {
-    ignore_changes = [task_definition]
-  }
-}
-
-resource "aws_ecs_service" "ai_engine" {
-  name            = "goshopping-ai-engine"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.ai_engine.arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
