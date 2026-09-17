@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { hexToHslString } from '@/lib/color';
 
 interface ColorPalette {
   name: string;
@@ -73,7 +74,10 @@ export function ColorPicker({ category = 'general', onSelect }: ColorPickerProps
   const handleCustom = () => {
     if (/^#[0-9a-f]{6}$/i.test(customHex)) {
       setSelected('custom');
-      onSelect({ primary: customHex });
+      // Bug fix (Slice 9): onSelect's contract is HSL ("H S% L%"), the same
+      // shape as every palette above and as Go's BrandColors — a raw hex
+      // string here used to fail validateHSL server-side on save.
+      onSelect({ primary: hexToHslString(customHex) });
     }
   };
 
