@@ -2,12 +2,18 @@
 
 import { useState } from 'react';
 import { TemplateGalleryStep } from './TemplateGalleryStep';
+import { BrandingStep, type BrandingDraft } from './BrandingStep';
+import { DomainStep } from './DomainStep';
+import { useStore } from '@/lib/hooks/useStore';
+import { api } from '@/lib/api';
 
 type WizardStep = 1 | 2 | 3;
 
 interface WizardState {
   step: WizardStep;
   templateId: string | null;
+  submitting: boolean;
+  error: string | null;
 }
 
 const STEPS: Array<{ id: WizardStep; label: string }> = [
@@ -19,17 +25,45 @@ const STEPS: Array<{ id: WizardStep; label: string }> = [
 /**
  * 3-step store creation wizard (REQ-ADMIN-01), replacing the old AI chat
  * flow (ChatAssistant/GenerationProgress/ChatMessage/StyleSelector/
- * StoreConfigSummary — removed in a later commit of this same slice).
+ * StoreConfigSummary — removed in the next commit of this same slice).
  *
- * PR 8a (this commit): the container + step 1 (TemplateGalleryStep) are
- * real. Steps 2/3 are lightweight placeholders — BrandingStep and
- * DomainStep replace them in PR 8b without changing this state machine.
+ * Local useState state machine — no new state library, matching the rest
+ * of the repo. Confirming step 2 fires PUT /template and PUT /branding in
+ * parallel; if either fails, the wizard stays on step 2 showing the error
+ * (no partial state is persisted client-side that would block a retry).
  */
 export function CreateStoreWizard() {
-  const [state, setState] = useState<WizardState>({ step: 1, templateId: null });
+  const { storeId } = useStore();
+  const [state, setState] = useState<WizardState>({
+    step: 1,
+    templateId: null,
+    submitting: false,
+    error: null,
+  });
 
   const handleTemplateSelect = (templateId: string) => {
-    setState({ step: 2, templateId });
+    setState((s) => ({ ...s, step: 2, templateId, error: null }));
+  };
+
+  const handleBrandingConfirm = async (branding: BrandingDraft) => {
+    if (!storeId || !state.templateId) return;
+    setState((s) => ({ ...s, submitting: true, error: null }));
+    try {
+      await Promise.all([
+        api.updateStoreTemplate(storeId, state.templateId),
+        api.updateBranding(storeId, { colors: branding.colors, fonts: branding.fonts }),
+      ]);
+      setState((s) => ({ ...s, step: 3, submitting: false }));
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        submitting: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : 'No pudimos guardar los cambios. Intentá de nuevo.',
+      }));
+    }
   };
 
   return (
@@ -46,20 +80,23 @@ export function CreateStoreWizard() {
         ))}
       </ol>
 
+      {state.error && (
+        <p className="text-sm text-red-600" data-testid="wizard-error">
+          {state.error}
+        </p>
+      )}
+
       {state.step === 1 && (
         <TemplateGalleryStep selectedTemplateId={state.templateId} onSelect={handleTemplateSelect} />
       )}
 
-      {state.step === 2 && (
-        <div data-testid="wizard-step-2-placeholder" className="text-sm text-gray-500">
-          Paso de marca (branding) — próximo commit de este mismo slice.
-        </div>
-      )}
+      {state.step === 2 && <BrandingStep onConfirm={handleBrandingConfirm} />}
 
       {state.step === 3 && (
-        <div data-testid="wizard-step-3-placeholder" className="text-sm text-gray-500">
-          Paso de dominio — próximo commit de este mismo slice.
-        </div>
+        // KNOWN GAP (documented in apply-progress): no backend endpoint yet
+        // exposes a store's assigned hostname, so this always renders the
+        // pending state. See DomainStep.tsx and this slice's apply-progress.
+        <DomainStep hostname={null} />
       )}
     </div>
   );

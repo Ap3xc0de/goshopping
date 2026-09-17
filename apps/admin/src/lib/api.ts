@@ -14,6 +14,7 @@ import type {
   OrderFilters,
   CustomerFilters,
   ReportFilters,
+  StoreBranding,
 } from './types';
 import { buildQueryString } from './utils';
 
@@ -137,6 +138,26 @@ export const api = {
   // Dashboard
   getDashboard(storeId: string): Promise<DashboardMetrics> {
     return request<DashboardMetrics>(`/stores/${storeId}/dashboard`);
+  },
+
+  // Template (create-store wizard, step 1)
+  updateStoreTemplate(storeId: string, templateId: string): Promise<{ template_id: string }> {
+    return request<{ template_id: string }>(`/stores/${storeId}/template`, {
+      method: 'PUT',
+      body: JSON.stringify({ template_id: templateId }),
+    });
+  },
+
+  // Branding (create-store wizard, step 2)
+  getBranding(storeId: string): Promise<StoreBranding> {
+    return request<StoreBranding>(`/stores/${storeId}/branding`);
+  },
+
+  updateBranding(storeId: string, data: StoreBranding): Promise<StoreBranding> {
+    return request<StoreBranding>(`/stores/${storeId}/branding`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
 
   // Products

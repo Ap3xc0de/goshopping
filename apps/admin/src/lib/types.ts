@@ -42,6 +42,36 @@ export interface Store {
   updated_at: string;
 }
 
+// ─── Branding (mirrors apps/core/internal/models/branding.go) ──────────────
+
+export interface BrandColors {
+  primary?: string;
+  primary_foreground?: string;
+  secondary?: string;
+  secondary_foreground?: string;
+  accent?: string;
+  accent_foreground?: string;
+  background?: string;
+  foreground?: string;
+  muted?: string;
+}
+
+export interface BrandFonts {
+  heading?: string;
+  body?: string;
+}
+
+export interface StoreBranding {
+  brand_name?: string;
+  tagline?: string;
+  logo_url?: string;
+  favicon_url?: string;
+  colors?: BrandColors;
+  fonts?: BrandFonts;
+  radius?: string;
+  social_links?: Record<string, string>;
+}
+
 export interface Product {
   id: string;
   store_id: string;
