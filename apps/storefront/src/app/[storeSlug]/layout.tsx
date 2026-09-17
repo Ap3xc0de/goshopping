@@ -56,7 +56,13 @@ export default async function StoreLayout({
   ];
 
   return (
-    <>
+    // W2 (hardening slice 10): apply the brand's body font at the layout
+    // root so every descendant inherits it via Tailwind's `font-body`
+    // utility (mapped to `--font-body` in tailwind.config.ts). Headings
+    // keep overriding it locally with `font-heading`. Previously nothing
+    // in the storefront ever used `font-body`, so a merchant picking a
+    // distinct body font saw zero visual change.
+    <div className="font-body">
       {/* eslint-disable-next-line react/no-danger */}
       <style dangerouslySetInnerHTML={{ __html: inlineStyle }} />
       {/* CART-01..06: StorefrontChrome is the Client Component that wires the
@@ -73,6 +79,6 @@ export default async function StoreLayout({
       >
         {children}
       </StorefrontChrome>
-    </>
+    </div>
   );
 }

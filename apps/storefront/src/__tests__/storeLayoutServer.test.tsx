@@ -155,4 +155,23 @@ describe('[storeSlug] server layout', () => {
     const style = container.querySelector('style')!.innerHTML;
     expect(style).toMatch(/--radius:0\.25rem;/);
   });
+
+  // W2 (hardening slice 10): fonts.body was fully editable in the admin and
+  // correctly flowed into the injected --font-body CSS var, but nothing in
+  // the storefront ever applied Tailwind's `font-body` utility class — a
+  // merchant picking a distinct body font saw zero visual change.
+  it('applies the "font-body" class at the layout root so all descendants inherit the brand body font', async () => {
+    const { container } = await renderLayout(<div />);
+    expect(container.firstChild).toHaveClass('font-body');
+  });
+
+  it('includes --font-body in the injected CSS vars for a custom branding.fonts.body', async () => {
+    mockGetStoreConfig.mockResolvedValue({
+      ...baseStoreConfig,
+      branding: { fonts: { body: 'Lora' } },
+    });
+    const { container } = await renderLayout(<div />);
+    const style = container.querySelector('style')!.innerHTML;
+    expect(style).toContain('--font-body:var(--font-lora);');
+  });
 });
