@@ -40,6 +40,7 @@ export function CreateStoreWizard() {
     submitting: false,
     error: null,
   });
+  const [hostname, setHostname] = useState<string | null>(null);
 
   const handleTemplateSelect = (templateId: string) => {
     setState((s) => ({ ...s, step: 2, templateId, error: null }));
@@ -54,6 +55,14 @@ export function CreateStoreWizard() {
         api.updateBranding(storeId, { colors: branding.colors, fonts: branding.fonts }),
       ]);
       setState((s) => ({ ...s, step: 3, submitting: false }));
+
+      // Fetched after the step advances rather than awaited alongside the
+      // writes: the hostname is informational, so a slow or failing read
+      // should leave step 3 in its pending state, never block reaching it.
+      api
+        .getStoreDomain(storeId)
+        .then((domain) => setHostname(domain.hostname))
+        .catch(() => setHostname(null));
     } catch (err) {
       setState((s) => ({
         ...s,
@@ -93,10 +102,7 @@ export function CreateStoreWizard() {
       {state.step === 2 && <BrandingStep onConfirm={handleBrandingConfirm} />}
 
       {state.step === 3 && (
-        // KNOWN GAP (documented in apply-progress): no backend endpoint yet
-        // exposes a store's assigned hostname, so this always renders the
-        // pending state. See DomainStep.tsx and this slice's apply-progress.
-        <DomainStep hostname={null} />
+        <DomainStep hostname={hostname} />
       )}
     </div>
   );

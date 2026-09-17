@@ -15,6 +15,7 @@ import type {
   CustomerFilters,
   ReportFilters,
   StoreBranding,
+  StoreDomain,
 } from './types';
 import { buildQueryString } from './utils';
 
@@ -146,6 +147,11 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ template_id: templateId }),
     });
+  },
+
+  // Domain (create-store wizard, step 3)
+  getStoreDomain(storeId: string): Promise<StoreDomain> {
+    return request<StoreDomain>(`/stores/${storeId}/domain`);
   },
 
   // Branding (create-store wizard, step 2)

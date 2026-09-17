@@ -78,6 +78,9 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Put("/branding", handlers.UpdateBranding(brandingSvc))
 	store.Post("/branding/logo", handlers.BrandingLogoUpload(brandingSvc))
 
+	// Domain
+	store.Get("/domain", handlers.GetStoreDomain(db))
+
 	// Template
 	store.Put("/template", handlers.UpdateStoreTemplate(db, cat))
 

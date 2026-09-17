@@ -61,6 +61,14 @@ export interface BrandFonts {
   body?: string;
 }
 
+/** Mirrors the tenant-facing view returned by GET /stores/:storeId/domain. */
+export interface StoreDomain {
+  hostname: string;
+  kind: 'generic' | 'custom';
+  status: 'pending' | 'verifying' | 'active' | 'failed';
+  is_primary: boolean;
+}
+
 export interface StoreBranding {
   brand_name?: string;
   tagline?: string;
