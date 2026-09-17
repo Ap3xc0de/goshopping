@@ -260,3 +260,60 @@ func TestPublicCreateOrder(t *testing.T) {
 		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "items are required")
 	})
 }
+
+// TestPublicOrderStatus covers CORE-04/CORE-05: the ?token= query param
+// (already aligned with the SDK's fix, see design decision 6) must resolve
+// the order, and the response must include order_number, items, and
+// payment_status alongside status/total (CORE-04).
+func TestPublicOrderStatus(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(5))
+
+	createBody := map[string]interface{}{
+		"customer_name":  "Status Customer",
+		"customer_email": "status@test.com",
+		"items": []map[string]interface{}{
+			{"product_id": p.ID.String(), "quantity": 2},
+		},
+		"payment_method": "cash",
+	}
+	createResp := app.POST(t, "/public/"+slug+"/orders", createBody, "")
+	testutil.AssertStatus(t, createResp, http.StatusCreated)
+	created := testutil.AssertJSON(t, createResp)
+
+	token, ok := created["access_token"].(string)
+	require.True(t, ok, "create order response should include access_token")
+	orderData, ok := created["order"].(map[string]interface{})
+	require.True(t, ok, "create order response should include order")
+	orderID, ok := orderData["id"].(string)
+	require.True(t, ok, "order should include id")
+
+	t.Run("resolves the order with a matching ?token=", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/orders/"+orderID+"/status?token="+token, "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+
+		assert.Equal(t, "pending", data["status"])
+		assert.Equal(t, "pending", data["payment_status"], "response should include payment_status")
+
+		orderNumber, hasOrderNumber := data["order_number"]
+		assert.True(t, hasOrderNumber, "response should include order_number")
+		assert.NotEmpty(t, orderNumber)
+
+		items, hasItems := data["items"].([]interface{})
+		assert.True(t, hasItems, "response should include items")
+		require.Len(t, items, 1)
+		item, _ := items[0].(map[string]interface{})
+		assert.Equal(t, float64(2), item["quantity"])
+	})
+
+	t.Run("returns 401 without a token", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/orders/"+orderID+"/status", "")
+		testutil.AssertStatus(t, resp, http.StatusUnauthorized)
+	})
+}

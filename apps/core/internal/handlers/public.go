@@ -206,10 +206,14 @@ func PublicOrderStatus(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 		}
 
 		return c.JSON(fiber.Map{
-			"id":       order.Order.ID,
-			"status":   order.Order.Status,
-			"total":    order.Order.Total,
-			"timeline": order.Timeline,
+			"id":               order.Order.ID,
+			"order_number":     order.Order.OrderNumber,
+			"status":           order.Order.Status,
+			"payment_status":   order.Order.PaymentStatus,
+			"total":            order.Order.Total,
+			"items":            order.Order.Items,
+			"shipping_address": order.Order.ShippingAddress,
+			"timeline":         order.Timeline,
 		})
 	}
 }
