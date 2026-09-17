@@ -46,16 +46,25 @@ describe('GoShoppingClient', () => {
       [`${BASE_URL}/public/${STORE_SLUG}/products`, () => client.getProducts()],
       [`${BASE_URL}/public/${STORE_SLUG}/products/abc`, () => client.getProduct('abc')],
       [`${BASE_URL}/public/${STORE_SLUG}/orders`, () => client.createOrder({
-        customer: { name: 'Juan', email: 'juan@test.com', phone: '3001234567' },
+        customer_name: 'Juan',
+        customer_email: 'juan@test.com',
+        customer_phone: '3001234567',
         items: [{ product_id: 'prod-1', quantity: 1 }],
         payment_method: 'cash',
       })],
-      [`${BASE_URL}/public/${STORE_SLUG}/orders/o-1/status?access_token=tok`, () => client.getOrderStatus('o-1', 'tok')],
+      // SDK-02: el handler Go lee `token`, no `access_token` (ver public.go#PublicOrderStatus)
+      [`${BASE_URL}/public/${STORE_SLUG}/orders/o-1/status?token=tok`, () => client.getOrderStatus('o-1', 'tok')],
       [`${BASE_URL}/public/${STORE_SLUG}/config`, () => client.getStoreConfig()],
     ];
 
     for (const [expectedURL, call] of cases) {
-      const fetchMock = mockFetch({ json: async () => ({ data: [], total: 0, page: 1, per_page: 20, total_pages: 0 }) });
+      const fetchMock = mockFetch({
+        json: async () => ({
+          order: { id: '1', order_number: 'ORD-1', status: 'pending', payment_status: 'pending', subtotal: 0, tax: 0, total: 0, items: [] },
+          access_token: 'tok',
+          data: [], total: 0, page: 1, per_page: 20, total_pages: 0,
+        }),
+      });
       global.fetch = fetchMock;
 
       await call();
@@ -111,16 +120,21 @@ describe('GoShoppingClient', () => {
 
   // ── createOrder ─────────────────────────────────────────────────────────────
 
-  it('createOrder envía datos del checkout', async () => {
+  // SDK-01: CreateOrderRequest es el DTO plano que espera CreateOrderInput (Go)
+  // — sin objeto `customer` anidado (ver apps/core/internal/models/order.go).
+  it('createOrder envía el payload plano (sin customer anidado) que Go espera', async () => {
     const fetchMock = mockFetch({
       json: async () => ({
-        id: 'order-1', status: 'pending', total: 59900, subtotal: 50336, tax: 9564, access_token: 'tok_abc',
+        order: { id: 'order-1', order_number: 'ORD-1', status: 'pending', payment_status: 'pending', subtotal: 50336, tax: 9564, total: 59900, items: [] },
+        access_token: 'tok_abc',
       }),
     });
     global.fetch = fetchMock;
 
     const orderData = {
-      customer: { name: 'Juan', email: 'juan@test.com', phone: '3001234567' },
+      customer_name: 'Juan',
+      customer_email: 'juan@test.com',
+      customer_phone: '3001234567',
       items: [{ product_id: 'prod-1', quantity: 1 }],
       payment_method: 'cash',
     };
@@ -136,42 +150,117 @@ describe('GoShoppingClient', () => {
     );
   });
 
-  it('createOrder devuelve order_id y access_token', async () => {
+  // SDK-01: shipping_address plano (street/city/state/zip/country?/notes?) viaja
+  // dentro del payload, espejo exacto de CreateOrderInput.ShippingAddress (Go).
+  it('createOrder incluye shipping_address plano cuando se provee', async () => {
+    const fetchMock = mockFetch({
+      json: async () => ({
+        order: { id: 'order-2', order_number: 'ORD-2', status: 'pending', payment_status: 'pending', subtotal: 1000, tax: 190, total: 1190, items: [] },
+        access_token: 'tok_2',
+      }),
+    });
+    global.fetch = fetchMock;
+
+    const orderData = {
+      customer_name: 'Ana',
+      customer_email: 'ana@x.com',
+      customer_phone: '300',
+      items: [{ product_id: 'p1', quantity: 1 }],
+      payment_method: 'card',
+      shipping_address: { street: 'Calle 1', city: 'Bogotá', state: 'Cund.', zip: '110111' },
+    };
+
+    await client.createOrder(orderData);
+
+    const sentBody = JSON.parse(
+      (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+    );
+    expect(sentBody.shipping_address).toEqual(orderData.shipping_address);
+    expect(sentBody.customer).toBeUndefined();
+  });
+
+  // CORE-04/SDK-01: la respuesta real de Go anida los datos de la orden bajo
+  // "order" junto a "access_token" — ver PublicCreateOrder en public.go. El
+  // cliente aplana esa forma para exponer order_number/payment_status/items/
+  // shipping_address junto al resto de campos existentes.
+  it('createOrder devuelve order_number, payment_status, items y access_token', async () => {
     global.fetch = mockFetch({
       json: async () => ({
-        id: 'order-42',
-        status: 'pending',
-        total: 100000,
-        subtotal: 84034,
-        tax: 15966,
+        order: {
+          id: 'order-42',
+          order_number: 'ORD-0042',
+          status: 'pending',
+          payment_status: 'pending',
+          total: 100000,
+          subtotal: 84034,
+          tax: 15966,
+          items: [{ product_id: 'p1', product_name: 'Producto 1', quantity: 1, unit_price: 84034, total: 84034 }],
+          shipping_address: { street: 'Calle 1', city: 'Bogotá', state: 'Cund.', zip: '110111' },
+        },
         access_token: 'token-secret',
       }),
     });
 
     const result = await client.createOrder({
-      customer: { name: 'Ana', email: 'ana@x.com', phone: '300' },
+      customer_name: 'Ana',
+      customer_email: 'ana@x.com',
+      customer_phone: '300',
       items: [{ product_id: 'p1', quantity: 1 }],
       payment_method: 'card',
     });
 
     expect(result.id).toBe('order-42');
+    expect(result.order_number).toBe('ORD-0042');
     expect(result.access_token).toBe('token-secret');
     expect(result.status).toBe('pending');
+    expect(result.payment_status).toBe('pending');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].product_name).toBe('Producto 1');
+    expect(result.shipping_address).toEqual({ street: 'Calle 1', city: 'Bogotá', state: 'Cund.', zip: '110111' });
   });
 
   // ── getOrderStatus ──────────────────────────────────────────────────────────
 
-  it('getOrderStatus envía access_token como query param', async () => {
+  // SDK-02: el handler Go (PublicOrderStatus) lee `c.Query("token")`, no
+  // `access_token` — ver apps/core/internal/handlers/public.go:180.
+  it('getOrderStatus envía token como query param (no access_token)', async () => {
     const fetchMock = mockFetch({
-      json: async () => ({ id: 'order-1', status: 'paid', updated_at: '2026-01-01' }),
+      json: async () => ({
+        id: 'order-1', order_number: 'ORD-1', status: 'paid', payment_status: 'paid', total: 1000, items: [],
+      }),
     });
     global.fetch = fetchMock;
 
     await client.getOrderStatus('order-1', 'tok-xyz');
 
     const calledURL: string = fetchMock.mock.calls[0][0] as string;
-    expect(calledURL).toContain('access_token=tok-xyz');
+    expect(calledURL).toContain('token=tok-xyz');
+    expect(calledURL).not.toContain('access_token=');
     expect(calledURL).toContain('/orders/order-1/status');
+  });
+
+  // CORE-04: la respuesta real incluye order_number/payment_status/items/
+  // shipping_address — el tipo OrderStatus del SDK debe exponerlos tal cual.
+  it('getOrderStatus expone order_number, payment_status, items y shipping_address', async () => {
+    global.fetch = mockFetch({
+      json: async () => ({
+        id: 'order-1',
+        order_number: 'ORD-0001',
+        status: 'paid',
+        payment_status: 'paid',
+        total: 59900,
+        items: [{ product_id: 'p1', product_name: 'Producto 1', quantity: 2, unit_price: 29950, total: 59900 }],
+        shipping_address: { street: 'Calle 1', city: 'Bogotá', state: 'Cund.', zip: '110111' },
+      }),
+    });
+
+    const result = await client.getOrderStatus('order-1', 'tok-xyz');
+
+    expect(result.order_number).toBe('ORD-0001');
+    expect(result.payment_status).toBe('paid');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].quantity).toBe(2);
+    expect(result.shipping_address).toEqual({ street: 'Calle 1', city: 'Bogotá', state: 'Cund.', zip: '110111' });
   });
 
   // ── getStoreConfig ──────────────────────────────────────────────────────────
@@ -221,7 +310,9 @@ describe('GoShoppingClient', () => {
     global.fetch = fetchMock;
 
     await expect(client.createOrder({
-      customer: { name: '', email: '', phone: '' },
+      customer_name: '',
+      customer_email: '',
+      customer_phone: '',
       items: [],
       payment_method: 'cash',
     })).rejects.toBeInstanceOf(GoShoppingError);

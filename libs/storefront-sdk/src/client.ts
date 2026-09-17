@@ -6,6 +6,15 @@ import type {
   OrderStatus,
   PaginatedResponse,
 } from './types';
+
+// Raw shape actually returned by POST /public/:storeSlug/orders
+// (PublicCreateOrder, public.go) — order fields flattened via Go's anonymous
+// struct embedding (OrderDetail embeds models.Order) plus a sibling
+// access_token. createOrder() below flattens this into CreateOrderResponse.
+interface RawCreateOrderResponse {
+  order: Omit<CreateOrderResponse, 'access_token'>;
+  access_token: string;
+}
 import { GoShoppingError, NetworkError, NotFoundError } from './errors';
 
 // Re-exported so server components can `import type { StoreBranding } from
@@ -65,15 +74,18 @@ export class GoShoppingClient {
   // ── Pedidos ────────────────────────────────────────────────────────────────
 
   async createOrder(data: CreateOrderRequest): Promise<CreateOrderResponse> {
-    return this.fetch<CreateOrderResponse>(`${this.basePath}/orders`, {
+    const raw = await this.fetch<RawCreateOrderResponse>(`${this.basePath}/orders`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return { ...raw.order, access_token: raw.access_token };
   }
 
+  // SDK-02: el query param DEBE llamarse `token` — PublicOrderStatus
+  // (public.go) lee `c.Query("token")`, no `access_token`.
   async getOrderStatus(orderId: string, accessToken: string): Promise<OrderStatus> {
     return this.fetch<OrderStatus>(
-      `${this.basePath}/orders/${orderId}/status?access_token=${encodeURIComponent(accessToken)}`,
+      `${this.basePath}/orders/${orderId}/status?token=${encodeURIComponent(accessToken)}`,
     );
   }
 
