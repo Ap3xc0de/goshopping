@@ -11,21 +11,23 @@ import (
 
 // LineItem is a cart item for quote computation (pure data).
 type LineItem struct {
-	ProductID uuid.UUID
-	Quantity  int
-	ListPrice models.Money
-	Category  string
+	ProductID uuid.UUID    `json:"product_id"`
+	Quantity  int          `json:"quantity"`
+	ListPrice models.Money `json:"list_price"`
+	Category  string       `json:"category"`
 }
 
-// CartPreview is the computed quote result.
+// CartPreview is the computed quote result. JSON tags keep the public
+// POST /public/:storeSlug/quote response in the same snake_case shape as
+// every other public endpoint (see public_quote_test.go).
 type CartPreview struct {
-	Items                  []LineItem
-	SubtotalBeforeDiscount models.Money
-	EffectiveSubtotal      models.Money
-	DiscountTotal          models.Money
-	AppliedCoupon          *models.Coupon
-	Tax                    models.Money
-	Total                  models.Money
+	Items                  []LineItem     `json:"items"`
+	SubtotalBeforeDiscount models.Money   `json:"subtotal_before_discount"`
+	EffectiveSubtotal      models.Money   `json:"effective_subtotal"`
+	DiscountTotal          models.Money   `json:"discount_total"`
+	AppliedCoupon          *models.Coupon `json:"applied_coupon,omitempty"`
+	Tax                    models.Money   `json:"tax"`
+	Total                  models.Money   `json:"total"`
 }
 
 var (
