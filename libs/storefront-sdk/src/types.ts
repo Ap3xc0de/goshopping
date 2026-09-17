@@ -49,12 +49,13 @@ export interface StoreConfig {
   slug: string;
   domain?: string;
   /**
-   * `branding`/`template_id` are the fields GET /public/:storeSlug/config and
-   * GET /public/by-domain/:host/config actually return since Slice 4
+   * `id`/`branding`/`template_id` are fields GET /public/:storeSlug/config
+   * and GET /public/by-domain/:host/config actually return since Slice 4
    * (REQ-RESOLVE-03) — added here as optional to avoid widening this type's
    * blast radius onto every existing consumer of the legacy `config` shape
    * below, which predates this change and is left untouched.
    */
+  id?: string;
   branding?: StoreBranding;
   template_id?: string;
   config: {

@@ -100,9 +100,11 @@ jest.mock('@/components/layout/Footer', () => ({
 }));
 
 // ── Import pages AFTER mocks ─────────────────────────────────────────────────
+// [storeSlug]/layout.tsx is a Server Component since Slice 7 (REQ-RENDER-02)
+// — it's no longer part of this file's client-mounted route tests. See
+// storeLayoutServer.test.tsx for its coverage.
 import StorefrontHomePage from '@/app/[storeSlug]/page';
 import CatalogPage from '@/app/[storeSlug]/catalogo/page';
-import StoreLayout from '@/app/[storeSlug]/layout';
 import ProductPage from '@/app/[storeSlug]/producto/[id]/page';
 
 describe('[storeSlug] HomePage', () => {
@@ -150,35 +152,6 @@ describe('[storeSlug] CatalogPage', () => {
   it('renders search input', () => {
     render(<CatalogPage />);
     expect(screen.getByPlaceholderText(/Buscar productos/i)).toBeInTheDocument();
-  });
-});
-
-describe('[storeSlug] StoreLayout', () => {
-  it('renders Navbar with store name', () => {
-    render(
-      <StoreLayout>
-        <div>contenido</div>
-      </StoreLayout>,
-    );
-    expect(screen.getByTestId('navbar')).toHaveTextContent('Test Store');
-  });
-
-  it('renders Footer with store name', () => {
-    render(
-      <StoreLayout>
-        <div>contenido</div>
-      </StoreLayout>,
-    );
-    expect(screen.getByTestId('footer')).toHaveTextContent('Test Store');
-  });
-
-  it('renders children inside main', () => {
-    render(
-      <StoreLayout>
-        <div data-testid="child">Hijo</div>
-      </StoreLayout>,
-    );
-    expect(screen.getByTestId('child')).toBeInTheDocument();
   });
 });
 
