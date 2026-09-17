@@ -8,6 +8,11 @@ import type {
 } from './types';
 import { GoShoppingError, NetworkError, NotFoundError } from './errors';
 
+// Re-exported so server components can `import type { StoreBranding } from
+// '@goshopping/storefront-sdk/client'` without ever touching the barrel
+// (`./index.ts`), which also re-exports `./hooks` ('use client').
+export type { StoreConfig, StoreBranding, BrandColors, BrandFonts } from './types';
+
 const TIMEOUT_MS = 10_000;
 
 export class GoShoppingClient {

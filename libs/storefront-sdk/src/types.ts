@@ -14,10 +14,49 @@ export interface Product {
 
 // ── Tienda ────────────────────────────────────────────────────────────────────
 
+// Mirrors apps/core/internal/models/branding.go — same snake_case JSON keys,
+// same convention already used by apps/admin/src/lib/types.ts#BrandColors.
+export interface BrandColors {
+  primary?: string;
+  primary_foreground?: string;
+  secondary?: string;
+  secondary_foreground?: string;
+  accent?: string;
+  accent_foreground?: string;
+  background?: string;
+  foreground?: string;
+  muted?: string;
+}
+
+export interface BrandFonts {
+  heading?: string;
+  body?: string;
+}
+
+export interface StoreBranding {
+  brand_name?: string;
+  tagline?: string;
+  logo_url?: string;
+  favicon_url?: string;
+  colors?: BrandColors;
+  fonts?: BrandFonts;
+  radius?: string;
+  social_links?: Record<string, string>;
+}
+
 export interface StoreConfig {
   name: string;
   slug: string;
   domain?: string;
+  /**
+   * `branding`/`template_id` are the fields GET /public/:storeSlug/config and
+   * GET /public/by-domain/:host/config actually return since Slice 4
+   * (REQ-RESOLVE-03) — added here as optional to avoid widening this type's
+   * blast radius onto every existing consumer of the legacy `config` shape
+   * below, which predates this change and is left untouched.
+   */
+  branding?: StoreBranding;
+  template_id?: string;
   config: {
     colors?: { primary?: string; secondary?: string; accent?: string };
     logo_url?: string;
