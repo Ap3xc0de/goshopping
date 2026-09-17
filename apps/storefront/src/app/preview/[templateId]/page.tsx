@@ -301,14 +301,16 @@ function renderSection(
       );
 
     case "ProductGrid":
-      // First ProductGrid = "Destacados", second = "Recién llegados"
+      // First ProductGrid = "Destacados", second = "Recién llegados".
+      // ProductGrid itself has no `title` prop (it only renders the grid) —
+      // the heading lives in a wrapper here, same pattern as the home page.
       return (
-        <ProductGrid
-          key={key}
-          products={MOCK_PRODUCTS.slice(0, 4)}
-          columns={4}
-          title={index < 4 ? "Productos destacados" : "Recién llegados"}
-        />
+        <div key={key} className="py-8">
+          <h2 className="text-2xl font-heading font-bold mb-8 text-center">
+            {index < 4 ? "Productos destacados" : "Recién llegados"}
+          </h2>
+          <ProductGrid products={MOCK_PRODUCTS.slice(0, 4)} columns={4} />
+        </div>
       );
 
     case "AboutSection":

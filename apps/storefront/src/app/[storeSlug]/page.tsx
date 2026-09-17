@@ -12,7 +12,7 @@ import { toProductCard } from '@/lib/product-image';
 export default function StorefrontHomePage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
   const { config } = useStoreConfig(storeSlug);
-  const { products, loading } = useProducts(storeSlug, { limit: 8 });
+  const { products, loading } = useProducts(storeSlug, { per_page: 8 });
 
   const productCards: ProductCardProps[] = products.map((p) => toProductCard(p, storeSlug));
 
@@ -20,7 +20,7 @@ export default function StorefrontHomePage() {
     <>
       <HeroCentered
         title={config?.name ?? ''}
-        subtitle={config?.tagline}
+        subtitle={config?.branding?.tagline}
         ctaLabel="Ver catálogo"
         ctaHref={`/${storeSlug}/catalogo`}
         minHeight="80vh"
