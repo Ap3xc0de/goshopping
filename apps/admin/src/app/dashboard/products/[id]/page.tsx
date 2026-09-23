@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Trash2 } from 'lucide-react';
@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { PageLoader } from '@/components/ui/LoadingSpinner';
 import { EmptyState } from '@/components/ui/EmptyState';
-import type { Product } from '@/lib/types';
+import type { Category, Product } from '@/lib/types';
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -23,6 +23,15 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   const { update, remove } = useProductActions();
   const [deleteModal, setDeleteModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    api
+      .listCategories(storeId)
+      .then((res) => setCategories(res.categories))
+      .catch(() => setCategories([]));
+  }, [storeId]);
 
   if (loading) return <PageLoader />;
   if (error || !product) return <EmptyState title="Producto no encontrado" />;
@@ -75,7 +84,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <ProductForm initial={product} submitLabel="Guardar cambios" onSubmit={handleUpdate} onUploadImages={handleUploadImages} />
+        <ProductForm
+          initial={product}
+          submitLabel="Guardar cambios"
+          onSubmit={handleUpdate}
+          onUploadImages={handleUploadImages}
+          categories={categories}
+        />
       </div>
 
       {storeId && (

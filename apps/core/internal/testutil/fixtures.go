@@ -78,12 +78,12 @@ func CreateTestProduct(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts .
 		                      stock, min_stock, category, category_id, images, status, weight)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '[]', $12, $13)
 		RETURNING id, store_id, name, sku, description, price, cost,
-		          stock, min_stock, category, images, status, weight, created_at, updated_at`,
+		          stock, min_stock, category, category_id, images, status, weight, created_at, updated_at`,
 		id, storeID, args.name, args.sku, args.description, args.price, args.cost,
 		args.stock, args.minStock, args.category, categoryID, args.status, args.weight,
 	).Scan(
 		&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description, &p.Price, &p.Cost,
-		&p.Stock, &p.MinStock, &p.Category, &p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt,
+		&p.Stock, &p.MinStock, &p.Category, &p.CategoryID, &p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		t.Fatalf("CreateTestProduct: %v", err)

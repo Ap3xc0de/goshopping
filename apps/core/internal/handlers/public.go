@@ -47,6 +47,7 @@ type PublicProduct struct {
 	ActiveOffer    *PublicOffer    `json:"active_offer"`
 	Stock          int             `json:"stock"`
 	Category       string          `json:"category"`
+	CategoryID     *uuid.UUID      `json:"category_id"`
 	Images         interface{}     `json:"images"`
 	Status         string          `json:"status"`
 	Variants       []PublicVariant `json:"variants"`
@@ -592,6 +593,7 @@ func toPublicProduct(p models.Product, variants []models.ProductVariant, activeO
 		ActiveOffer:    publicOffer,
 		Stock:          p.Stock,
 		Category:       p.Category,
+		CategoryID:     p.CategoryID,
 		Images:         p.Images,
 		Status:         p.Status,
 		Variants:       toPublicVariants(variants, p.Price),

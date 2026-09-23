@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -343,5 +344,155 @@ func TestProductWeightRoundTrip(t *testing.T) {
 		resp := app.POST(t, "/stores/"+storeID+"/products",
 			map[string]interface{}{"name": "Bad", "price": 100, "stock": 1, "weight": -1}, auth)
 		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "weight cannot be negative")
+	})
+}
+
+// TestProductCategoryAssignment pins the fix for bug/product-category-id-not-persisted:
+// the product create/update API never read/wrote products.category_id — only
+// the legacy free-text `category` column — so every admin-created product
+// left category_id NULL and never showed up in the public category tree's
+// counts or the `?category=` filter. Only LEAF categories (no children), at
+// any depth, are assignable; category is optional; when category_id is set
+// the legacy `category` text is synced to that category's slug, and clearing
+// category_id resets the legacy text to "" too.
+func TestProductCategoryAssignment(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	auth, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	tack := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+		testutil.WithCategoryName("Tack"), testutil.WithCategorySlug("tack"))
+	saddles := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+		testutil.WithCategoryName("Saddles"), testutil.WithCategorySlug("saddles"),
+		testutil.WithParent(tack.ID))
+
+	t.Run("create with a leaf category round-trips category_id and syncs the legacy slug", func(t *testing.T) {
+		resp := app.POST(t, "/stores/"+storeID+"/products", map[string]interface{}{
+			"name": "Leaf Saddle", "price": 100000, "stock": 1,
+			"category_id": saddles.ID.String(),
+		}, auth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, saddles.ID.String(), data["category_id"])
+		assert.Equal(t, "saddles", data["category"], "legacy category text must sync to the leaf's slug")
+	})
+
+	t.Run("create with a parent category (has children) is rejected", func(t *testing.T) {
+		resp := app.POST(t, "/stores/"+storeID+"/products", map[string]interface{}{
+			"name": "Bad Parent Assign", "price": 1000, "stock": 1,
+			"category_id": tack.ID.String(),
+		}, auth)
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "leaf")
+	})
+
+	t.Run("create with another store's category is rejected", func(t *testing.T) {
+		_, _, otherStoreID := app.CreateOtherOwner(t)
+		otherStoreIDParsed := mustParseUUID(t, otherStoreID)
+		foreign := testutil.CreateTestCategory(t, app.DB, otherStoreIDParsed,
+			testutil.WithCategoryName("Foreign"), testutil.WithCategorySlug("foreign"))
+
+		resp := app.POST(t, "/stores/"+storeID+"/products", map[string]interface{}{
+			"name": "Cross Store", "price": 1000, "stock": 1,
+			"category_id": foreign.ID.String(),
+		}, auth)
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "category")
+	})
+
+	t.Run("create without a category leaves category_id null", func(t *testing.T) {
+		resp := app.POST(t, "/stores/"+storeID+"/products",
+			map[string]interface{}{"name": "No Category", "price": 1000, "stock": 1}, auth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		assert.Nil(t, data["category_id"])
+	})
+
+	t.Run("update assigns then clears the category", func(t *testing.T) {
+		created := testutil.AssertJSON(t, app.POST(t, "/stores/"+storeID+"/products",
+			map[string]interface{}{"name": "Reassign Me", "price": 1000, "stock": 1}, auth))
+		productID := created["id"].(string)
+		assert.Nil(t, created["category_id"])
+
+		resp := app.PUT(t, "/stores/"+storeID+"/products/"+productID,
+			map[string]interface{}{"category_id": saddles.ID.String()}, auth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, saddles.ID.String(), data["category_id"])
+		assert.Equal(t, "saddles", data["category"])
+
+		clearResp := app.PUT(t, "/stores/"+storeID+"/products/"+productID,
+			map[string]interface{}{"category_id": ""}, auth)
+		testutil.AssertStatus(t, clearResp, http.StatusOK)
+		cleared := testutil.AssertJSON(t, clearResp)
+		assert.Nil(t, cleared["category_id"], "explicit \"\" must clear category_id")
+		assert.Equal(t, "", cleared["category"], "clearing category_id must also reset the legacy text")
+
+		reread := testutil.AssertJSON(t, app.GET(t, "/stores/"+storeID+"/products/"+productID, auth))
+		assert.Nil(t, reread["category_id"], "clear must persist")
+	})
+
+	t.Run("update omitting category_id leaves the existing assignment unchanged", func(t *testing.T) {
+		created := testutil.AssertJSON(t, app.POST(t, "/stores/"+storeID+"/products", map[string]interface{}{
+			"name": "Untouched", "price": 1000, "stock": 1, "category_id": saddles.ID.String(),
+		}, auth))
+		productID := created["id"].(string)
+
+		resp := app.PUT(t, "/stores/"+storeID+"/products/"+productID,
+			map[string]interface{}{"name": "Untouched Renamed"}, auth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, saddles.ID.String(), data["category_id"], "category_id must survive an update that doesn't mention it")
+		assert.Equal(t, "saddles", data["category"])
+	})
+
+	t.Run("end-to-end: a product created through the API shows up in public category counts and filters", func(t *testing.T) {
+		boots := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+			testutil.WithCategoryName("Boots"), testutil.WithCategorySlug("boots-e2e"),
+			testutil.WithParent(tack.ID))
+
+		createResp := app.POST(t, "/stores/"+storeID+"/products", map[string]interface{}{
+			"name": "E2E Boots", "price": 50000, "stock": 2,
+			"category_id": boots.ID.String(),
+		}, auth)
+		testutil.AssertStatus(t, createResp, http.StatusCreated)
+
+		treeResp := app.GET(t, "/public/"+slug+"/categories", "")
+		testutil.AssertStatus(t, treeResp, http.StatusOK)
+		var tree []map[string]interface{}
+		require.NoError(t, json.Unmarshal(readRawBody(t, treeResp), &tree))
+
+		require.Len(t, tree, 1, "Tack is the only root")
+		tackNode := tree[0]
+		children, _ := tackNode["children"].([]interface{})
+		var bootsNode map[string]interface{}
+		for _, raw := range children {
+			child, _ := raw.(map[string]interface{})
+			if child["slug"] == "boots-e2e" {
+				bootsNode = child
+			}
+		}
+		require.NotNil(t, bootsNode, "Boots must appear as a child of Tack")
+		// Boots is a category created fresh in this subtest, so its direct
+		// count is isolated from whatever earlier subtests assigned to its
+		// Saddles sibling. Tack's rollup total is NOT isolated (earlier
+		// subtests also assigned products under Tack's tree), so that one is
+		// cross-checked against the products endpoint's total instead of a
+		// hardcoded number — same pattern as TestPublicListCategories'
+		// "total_product_count matches the paginated products total" case.
+		assert.Equal(t, float64(1), bootsNode["product_count"], "the API-created product must count toward Boots")
+		tackTotal := tackNode["total_product_count"]
+
+		filterResp := app.GET(t, "/public/"+slug+"/products?category=boots-e2e", "")
+		testutil.AssertStatus(t, filterResp, http.StatusOK)
+		filterData := testutil.AssertJSON(t, filterResp)
+		testutil.AssertPaginated(t, filterData, 1)
+
+		parentFilterResp := app.GET(t, "/public/"+slug+"/products?category=tack", "")
+		testutil.AssertStatus(t, parentFilterResp, http.StatusOK)
+		parentFilterData := testutil.AssertJSON(t, parentFilterResp)
+		assert.Equal(t, tackTotal, parentFilterData["total"],
+			"the parent-slug filter's total must match the tree's rolled-up total_product_count")
 	})
 }

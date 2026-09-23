@@ -170,7 +170,7 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 	query := fmt.Sprintf(`
 		SELECT id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		       price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		       images, status, weight, created_at, updated_at
+		       category_id, images, status, weight, created_at, updated_at
 		FROM products %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d`, where, orderBy, idx, idx+1)
@@ -186,7 +186,7 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 		var p models.Product
 		if err := rows.Scan(&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description,
 			&p.Price, &p.Cost, &p.Stock, &p.MinStock, &p.Category,
-			&p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			&p.CategoryID, &p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan product: %w", err)
 		}
 		products = append(products, p)
@@ -206,13 +206,13 @@ func (s *ProductService) GetProduct(storeID, productID uuid.UUID) (*models.Produ
 	err := s.db.QueryRow(ctx, `
 		SELECT id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		       price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		       images, status, weight, created_at, updated_at
+		       category_id, images, status, weight, created_at, updated_at
 		FROM products
 		WHERE id = $1 AND store_id = $2 AND status != 'deleted'`,
 		productID, storeID,
 	).Scan(&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description,
 		&p.Price, &p.Cost, &p.Stock, &p.MinStock, &p.Category,
-		&p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt)
+		&p.CategoryID, &p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrProductNotFound
@@ -220,6 +220,47 @@ func (s *ProductService) GetProduct(storeID, productID uuid.UUID) (*models.Produ
 		return nil, fmt.Errorf("get product: %w", err)
 	}
 	return &p, nil
+}
+
+// resolveCategoryAssignment validates a category_id string coming from a
+// product create/update request and returns the category's id and slug to
+// persist. An empty string means "no category" (create) / "clear the
+// assignment" (update) and returns (nil, "", nil). A non-empty value must
+// parse as a UUID naming a category that:
+//  1. exists in the SAME store (storeID) — rejects cross-store ids as well
+//     as unknown ones, both surfaced as "category not found";
+//  2. has NO children — only LEAF categories are assignable to products, at
+//     any depth (user decision: a parent category is never a valid
+//     assignment target, even though it visually contains products via
+//     total_product_count roll-up).
+func (s *ProductService) resolveCategoryAssignment(ctx context.Context, storeID uuid.UUID, categoryIDStr string) (*uuid.UUID, string, error) {
+	if categoryIDStr == "" {
+		return nil, "", nil
+	}
+	categoryID, err := uuid.Parse(categoryIDStr)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid category_id")
+	}
+
+	var slug string
+	var childCount int
+	err = s.db.QueryRow(ctx, `
+		SELECT c.slug, COUNT(ch.id)
+		FROM categories c
+		LEFT JOIN categories ch ON ch.parent_id = c.id
+		WHERE c.id = $1 AND c.store_id = $2
+		GROUP BY c.slug`, categoryID, storeID,
+	).Scan(&slug, &childCount)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", fmt.Errorf("category not found")
+		}
+		return nil, "", fmt.Errorf("resolve category: %w", err)
+	}
+	if childCount > 0 {
+		return nil, "", fmt.Errorf("category must be a leaf (has subcategories)")
+	}
+	return &categoryID, slug, nil
 }
 
 // CreateProduct creates a new product for the given store.
@@ -238,23 +279,40 @@ func (s *ProductService) CreateProduct(storeID uuid.UUID, req models.CreateProdu
 		return nil, fmt.Errorf("weight cannot be negative")
 	}
 
+	var categoryIDStr string
+	if req.CategoryID != nil {
+		categoryIDStr = *req.CategoryID
+	}
+	categoryID, categorySlug, err := s.resolveCategoryAssignment(ctx, storeID, categoryIDStr)
+	if err != nil {
+		return nil, err
+	}
+	category := req.Category
+	if categoryID != nil {
+		// A leaf category was assigned: the legacy flat category string is
+		// kept in sync with its slug (REQ: offer resolver category-scope and
+		// the legacy `?category=` filter must keep working), overriding
+		// whatever free text was also sent.
+		category = categorySlug
+	}
+
 	status := "active"
 	if req.Stock == 0 {
 		status = "out_of_stock"
 	}
 
 	var p models.Product
-	err := s.db.QueryRow(ctx, `
-		INSERT INTO products (store_id, name, sku, description, price, cost, stock, min_stock, category, images, status, weight)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '[]', $10, $11)
+	err = s.db.QueryRow(ctx, `
+		INSERT INTO products (store_id, name, sku, description, price, cost, stock, min_stock, category, category_id, images, status, weight)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '[]', $11, $12)
 		RETURNING id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		          price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		          images, status, weight, created_at, updated_at`,
+		          category_id, images, status, weight, created_at, updated_at`,
 		storeID, req.Name, req.SKU, req.Description, req.Price, req.Cost,
-		req.Stock, req.MinStock, req.Category, status, req.Weight,
+		req.Stock, req.MinStock, category, categoryID, status, req.Weight,
 	).Scan(&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description,
 		&p.Price, &p.Cost, &p.Stock, &p.MinStock, &p.Category,
-		&p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt)
+		&p.CategoryID, &p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create product: %w", err)
 	}
@@ -274,6 +332,8 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 	if req.Weight != nil && *req.Weight < 0 {
 		return nil, fmt.Errorf("weight cannot be negative")
 	}
+
+	ctx := context.Background()
 
 	cur, err := s.GetProduct(storeID, productID)
 	if err != nil {
@@ -304,6 +364,19 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 	if req.Category != nil {
 		cur.Category = *req.Category
 	}
+	if req.CategoryID != nil {
+		// Explicit field present: "" clears, anything else must resolve to a
+		// leaf category in this store. This intentionally runs AFTER the
+		// req.Category branch above so a category_id in the same request
+		// always wins and keeps the legacy text in sync (see
+		// models.UpdateProductRequest's doc comment).
+		categoryID, categorySlug, err := s.resolveCategoryAssignment(ctx, storeID, *req.CategoryID)
+		if err != nil {
+			return nil, err
+		}
+		cur.CategoryID = categoryID
+		cur.Category = categorySlug // "" on clear, resolved slug on assign
+	}
 
 	// Auto-adjust status based on stock changes (unless explicitly setting inactive/deleted)
 	if req.Weight != nil {
@@ -319,22 +392,21 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 		}
 	}
 
-	ctx := context.Background()
 	var updated models.Product
 	err = s.db.QueryRow(ctx, `
 		UPDATE products
 		SET name=$1, sku=$2, description=$3, price=$4, cost=$5,
-		    stock=$6, min_stock=$7, category=$8, status=$9, weight=$10, updated_at=NOW()
-		WHERE id=$11 AND store_id=$12
+		    stock=$6, min_stock=$7, category=$8, category_id=$9, status=$10, weight=$11, updated_at=NOW()
+		WHERE id=$12 AND store_id=$13
 		RETURNING id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		          price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		          images, status, weight, created_at, updated_at`,
+		          category_id, images, status, weight, created_at, updated_at`,
 		cur.Name, cur.SKU, cur.Description, cur.Price, cur.Cost,
-		cur.Stock, cur.MinStock, cur.Category, cur.Status, cur.Weight,
+		cur.Stock, cur.MinStock, cur.Category, cur.CategoryID, cur.Status, cur.Weight,
 		productID, storeID,
 	).Scan(&updated.ID, &updated.StoreID, &updated.Name, &updated.SKU, &updated.Description,
 		&updated.Price, &updated.Cost, &updated.Stock, &updated.MinStock, &updated.Category,
-		&updated.Images, &updated.Status, &updated.Weight, &updated.CreatedAt, &updated.UpdatedAt)
+		&updated.CategoryID, &updated.Images, &updated.Status, &updated.Weight, &updated.CreatedAt, &updated.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("update product: %w", err)
 	}

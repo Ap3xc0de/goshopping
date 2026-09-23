@@ -1,18 +1,27 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useStore } from '@/lib/hooks/useStore';
 import { api } from '@/lib/api';
 import { ProductForm } from '@/components/products/ProductForm';
-import type { Product } from '@/lib/types';
+import type { Category, Product } from '@/lib/types';
 
 export default function NewProductPage() {
   const router = useRouter();
   const { storeId } = useStore();
   const createdIdRef = useRef<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    api
+      .listCategories(storeId)
+      .then((res) => setCategories(res.categories))
+      .catch(() => setCategories([]));
+  }, [storeId]);
 
   async function handleSubmit(data: Partial<Product>): Promise<string | null> {
     if (!storeId) return 'Sin tienda seleccionada';
@@ -51,6 +60,7 @@ export default function NewProductPage() {
           onSubmit={handleSubmit}
           onUploadImages={handleUploadImages}
           onSuccess={() => router.push(`/dashboard/products/${createdIdRef.current ?? ''}`)}
+          categories={categories}
         />
       </div>
     </div>

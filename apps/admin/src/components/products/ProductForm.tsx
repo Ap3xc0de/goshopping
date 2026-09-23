@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, type FormEvent } from 'react';
+import Link from 'next/link';
 import { ImagePlus, X } from 'lucide-react';
-import type { Product } from '@/lib/types';
+import type { Category, Product } from '@/lib/types';
 
 interface ProductFormProps {
   initial?: Partial<Product>;
@@ -10,6 +11,55 @@ interface ProductFormProps {
   onUploadImages?: (files: File[]) => Promise<string | null>;
   onSuccess?: () => void;
   submitLabel?: string;
+  /**
+   * Flat category list for the store (as returned by api.listCategories) —
+   * the page loads it and passes it down (container/presentational split).
+   * Only LEAF categories (no children) are selectable; categories with
+   * children render as disabled options so the tree shape stays visible
+   * without letting a product be assigned to a non-leaf node.
+   */
+  categories?: Category[];
+}
+
+interface CategoryOption {
+  id: string;
+  label: string;
+  disabled: boolean;
+}
+
+/**
+ * Flattens the store's category tree (built from the flat `categories` list)
+ * into <option> entries, ordered depth-first by (sort_order, name) at every
+ * level — same ordering as the categories admin page's tree. Each option's
+ * label is its full breadcrumb path ("Monturas › Salto") so a 3+ level leaf
+ * is still unambiguous in a flat <select> (an <optgroup> cannot nest).
+ * Nodes with children are included but disabled — visible context, not a
+ * valid assignment target (user decision: leaves only, at any depth).
+ */
+function buildCategoryOptions(categories: Category[]): CategoryOption[] {
+  const byParent = new Map<string, Category[]>();
+  for (const c of categories) {
+    const key = c.parent_id ?? '';
+    const siblings = byParent.get(key) ?? [];
+    siblings.push(c);
+    byParent.set(key, siblings);
+  }
+  for (const siblings of byParent.values()) {
+    siblings.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  }
+
+  const options: CategoryOption[] = [];
+  function walk(parentKey: string, pathLabel: string) {
+    const children = byParent.get(parentKey) ?? [];
+    for (const node of children) {
+      const label = pathLabel ? `${pathLabel} › ${node.name}` : node.name;
+      const hasChildren = (byParent.get(node.id) ?? []).length > 0;
+      options.push({ id: node.id, label, disabled: hasChildren });
+      if (hasChildren) walk(node.id, label);
+    }
+  }
+  walk('', '');
+  return options;
 }
 
 const EMPTY: Partial<Product> = {
@@ -31,6 +81,7 @@ export function ProductForm({
   onUploadImages,
   onSuccess,
   submitLabel = 'Guardar',
+  categories = [],
 }: ProductFormProps) {
   const [form, setForm] = useState<Partial<Product>>({ ...EMPTY, ...initial });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -67,7 +118,23 @@ export function ProductForm({
     setError('');
     setLoading(true);
 
-    const err = await onSubmit(form);
+    // The legacy free-text `category` field was replaced by the category_id
+    // select — never send it anymore. category_id itself follows the backend
+    // partial-update contract: omit the key entirely when the selection
+    // wasn't touched (server leaves the assignment unchanged, which also
+    // avoids re-validating leaf-ness on unrelated saves), send "" to clear
+    // it, or the chosen category's id to (re)assign it.
+    const payload: Partial<Product> = { ...form };
+    delete payload.category;
+    const initialCategoryId = initial?.category_id ?? '';
+    const currentCategoryId = form.category_id ?? '';
+    if (currentCategoryId === initialCategoryId) {
+      delete payload.category_id;
+    } else {
+      payload.category_id = currentCategoryId;
+    }
+
+    const err = await onSubmit(payload);
     if (err) {
       setError(err);
       setLoading(false);
@@ -90,6 +157,9 @@ export function ProductForm({
   }
 
   const existingImages = form.images ?? [];
+  const categoryOptions = buildCategoryOptions(categories);
+  const currentCategoryId = form.category_id ?? '';
+  const showLegacyCategoryHint = !currentCategoryId && !!initial?.category;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -170,9 +240,31 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-          <input value={form.category ?? ''} onChange={(e) => set('category', e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+          <label htmlFor="product-category" className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+          <select
+            id="product-category"
+            value={currentCategoryId}
+            onChange={(e) => set('category_id', e.target.value)}
+            className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+          >
+            <option value="">Sin categoría</option>
+            {categoryOptions.map((opt) => (
+              <option key={opt.id} value={opt.id} disabled={opt.disabled}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {categories.length === 0 && (
+            <p className="mt-1.5 text-xs text-gray-500">
+              No hay categorías creadas.{' '}
+              <Link href="/dashboard/categories" className="text-brand-600 hover:underline">
+                Crear categorías
+              </Link>
+            </p>
+          )}
+          {showLegacyCategoryHint && (
+            <p className="mt-1.5 text-xs text-gray-400">Categoría anterior (texto libre): {initial?.category}</p>
+          )}
         </div>
 
         <div>

@@ -67,6 +67,15 @@ export interface Product {
   stock: number;
   min_stock: number;
   category?: string;
+  /**
+   * References a LEAF category (no children) in the store's hierarchical
+   * tree (mirrors apps/core/internal/models/product.go — Product.CategoryID).
+   * null/undefined means no category assigned. On PARTIAL UPDATE, sending ""
+   * explicitly clears the assignment (and resets the legacy `category` text
+   * server-side); omitting the field leaves it unchanged — see
+   * UpdateProductRequest's doc comment in apps/core for the full contract.
+   */
+  category_id?: string | null;
   images: string[];
   status: 'active' | 'inactive';
   /**
