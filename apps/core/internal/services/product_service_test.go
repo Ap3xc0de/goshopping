@@ -1,10 +1,12 @@
 package services_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/goshopping/core/internal/models"
 	"github.com/goshopping/core/internal/services"
 	"github.com/goshopping/core/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -124,4 +126,39 @@ func TestProductServiceListProductsSearch(t *testing.T) {
 		assert.Contains(t, names, underscore.Name)
 		assert.NotContains(t, names, underscoreish.Name, "unescaped _ would wildcard-match here")
 	})
+}
+
+// catalog-browsing FEATURE: filtering by a parent category's slug must also
+// return products assigned to any of its descendants (recursive), not just
+// products assigned directly to that category. The legacy flat-string
+// fallback (unknown slug → products.category) is untouched.
+func TestProductServiceListProductsCategoryFilterIncludesDescendants(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := uuid.MustParse(storeID)
+	catSvc := services.NewCategoryService(app.DB)
+	prodSvc := newTestProductService(app)
+	ctx := context.Background()
+
+	root, err := catSvc.CreateCategory(ctx, storeIDParsed, models.CreateCategoryRequest{Name: "Ropa"})
+	require.NoError(t, err)
+	child, err := catSvc.CreateCategory(ctx, storeIDParsed, models.CreateCategoryRequest{Name: "Botas", ParentID: &root.ID})
+	require.NoError(t, err)
+	grandchild, err := catSvc.CreateCategory(ctx, storeIDParsed, models.CreateCategoryRequest{Name: "Botas Altas", ParentID: &child.ID})
+	require.NoError(t, err)
+
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Root Product"), testutil.WithCategoryID(root.ID))
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Child Product"), testutil.WithCategoryID(child.ID))
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Grandchild Product"), testutil.WithCategoryID(grandchild.ID))
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Unrelated Product"))
+
+	result, err := prodSvc.ListProducts(storeIDParsed, 1, 24, root.Slug, "active", "", "")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"Root Product", "Child Product", "Grandchild Product"}, productNames(result))
+
+	leafResult, err := prodSvc.ListProducts(storeIDParsed, 1, 24, grandchild.Slug, "active", "", "")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Grandchild Product"}, productNames(leafResult))
 }

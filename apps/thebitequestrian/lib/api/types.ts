@@ -33,13 +33,29 @@ export interface Product {
   variants?: PublicVariant[];
 }
 
+// Breadcrumb step in Category.path (root -> this node, inclusive).
+export interface CategoryPathEntry {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 // Category tree node returned by GET /categories (catalog-browsing REQ:
-// Hierarchical Categories with Real Counts).
+// Hierarchical Categories with Real Counts). Nodes with zero
+// total_product_count (no active products directly or in any descendant)
+// are omitted by the API entirely, so every node returned here is visible.
 export interface Category {
   id: string;
   name: string;
   slug: string;
+  parent_id: string | null;
+  depth: number;
+  sort_order: number;
+  path: CategoryPathEntry[];
+  // Active products assigned DIRECTLY to this category.
   product_count: number;
+  // Active products in this category PLUS all of its descendants.
+  total_product_count: number;
   children: Category[];
 }
 

@@ -662,12 +662,31 @@ func TestPublicListCategories(t *testing.T) {
 		tackNode := tree[0]
 		assert.Equal(t, "Tack", tackNode["name"])
 		assert.Equal(t, float64(2), tackNode["product_count"], "Tack count = its direct active products only")
+		assert.Nil(t, tackNode["parent_id"], "root has no parent")
+		assert.Equal(t, float64(0), tackNode["depth"])
+		assert.Equal(t, float64(5), tackNode["total_product_count"], "2 direct + 3 in Saddles")
+
+		path, ok := tackNode["path"].([]interface{})
+		require.True(t, ok, "path must be present")
+		require.Len(t, path, 1, "root path is itself, inclusive")
+		rootPathEntry, _ := path[0].(map[string]interface{})
+		assert.Equal(t, "Tack", rootPathEntry["name"])
+		assert.Equal(t, "tack", rootPathEntry["slug"])
 
 		children, _ := tackNode["children"].([]interface{})
 		require.Len(t, children, 1, "Tack nests Saddles")
 		saddlesNode, _ := children[0].(map[string]interface{})
 		assert.Equal(t, "Saddles", saddlesNode["name"])
 		assert.Equal(t, float64(3), saddlesNode["product_count"], "inactive products must not count")
+		assert.Equal(t, float64(3), saddlesNode["total_product_count"], "leaf: total == direct")
+		assert.Equal(t, tackNode["id"], saddlesNode["parent_id"])
+		assert.Equal(t, float64(1), saddlesNode["depth"])
+
+		saddlesPath, ok := saddlesNode["path"].([]interface{})
+		require.True(t, ok)
+		require.Len(t, saddlesPath, 2, "path is root-to-node inclusive")
+		leafPathEntry, _ := saddlesPath[1].(map[string]interface{})
+		assert.Equal(t, "Saddles", leafPathEntry["name"])
 
 		leafChildren, ok := saddlesNode["children"].([]interface{})
 		assert.True(t, ok, "leaf nodes must still carry a children key")
@@ -680,6 +699,69 @@ func TestPublicListCategories(t *testing.T) {
 		data := testutil.AssertJSON(t, resp)
 		testutil.AssertPaginated(t, data, 3)
 	})
+
+	t.Run("products filter by parent slug includes descendant products", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products?category=tack", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		// 2 direct on Tack + 3 active on its child Saddles = 5.
+		testutil.AssertPaginated(t, data, 5)
+	})
+
+	t.Run("total_product_count matches the paginated products total for the same slug", func(t *testing.T) {
+		treeResp := app.GET(t, "/public/"+slug+"/categories", "")
+		testutil.AssertStatus(t, treeResp, http.StatusOK)
+		var tree []map[string]interface{}
+		require.NoError(t, json.Unmarshal(readRawBody(t, treeResp), &tree))
+		tackTotal := tree[0]["total_product_count"]
+
+		prodResp := app.GET(t, "/public/"+slug+"/products?category=tack", "")
+		testutil.AssertStatus(t, prodResp, http.StatusOK)
+		prodData := testutil.AssertJSON(t, prodResp)
+
+		assert.Equal(t, tackTotal, prodData["total"],
+			"total_product_count on the tree must equal the products endpoint's total for the same slug")
+	})
+}
+
+// catalog-browsing FEATURE: HIDE EMPTY — the public tree omits any node whose
+// total_product_count is 0, but keeps a parent that has 0 DIRECT products as
+// long as a descendant has some (its rolled-up total is still > 0). Admin
+// endpoints (flat list) are unaffected by this filtering.
+func TestPublicListCategoriesHidesEmptyNodes(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	empty := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+		testutil.WithCategoryName("Empty"), testutil.WithCategorySlug("empty"))
+	_ = empty
+
+	parentWithChildProducts := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+		testutil.WithCategoryName("Ropa"), testutil.WithCategorySlug("ropa"))
+	childWithProducts := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+		testutil.WithCategoryName("Botas"), testutil.WithCategorySlug("botas"),
+		testutil.WithParent(parentWithChildProducts.ID))
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithCategoryID(childWithProducts.ID))
+
+	resp := app.GET(t, "/public/"+slug+"/categories", "")
+	testutil.AssertStatus(t, resp, http.StatusOK)
+	var tree []map[string]interface{}
+	require.NoError(t, json.Unmarshal(readRawBody(t, resp), &tree))
+
+	require.Len(t, tree, 1, "the fully-empty category must be omitted; only Ropa remains")
+	ropaNode := tree[0]
+	assert.Equal(t, "Ropa", ropaNode["name"])
+	assert.Equal(t, float64(0), ropaNode["product_count"], "Ropa has 0 direct products")
+	assert.Equal(t, float64(1), ropaNode["total_product_count"], "but 1 product via its child")
+
+	children, _ := ropaNode["children"].([]interface{})
+	require.Len(t, children, 1, "Botas has products, so it must still show up")
+	botasNode, _ := children[0].(map[string]interface{})
+	assert.Equal(t, "Botas", botasNode["name"])
 }
 
 // shipping-zones REQ: List Public Methods — active zones/methods only,

@@ -82,9 +82,11 @@ type ListProductsResult struct {
 //
 // sort must be one of the public whitelist (newest|price_asc|price_desc|name,
 // default newest); anything else returns ErrInvalidSort. When category matches
-// a categories.slug for this store, products are filtered by category_id;
-// otherwise it falls back to an exact match on the legacy flat
-// products.category string (transition compatibility).
+// a categories.slug for this store, products are filtered by that category
+// AND all of its descendants (recursive CTE — a parent slug must return its
+// subtree's products too, matching the total_product_count shown on the
+// public category tree); otherwise it falls back to an exact match on the
+// legacy flat products.category string (transition compatibility).
 func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, category, status, search, sort string) (*ListProductsResult, error) {
 	ctx := context.Background()
 	if page < 1 {
@@ -111,7 +113,21 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 		).Scan(&categoryID)
 		switch {
 		case err == nil:
-			conditions = append(conditions, fmt.Sprintf("category_id = $%d", idx))
+			// Recursive CTE: category_id itself plus every descendant,
+			// scoped to the same store_id (parent_id has no store_id column
+			// of its own to filter on, so each recursion step re-checks it).
+			// UNION (not UNION ALL) dedupes rows so the recursion terminates
+			// even if legacy data still holds a parent_id cycle.
+			conditions = append(conditions, fmt.Sprintf(`category_id IN (
+				WITH RECURSIVE descendants AS (
+					SELECT id FROM categories WHERE id = $%d AND store_id = $1
+					UNION
+					SELECT c.id FROM categories c
+					JOIN descendants d ON c.parent_id = d.id
+					WHERE c.store_id = $1
+				)
+				SELECT id FROM descendants
+			)`, idx))
 			args = append(args, categoryID)
 			idx++
 		case errors.Is(err, pgx.ErrNoRows):

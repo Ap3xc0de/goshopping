@@ -135,6 +135,11 @@ func TestAdminCategoriesListUpdateDelete(t *testing.T) {
 		testutil.AssertStatus(t, resp, http.StatusNotFound)
 	})
 
+	t.Run("rejects reparenting a category under its own descendant (cycle)", func(t *testing.T) {
+		resp := app.PUT(t, base+"/"+tackID, map[string]interface{}{"parent_id": saddlesID}, auth)
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "descendant")
+	})
+
 	t.Run("deletes a leaf category", func(t *testing.T) {
 		resp := app.DELETE(t, base+"/"+saddlesID, auth)
 		testutil.AssertStatus(t, resp, http.StatusNoContent)

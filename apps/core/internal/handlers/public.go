@@ -152,34 +152,88 @@ func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	}
 }
 
-// PublicCategory is the public-facing category tree node: category fields plus
-// the real active product count and nested children.
+// PublicCategoryPathEntry is one breadcrumb step in PublicCategory.Path (root
+// → this node, inclusive).
+type PublicCategoryPathEntry struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	Slug string    `json:"slug"`
+}
+
+// PublicCategory is the public-facing category tree node: category fields,
+// SQL-computed active product counts, and tree metadata.
+//
+//   - ProductCount: ACTIVE products assigned DIRECTLY to this node (unchanged
+//     semantics — this is purely an additive change for existing clients).
+//   - TotalProductCount: ACTIVE products in this node PLUS all of its
+//     descendants (see models.CategoryNode's doc comment for why plain
+//     summation up the tree is distinct-safe here). It equals the `total`
+//     the products endpoint returns when filtered by this node's slug.
+//   - Depth/SortOrder/ParentID/Path: tree-derived metadata, mirrored 1:1 from
+//     models.CategoryNode, so storefronts can render nesting/breadcrumbs
+//     without extra calls.
+//   - HIDE EMPTY: on the PUBLIC endpoint only, nodes whose TotalProductCount
+//     is 0 are omitted entirely (see filterVisibleCategories) — a parent
+//     with 0 direct products but products further down the tree still shows
+//     up, since its rolled-up total is > 0. Admin endpoints are unaffected.
 type PublicCategory struct {
-	ID           uuid.UUID        `json:"id"`
-	Name         string           `json:"name"`
-	Slug         string           `json:"slug"`
-	ProductCount int              `json:"product_count"`
-	Children     []PublicCategory `json:"children"`
+	ID                uuid.UUID                 `json:"id"`
+	Name              string                    `json:"name"`
+	Slug              string                    `json:"slug"`
+	ParentID          *uuid.UUID                `json:"parent_id"`
+	Depth             int                       `json:"depth"`
+	SortOrder         int                       `json:"sort_order"`
+	Path              []PublicCategoryPathEntry `json:"path"`
+	ProductCount      int                       `json:"product_count"`
+	TotalProductCount int                       `json:"total_product_count"`
+	Children          []PublicCategory          `json:"children"`
 }
 
 // toPublicCategory maps a services.CategoryNode tree into the public shape,
-// guaranteeing children is always a JSON array (never null).
+// guaranteeing children (and path) are always a JSON array (never null).
 func toPublicCategory(n models.CategoryNode) PublicCategory {
 	children := make([]PublicCategory, 0, len(n.Children))
 	for _, ch := range n.Children {
 		children = append(children, toPublicCategory(ch))
 	}
+	path := make([]PublicCategoryPathEntry, 0, len(n.Path))
+	for _, p := range n.Path {
+		path = append(path, PublicCategoryPathEntry{ID: p.ID, Name: p.Name, Slug: p.Slug})
+	}
 	return PublicCategory{
-		ID:           n.ID,
-		Name:         n.Name,
-		Slug:         n.Slug,
-		ProductCount: n.ProductCount,
-		Children:     children,
+		ID:                n.ID,
+		Name:              n.Name,
+		Slug:              n.Slug,
+		ParentID:          n.ParentID,
+		Depth:             n.Depth,
+		SortOrder:         n.SortOrder,
+		Path:              path,
+		ProductCount:      n.ProductCount,
+		TotalProductCount: n.TotalProductCount,
+		Children:          children,
 	}
 }
 
+// filterVisibleCategories removes nodes with zero TotalProductCount from the
+// PUBLIC tree only (catalog-browsing REQ: hide empty categories). A parent
+// with 0 direct products but products somewhere in its subtree is kept — its
+// TotalProductCount already rolled those up. Admin endpoints are unaffected:
+// they read CategoryService.ListCategories (the flat list), never this tree.
+func filterVisibleCategories(nodes []models.CategoryNode) []models.CategoryNode {
+	visible := make([]models.CategoryNode, 0, len(nodes))
+	for _, n := range nodes {
+		if n.TotalProductCount == 0 {
+			continue
+		}
+		n.Children = filterVisibleCategories(n.Children)
+		visible = append(visible, n)
+	}
+	return visible
+}
+
 // PublicListCategories handles GET /public/:storeSlug/categories — the
-// hierarchical category tree with SQL-computed active product counts.
+// hierarchical category tree with SQL-computed active product counts. Empty
+// nodes (TotalProductCount == 0) are hidden (see filterVisibleCategories).
 // Registered in both public route groups (/public and /api/v1).
 func PublicListCategories(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -193,6 +247,7 @@ func PublicListCategories(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
+		tree = filterVisibleCategories(tree)
 
 		public := make([]PublicCategory, 0, len(tree))
 		for _, n := range tree {
