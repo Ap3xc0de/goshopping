@@ -22,6 +22,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	brandingSvc := services.NewBrandingService(db, cfg)
 	offerSvc := services.NewOfferService(db)
 	couponSvc := services.NewCouponService(db)
+	apiKeySvc := services.NewAPIKeyService(db)
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -44,6 +45,17 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	pub.Post("/:storeSlug/quote", handlers.QuoteCart(db, cfg))
 	pub.Post("/:storeSlug/orders", handlers.PublicCreateOrder(db, cfg))
 	pub.Get("/:storeSlug/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
+
+	// Developer API v1 — the same public handlers mounted under
+	// /api/v1/:storeSlug, gated by a Bearer API key instead of the origin
+	// secret. /public/* remains unchanged.
+	v1 := app.Group("/api/v1/:storeSlug", middleware.RequireAPIKey(apiKeySvc))
+	v1.Get("/config", handlers.PublicStoreConfig(db, cfg))
+	v1.Get("/products", handlers.PublicListProducts(db, cfg))
+	v1.Get("/products/:productId", handlers.PublicGetProduct(db, cfg))
+	v1.Post("/quote", handlers.QuoteCart(db, cfg))
+	v1.Post("/orders", handlers.PublicCreateOrder(db, cfg))
+	v1.Get("/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
 
 	// ── Protected routes ──────────────────────────────────────────────────────
 	api := app.Group("/", middleware.Auth(cfg.JWTSecret))
@@ -78,6 +90,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	// Dashboard
 	store.Get("/dashboard", handlers.GetDashboard(dashSvc))
 
+	// Store info (seller-safe: id, name, slug) — feeds the admin "Mi Tienda"
+	// developer hub for building /api/v1/:slug URLs.
+	store.Get("/", handlers.GetStore(db))
+
 	// Branding
 	store.Get("/branding", handlers.GetBranding(brandingSvc))
 	store.Put("/branding", handlers.UpdateBranding(brandingSvc))
@@ -102,6 +118,11 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Get("/coupons/:couponId", handlers.GetCoupon(couponSvc))
 	store.Put("/coupons/:couponId", handlers.UpdateCoupon(couponSvc))
 	store.Delete("/coupons/:couponId", handlers.DeleteCoupon(couponSvc))
+
+	// API keys
+	store.Get("/api-keys", handlers.ListAPIKeys(apiKeySvc))
+	store.Post("/api-keys", handlers.CreateAPIKey(apiKeySvc))
+	store.Delete("/api-keys/:keyId", handlers.RevokeAPIKey(apiKeySvc))
 
 	// Reports
 	store.Get("/reports/sales", handlers.GetReportsSales(dashSvc))

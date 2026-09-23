@@ -69,6 +69,29 @@ make dev-admin        # http://localhost:3004
 - `POST /auth/refresh` — Renovar tokens
 - `GET /stores/:storeId/*` — Rutas multi-tenant (requiere JWT)
 
+## API Pública para Desarrolladores (v1)
+
+Los dueños de tienda pueden exponer su catálogo a apps de terceros mediante
+API keys de tienda. La superficie versionada `/api/v1/:storeSlug/*` reutiliza
+los mismos handlers de `/public` y requiere `Authorization: Bearer <api_key>`.
+
+- `GET /api/v1/:storeSlug/config` — Configuración pública de la tienda
+- `GET /api/v1/:storeSlug/products` y `/products/:productId` — Catálogo activo
+- `POST /api/v1/:storeSlug/quote` — Cotización de carrito
+- `POST /api/v1/:storeSlug/orders` y `GET /orders/:orderId/status` — Pedidos
+
+### Ciclo de vida de las API keys (rutas admin, requieren JWT de dueño)
+
+- `POST /stores/:storeId/api-keys` — Crea una key; la respuesta incluye la
+  key en texto plano (`gsk_` + 40 hex) **una única vez**. Solo se persisten el
+  hash SHA-256 y un prefijo de 12 caracteres.
+- `GET /stores/:storeId/api-keys` — Lista enmascarada (nunca incluye el hash).
+- `DELETE /stores/:storeId/api-keys/:keyId` — Revoca la key; falla de
+  inmediato en `/api/v1/*` con `401`.
+
+Errores de autenticación: key faltante/malformada/desconocida/revocada/vencida
+→ `401`; key válida usada contra otra tienda → `403`.
+
 ## Infraestructura AWS (Terraform)
 
 La infraestructura se despliega en AWS usando Terraform. Los módulos están en `infra/modules/`.

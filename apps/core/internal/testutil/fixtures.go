@@ -197,6 +197,45 @@ func CreateTestOrder(t *testing.T, db *pgxpool.Pool, storeID, customerID uuid.UU
 	return o
 }
 
+// ── API key fixtures ─────────────────────────────────────────────────────────
+
+// CreateTestAPIKey inserts a store_api_keys row and returns the model plus the
+// plaintext key — the plaintext is what a store owner saw exactly once at
+// creation time.
+func CreateTestAPIKey(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, name string) (models.APIKey, string) {
+	t.Helper()
+
+	plaintext, err := models.GenerateKey()
+	if err != nil {
+		t.Fatalf("CreateTestAPIKey: generate key: %v", err)
+	}
+
+	key := models.APIKey{
+		ID:      uuid.New(),
+		StoreID: storeID,
+		Name:    name,
+		KeyHash: models.HashKey(plaintext),
+		Prefix:  models.PrefixOf(plaintext),
+		Active:  true,
+	}
+
+	err = db.QueryRow(context.Background(), `
+		INSERT INTO store_api_keys (id, store_id, name, key_hash, prefix, active)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING created_at`,
+		key.ID, key.StoreID, key.Name, key.KeyHash, key.Prefix, key.Active,
+	).Scan(&key.CreatedAt)
+	if err != nil {
+		t.Fatalf("CreateTestAPIKey: insert: %v", err)
+	}
+	return key, plaintext
+}
+
+// APIKeyAuthHeader returns the Authorization header value for a plaintext key.
+func APIKeyAuthHeader(plaintext string) string {
+	return "Bearer " + plaintext
+}
+
 // ── Utility helpers ───────────────────────────────────────────────────────────
 
 // GetStoreSlug reads the slug for a store from DB.
