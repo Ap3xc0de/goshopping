@@ -1,0 +1,191 @@
+import type { Product, ShippingMethod, StoreConfig } from '@/lib/api/types';
+
+const img = (seed: string) => `https://picsum.photos/seed/${seed}/800/1000`;
+
+export const mockProducts: Product[] = [
+  {
+    id: 'b1c2d3e4-0001-4a11-8f22-33c4d5e6f701',
+    store_id: 'thebitequestrian',
+    name: 'Performance Full-Seat Breech',
+    sku: 'TB-W-BR-1001',
+    description:
+      'Technical breeches with a silicone full-seat grip and four-way stretch. Cut high at the waist for a locked-in, show-ready fit.',
+    price: 189,
+    effective_price: 189,
+    active_offer: null,
+    stock: 42,
+    category: 'Women',
+    images: [img('breech-w-full'), img('breech-w-full-2')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0002-4a11-8f22-33c4d5e6f702',
+    store_id: 'thebitequestrian',
+    name: 'Comp Show Jacket',
+    sku: 'TB-W-JK-2001',
+    description:
+      'A tailored competition jacket in a breathable Italian performance weave. Three-button front and a sculpted, close-contact silhouette.',
+    price: 429,
+    effective_price: 429,
+    active_offer: null,
+    stock: 18,
+    category: 'Women',
+    images: [img('jacket-w-comp'), img('jacket-w-comp-2')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0003-4a11-8f22-33c4d5e6f703',
+    store_id: 'thebitequestrian',
+    name: 'Technical Show Shirt',
+    sku: 'TB-W-SH-3001',
+    description:
+      'Featherweight show shirt with hidden zip placket and quick-dry mesh panels. Designed to stay crisp through long show days.',
+    price: 85,
+    effective_price: 76.5,
+    active_offer: {
+      id: 'offer-0003',
+      name: 'New Season',
+      discount_type: 'percentage',
+      discount_value: 10,
+      ends_at: '2026-11-30T23:59:59Z',
+    },
+    stock: 60,
+    category: 'Women',
+    images: [img('shirt-w-tech')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0004-4a11-8f22-33c4d5e6f704',
+    store_id: 'thebitequestrian',
+    name: 'Premium Silicone Grip Breech',
+    sku: 'TB-M-BR-1002',
+    description:
+      'Acee-coat silicone grip breeches for men, with reinforced knee patches and a comfortable mid-rise waistband for all-day training.',
+    price: 199,
+    effective_price: 169.15,
+    active_offer: {
+      id: 'offer-0004',
+      name: 'Season Sale',
+      discount_type: 'percentage',
+      discount_value: 15,
+      ends_at: '2026-12-31T23:59:59Z',
+    },
+    stock: 30,
+    category: 'Men',
+    images: [img('breech-m-grip')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0005-4a11-8f22-33c4d5e6f705',
+    store_id: 'thebitequestrian',
+    name: 'Merino Show Jacket',
+    sku: 'TB-M-JK-2002',
+    description:
+      'A refined competition jacket cut from a merino-rich technical blend. Structured shoulders with a fluid, natural range of motion.',
+    price: 459,
+    effective_price: 399,
+    active_offer: {
+      id: 'offer-0005',
+      name: 'Season Sale',
+      discount_type: 'fixed',
+      discount_value: 60,
+      ends_at: '2026-12-31T23:59:59Z',
+    },
+    stock: 12,
+    category: 'Men',
+    images: [img('jacket-m-merino'), img('jacket-m-merino-2')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0006-4a11-8f22-33c4d5e6f706',
+    store_id: 'thebitequestrian',
+    name: 'Performance Polo',
+    sku: 'TB-M-PL-3002',
+    description:
+      'A smart-turned polo with moisture-wicking stretch and a hidden collar stay. Equally at home in the barn or at the club.',
+    price: 72,
+    effective_price: 72,
+    active_offer: null,
+    stock: 75,
+    category: 'Men',
+    images: [img('polo-m-perf')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0007-4a11-8f22-33c4d5e6f707',
+    store_id: 'thebitequestrian',
+    name: 'Heritage Logo Tee',
+    sku: 'TB-C-TE-4001',
+    description:
+      'A heavyweight cotton tee with the signature The Bit crest printed at the chest. Pre-shrunk and garment-dyed for a lived-in feel.',
+    price: 48,
+    effective_price: 48,
+    active_offer: null,
+    stock: 120,
+    category: 'Casuals',
+    images: [img('tee-c-heritage'), img('tee-c-heritage-2')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0008-4a11-8f22-33c4d5e6f708',
+    store_id: 'thebitequestrian',
+    name: 'Horsebit Leather Belt',
+    sku: 'TB-C-BL-4002',
+    description:
+      'Full-grain leather belt finished with a polished brass horsebit buckle. Hand-stitched edges for a clean, tailored line.',
+    price: 95,
+    effective_price: 95,
+    active_offer: null,
+    stock: 40,
+    category: 'Casuals',
+    images: [img('belt-c-horsebit')],
+    status: 'active',
+  },
+  {
+    id: 'b1c2d3e4-0009-4a11-8f22-33c4d5e6f709',
+    store_id: 'thebitequestrian',
+    name: 'Rider Hoodie',
+    sku: 'TB-C-HD-4003',
+    description:
+      'An oversized loopback hoodie with a discreet tonal logo. The everyday layer you reach for from warm-up to wind-down.',
+    price: 88,
+    effective_price: 88,
+    active_offer: null,
+    stock: 55,
+    category: 'Casuals',
+    images: [img('hoodie-c-rider')],
+    status: 'active',
+  },
+];
+
+export const mockConfig: StoreConfig = {
+  id: 'store-thebitequestrian',
+  name: 'The Bit Equestrian',
+  slug: 'thebitequestrian',
+  status: 'active',
+  branding: {
+    brand_name: 'The Bit Equestrian',
+    tagline: 'The Champions Choice',
+    colors: {
+      primary: '142 71% 45%',
+      accent: '#0e4f00',
+      accent_bright: '#4caf50',
+    },
+    fonts: {
+      display: 'Bodoni Moda',
+      body: 'Archivo',
+      label: 'Archivo Narrow',
+    },
+    radius: '0.25rem',
+    social_links: {
+      instagram: 'https://www.instagram.com/thebit_equestrian',
+    },
+  },
+  template_id: 'template-default',
+  currency: 'USD',
+};
+
+export const mockShippingMethods: ShippingMethod[] = [
+  { zone: { name: 'Colombia' }, code: 'standard', name: 'Standard', base_price: 0, weight_rate: 0 },
+  { zone: { name: 'Colombia' }, code: 'express', name: 'Express', base_price: 15, weight_rate: 0 },
+];
