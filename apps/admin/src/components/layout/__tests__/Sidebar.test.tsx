@@ -22,4 +22,10 @@ describe('Sidebar', () => {
     render(<Sidebar collapsed={false} onToggle={jest.fn()} />);
     expect(screen.queryByRole('link', { name: /Crear Tienda/i })).not.toBeInTheDocument();
   });
+
+  it('shows a "Categorías" link pointing to the category tree page', () => {
+    render(<Sidebar collapsed={false} onToggle={jest.fn()} />);
+    const link = screen.getByRole('link', { name: /Categorías/i });
+    expect(link).toHaveAttribute('href', '/dashboard/categories');
+  });
 });

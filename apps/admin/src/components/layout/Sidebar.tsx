@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ShoppingCart,
   Palette,
+  FolderTree,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useStore } from '@/lib/hooks/useStore';
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/dashboard',                  label: 'Dashboard',      Icon: LayoutDashboard },
   { href: '/dashboard/orders',           label: 'Pedidos',        Icon: ShoppingBag },
   { href: '/dashboard/products',         label: 'Productos',      Icon: Package },
+  { href: '/dashboard/categories',       label: 'Categorías',     Icon: FolderTree },
   { href: '/dashboard/customers',        label: 'Clientes',       Icon: Users },
   { href: '/dashboard/reports',          label: 'Reportes',       Icon: BarChart3 },
   { href: '/dashboard/my-store',         label: 'Mi Tienda',      Icon: Palette },
