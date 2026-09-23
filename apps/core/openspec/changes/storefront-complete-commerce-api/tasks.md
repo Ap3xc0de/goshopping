@@ -40,20 +40,20 @@ TDD: RED→GREEN, gate `make test-core`.
 
 ## Slice 3 — Checkout/Shipping/Newsletter/Currency (core + storefront)
 
-- [ ] 3.1 Fixtures `CreateTestShippingZone/Method/Subscriber`.
-- [ ] 3.2 RED: `public_test.go` `GET /shipping-methods` active-only. GREEN: `internal/models/shipping.go` + `services/shipping_service.go`, handler, routes.
-- [ ] 3.3 RED: `quote_resolver_test.go` `ComputeQuote` +`shipping_total`; total = subtotal − discounts + shipping + tax. GREEN: `CartPreview.ShippingTotal`.
-- [ ] 3.4 RED: `public_quote_test.go` 422 bad method; `base+Σ(weight×qty)×rate`. GREEN: `models.Product.Weight`+DAL, quote pre-stage.
-- [ ] 3.5 RED: `order_service_test.go` persists `shipping_method/shipping_total`. GREEN: INSERT + `models.Order` fields.
-- [ ] 3.6 RED: `/config` `currency:"USD"` + default unit test. GREEN: `buildPublicStoreConfig` reads `stores.config`; orders INSERT `currency='USD'`.
-- [ ] 3.7 RED: `public_test.go` newsletter 201/400/409/429 + limiter unit. GREEN: `services/newsletter_service.go` (5/min `store_id|ip`), `PublicSubscribeNewsletter`, routes.
-- [ ] 3.8 RED: new `internal/handlers/shipping_test.go` admin CRUD. GREEN: new `internal/handlers/shipping.go` + routes.
-- [ ] 3.9 Storefront `lib/api/{types,client}.ts`: tree/shipping/variant/currency types; `getCategories`→`GET /categories`.
-- [ ] 3.10 `checkout-client.tsx` + `app/api/checkout/route.ts`: address street/city/state(new)/zip/country; radios from methods; quote-driven totals (drop TAX_RATE).
-- [ ] 3.11 `site-footer.tsx` → `app/api/newsletter/route.ts`; `lib/format.ts`,`lib/seo.ts`,`dictionaries.ts` currency from `/config` (drop COP). Verify build/typecheck.
+- [x] 3.1 Fixtures `CreateTestShippingZone/Method/Subscriber`.
+- [x] 3.2 RED: `public_test.go` `GET /shipping-methods` active-only. GREEN: `internal/models/shipping.go` + `services/shipping_service.go`, handler, routes.
+- [x] 3.3 RED: `quote_resolver_test.go` `ComputeQuote` +`shipping_total`; total = subtotal − discounts + shipping + tax. GREEN: `CartPreview.ShippingTotal`.
+- [x] 3.4 RED: `public_quote_test.go` 422 bad method; `base+Σ(weight×qty)×rate`. GREEN: `models.Product.Weight`+DAL, quote pre-stage.
+- [x] 3.5 RED: `order_service_test.go` persists `shipping_method/shipping_total`. GREEN: INSERT + `models.Order` fields.
+- [x] 3.6 RED: `/config` `currency:"USD"` + default unit test. GREEN: `buildPublicStoreConfig` reads `stores.config`; orders INSERT `currency='USD'`.
+- [x] 3.7 RED: `public_test.go` newsletter 201/400/409/429 + limiter unit. GREEN: `services/newsletter_service.go` (5/min `store_id|ip`), `PublicSubscribeNewsletter`, routes.
+- [x] 3.8 RED: new `internal/handlers/shipping_test.go` admin CRUD. GREEN: new `internal/handlers/shipping.go` + routes.
+- [x] 3.9 Storefront `lib/api/{types,client}.ts`: tree/shipping/variant/currency types; `getCategories`→`GET /categories`.
+- [x] 3.10 `checkout-client.tsx` + `app/api/checkout/route.ts`: address street/city/state(new)/zip/country; radios from methods; quote-driven totals (drop TAX_RATE).
+- [x] 3.11 `site-footer.tsx` → `app/api/newsletter/route.ts`; `lib/format.ts`,`lib/seo.ts`,`dictionaries.ts` currency from `/config` (drop COP). Verify build/typecheck.
 
 ## Slice 4 — Admin UI (apps/admin)
 
-- [ ] 4.1 API helpers + new `src/components/products/VariantsEditor.tsx` wired into `dashboard/products/[id]/page.tsx`.
-- [ ] 4.2 New `dashboard/categories/page.tsx` (tree; 409→toast) + nav.
-- [ ] 4.3 `ProductForm.tsx` + bulk import weight (kg); `settings/page.tsx` "Currency: USD". Verify tests+build.
+- [x] 4.1 API helpers + new `src/components/products/VariantsEditor.tsx` wired into `dashboard/products/[id]/page.tsx`.
+- [x] 4.2 New `dashboard/categories/page.tsx` (tree; 409→toast) + nav.
+- [x] 4.3 `ProductForm.tsx` gains weight (kg); `settings/page.tsx` "Currency: USD". Verify tests+build. NOTE: no bulk-import UI exists in apps/admin, and apps/core's Create/UpdateProductRequest don't accept `weight` yet (out of scope, admin-only slice) — see apply-progress for details.
