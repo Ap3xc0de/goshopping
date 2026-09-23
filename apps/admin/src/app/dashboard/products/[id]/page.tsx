@@ -8,6 +8,7 @@ import { useStore } from '@/lib/hooks/useStore';
 import { useProduct, useProductActions } from '@/lib/hooks/useProducts';
 import { api } from '@/lib/api';
 import { ProductForm } from '@/components/products/ProductForm';
+import { VariantsEditor } from '@/components/products/VariantsEditor';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { PageLoader } from '@/components/ui/LoadingSpinner';
@@ -76,6 +77,17 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <ProductForm initial={product} submitLabel="Guardar cambios" onSubmit={handleUpdate} onUploadImages={handleUploadImages} />
       </div>
+
+      {storeId && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <VariantsEditor
+            storeId={storeId}
+            productId={id}
+            onError={(message) => setToast({ message, type: 'error' })}
+            onSuccess={(message) => setToast({ message, type: 'success' })}
+          />
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleteModal}

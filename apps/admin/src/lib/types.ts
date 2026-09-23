@@ -69,8 +69,73 @@ export interface Product {
   category?: string;
   images: string[];
   status: 'active' | 'inactive';
+  /**
+   * Weight in kg, NUMERIC(8,3) precision (mirrors
+   * apps/core/internal/models/product.go — Product.Weight). Optional here so
+   * existing mocks/fixtures that predate this field keep type-checking.
+   */
+  weight?: number;
   created_at: string;
   updated_at: string;
+}
+
+// ─── Categories (mirrors apps/core/internal/models/category.go) ────────────
+
+export interface Category {
+  id: string;
+  store_id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  parent_id?: string | null;
+  sort_order?: number;
+}
+
+export interface UpdateCategoryRequest {
+  name?: string;
+  parent_id?: string | null;
+  sort_order?: number;
+}
+
+// ─── Product Variants (mirrors apps/core/internal/models/variant.go) ───────
+
+export interface ProductVariant {
+  id: string;
+  store_id: string;
+  product_id: string;
+  sku: string;
+  size: string;
+  color: string;
+  price_override: number | null;
+  stock: number;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateVariantRequest {
+  sku: string;
+  size?: string;
+  color?: string;
+  price_override?: number | null;
+  stock?: number;
+  status?: string;
+}
+
+export interface UpdateVariantRequest {
+  sku?: string;
+  size?: string;
+  color?: string;
+  price_override?: number | null;
+  stock?: number;
+  status?: string;
 }
 
 export interface OrderItem {

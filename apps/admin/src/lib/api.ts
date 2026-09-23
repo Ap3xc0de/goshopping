@@ -16,6 +16,12 @@ import type {
   ReportFilters,
   StoreAPIKey,
   Store,
+  Category,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
+  ProductVariant,
+  CreateVariantRequest,
+  UpdateVariantRequest,
 } from './types';
 import { buildQueryString } from './utils';
 
@@ -216,6 +222,62 @@ export const api = {
       urls.push(result.image_url);
     }
     return urls;
+  },
+
+  // Categories (admin flat list — the UI builds the tree itself, mirrors
+  // apps/core/internal/handlers/category.go's ListCategories comment)
+  listCategories(storeId: string): Promise<{ categories: Category[]; count: number }> {
+    return request<{ categories: Category[]; count: number }>(`/stores/${storeId}/categories`);
+  },
+
+  createCategory(storeId: string, data: CreateCategoryRequest): Promise<Category> {
+    return request<Category>(`/stores/${storeId}/categories`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateCategory(storeId: string, categoryId: string, data: UpdateCategoryRequest): Promise<Category> {
+    return request<Category>(`/stores/${storeId}/categories/${categoryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteCategory(storeId: string, categoryId: string): Promise<void> {
+    return request<void>(`/stores/${storeId}/categories/${categoryId}`, { method: 'DELETE' });
+  },
+
+  // Product variants
+  listVariants(storeId: string, productId: string): Promise<{ variants: ProductVariant[]; count: number }> {
+    return request<{ variants: ProductVariant[]; count: number }>(
+      `/stores/${storeId}/products/${productId}/variants`,
+    );
+  },
+
+  createVariant(storeId: string, productId: string, data: CreateVariantRequest): Promise<ProductVariant> {
+    return request<ProductVariant>(`/stores/${storeId}/products/${productId}/variants`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateVariant(
+    storeId: string,
+    productId: string,
+    variantId: string,
+    data: UpdateVariantRequest,
+  ): Promise<ProductVariant> {
+    return request<ProductVariant>(
+      `/stores/${storeId}/products/${productId}/variants/${variantId}`,
+      { method: 'PATCH', body: JSON.stringify(data) },
+    );
+  },
+
+  deleteVariant(storeId: string, productId: string, variantId: string): Promise<void> {
+    return request<void>(`/stores/${storeId}/products/${productId}/variants/${variantId}`, {
+      method: 'DELETE',
+    });
   },
 
   // Orders
