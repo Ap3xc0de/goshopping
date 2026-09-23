@@ -22,6 +22,7 @@ const EMPTY: Partial<Product> = {
   category: '',
   status: 'active',
   images: [],
+  weight: 0,
 };
 
 export function ProductForm({
@@ -199,6 +200,13 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Stock mínimo</label>
           <input type="number" min="0" step="1" value={form.min_stock ?? 0}
             onChange={(e) => set('min_stock', Number(e.target.value))}
+            className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+        </div>
+
+        <div>
+          <label htmlFor="product-weight" className="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+          <input id="product-weight" type="number" min="0" step="0.001" value={form.weight ?? 0}
+            onChange={(e) => set('weight', Number(e.target.value))}
             className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
         </div>
 

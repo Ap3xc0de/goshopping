@@ -42,7 +42,7 @@ export default function SettingsPage() {
               <dt className="text-gray-500">Email</dt>
               <dd className="text-gray-700">{account?.email}</dd>
             </div>
-            <div className="flex justify-between items-center py-2">
+            <div className="flex justify-between items-center py-2 border-b border-gray-50">
               <dt className="text-gray-500">Rol</dt>
               <dd>
                 <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-brand-100 text-brand-800 capitalize">
@@ -50,7 +50,14 @@ export default function SettingsPage() {
                 </span>
               </dd>
             </div>
+            <div className="flex justify-between items-center py-2">
+              <dt className="text-gray-500">Moneda</dt>
+              <dd className="font-medium text-gray-900">USD</dd>
+            </div>
           </dl>
+          <p className="text-xs text-gray-400">
+            Todos los precios de tu tienda se muestran en USD. Esta versión no admite otras monedas.
+          </p>
           <p className="text-xs text-gray-400">Para cambiar datos de la cuenta, contacta al administrador.</p>
         </div>
       )}
