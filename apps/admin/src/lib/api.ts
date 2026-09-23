@@ -14,8 +14,8 @@ import type {
   OrderFilters,
   CustomerFilters,
   ReportFilters,
-  StoreBranding,
-  StoreDomain,
+  StoreAPIKey,
+  Store,
 } from './types';
 import { buildQueryString } from './utils';
 
@@ -141,29 +141,28 @@ export const api = {
     return request<DashboardMetrics>(`/stores/${storeId}/dashboard`);
   },
 
-  // Template (create-store wizard, step 1)
-  updateStoreTemplate(storeId: string, templateId: string): Promise<{ template_id: string }> {
-    return request<{ template_id: string }>(`/stores/${storeId}/template`, {
-      method: 'PUT',
-      body: JSON.stringify({ template_id: templateId }),
+  // Store info (seller-safe {id, name, slug}) — Mi Tienda developer hub
+  getStore(storeId: string): Promise<Pick<Store, 'id' | 'name' | 'slug'>> {
+    return request<Pick<Store, 'id' | 'name' | 'slug'>>(`/stores/${storeId}`);
+  },
+
+  // API keys (public developer API)
+  listAPIKeys(storeId: string): Promise<StoreAPIKey[]> {
+    return request<StoreAPIKey[]>(`/stores/${storeId}/api-keys`);
+  },
+
+  createAPIKey(
+    storeId: string,
+    name: string,
+  ): Promise<{ api_key: StoreAPIKey; plaintext: string }> {
+    return request<{ api_key: StoreAPIKey; plaintext: string }>(`/stores/${storeId}/api-keys`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
     });
   },
 
-  // Domain (create-store wizard, step 3)
-  getStoreDomain(storeId: string): Promise<StoreDomain> {
-    return request<StoreDomain>(`/stores/${storeId}/domain`);
-  },
-
-  // Branding (create-store wizard, step 2)
-  getBranding(storeId: string): Promise<StoreBranding> {
-    return request<StoreBranding>(`/stores/${storeId}/branding`);
-  },
-
-  updateBranding(storeId: string, data: StoreBranding): Promise<StoreBranding> {
-    return request<StoreBranding>(`/stores/${storeId}/branding`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  revokeAPIKey(storeId: string, keyId: string): Promise<void> {
+    return request<void>(`/stores/${storeId}/api-keys/${keyId}`, { method: 'DELETE' });
   },
 
   // Products

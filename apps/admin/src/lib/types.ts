@@ -42,49 +42,18 @@ export interface Store {
   updated_at: string;
 }
 
-// ─── Branding (mirrors apps/core/internal/models/branding.go) ──────────────
+// ─── API Keys (mirrors apps/core/internal/models/api_key.go) ───────────────
 
-export interface BrandColors {
-  primary?: string;
-  primary_foreground?: string;
-  secondary?: string;
-  secondary_foreground?: string;
-  accent?: string;
-  accent_foreground?: string;
-  background?: string;
-  foreground?: string;
-  muted?: string;
-  /**
-   * Dedicated Navbar colors (independent of secondary/background) — mirrors
-   * `NavBackground`/`NavText` in apps/core/internal/models/branding.go
-   * (design decision 9 of sdd/storefront-single-template-ecommerce).
-   */
-  nav_background?: string;
-  nav_text?: string;
-}
-
-export interface BrandFonts {
-  heading?: string;
-  body?: string;
-}
-
-/** Mirrors the tenant-facing view returned by GET /stores/:storeId/domain. */
-export interface StoreDomain {
-  hostname: string;
-  kind: 'generic' | 'custom';
-  status: 'pending' | 'verifying' | 'active' | 'failed';
-  is_primary: boolean;
-}
-
-export interface StoreBranding {
-  brand_name?: string;
-  tagline?: string;
-  logo_url?: string;
-  favicon_url?: string;
-  colors?: BrandColors;
-  fonts?: BrandFonts;
-  radius?: string;
-  social_links?: Record<string, string>;
+export interface StoreAPIKey {
+  id: string;
+  store_id: string;
+  name: string;
+  prefix: string;
+  active: boolean;
+  last_used_at?: string;
+  expires_at?: string;
+  created_at: string;
+  revoked_at?: string;
 }
 
 export interface Product {

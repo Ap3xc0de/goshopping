@@ -12,9 +12,14 @@ describe('Sidebar', () => {
     mockUseStore.mockReturnValue({ storeId: 'store-1', storeName: 'Tienda', stores: [] });
   });
 
-  it('shows a "Mi Tienda" link pointing to the branding module (ADMIN-01)', () => {
+  it('shows a "Mi Tienda" link pointing to the developer hub (ADMIN-01)', () => {
     render(<Sidebar collapsed={false} onToggle={jest.fn()} />);
     const link = screen.getByRole('link', { name: /Mi Tienda/i });
     expect(link).toHaveAttribute('href', '/dashboard/my-store');
+  });
+
+  it('does not show a "Crear Tienda" link', () => {
+    render(<Sidebar collapsed={false} onToggle={jest.fn()} />);
+    expect(screen.queryByRole('link', { name: /Crear Tienda/i })).not.toBeInTheDocument();
   });
 });
