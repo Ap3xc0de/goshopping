@@ -91,7 +91,7 @@ func (s *BrandingService) PresignLogoUpload(ctx context.Context, storeID uuid.UU
 
 	if s.cfg.S3BucketAssets == "" {
 		// Development: return mock LocalStack URL.
-		mockURL := fmt.Sprintf("http://localhost:4566/goshopping-assets/%s", key)
+		mockURL := fmt.Sprintf("http://localhost:4566/goshopping-assets-dev/%s", key)
 		return &ImageUploadResult{UploadURL: mockURL, ImageURL: mockURL}, nil
 	}
 
@@ -134,7 +134,7 @@ func (s *BrandingService) allowedAssetPrefix(storeID uuid.UUID) string {
 	prefix := fmt.Sprintf("branding/%s/", storeID.String())
 
 	if s.cfg.S3BucketAssets == "" {
-		return fmt.Sprintf("http://localhost:4566/goshopping-assets/%s", prefix)
+		return fmt.Sprintf("http://localhost:4566/goshopping-assets-dev/%s", prefix)
 	}
 	if s.cfg.S3Endpoint != "" {
 		return fmt.Sprintf("%s/%s/%s", s.cfg.S3Endpoint, s.cfg.S3BucketAssets, prefix)

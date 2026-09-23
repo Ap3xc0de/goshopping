@@ -530,7 +530,7 @@ func (s *ProductService) GetProductImageUploadURL(storeID, productID uuid.UUID, 
 
 	if s.cfg.S3BucketAssets == "" {
 		// Development: return mock LocalStack URL
-		mockURL := fmt.Sprintf("http://localhost:4566/goshopping-assets/%s", key)
+		mockURL := fmt.Sprintf("http://localhost:4566/goshopping-assets-dev/%s", key)
 		result = &ImageUploadResult{UploadURL: mockURL, ImageURL: mockURL}
 	} else {
 		awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(s.cfg.AWSRegion))
