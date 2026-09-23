@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/goshopping/core/internal/models"
 	"github.com/goshopping/core/internal/services"
 	"github.com/goshopping/core/internal/testutil"
@@ -102,5 +103,91 @@ func TestPublicQuoteCart(t *testing.T) {
 		assert.Equal(t, "QUOTE10", appliedCoupon["code"])
 		_, hasPascalCode := appliedCoupon["Code"]
 		assert.False(t, hasPascalCode, "applied_coupon should not include PascalCase key \"Code\"")
+	})
+}
+
+// product-variants REQ: Variant-Aware Quote — items MAY include variant_id;
+// price and stock checks then use the variant (price_override with product-
+// level fallback). Unknown or mismatched variant_id is 422; items without
+// variant_id keep product-level behavior (legacy clients).
+func TestPublicQuoteVariant(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithPrice(100), testutil.WithStock(10))
+	v := testutil.CreateTestVariant(t, app.DB, storeIDParsed, p.ID,
+		testutil.WithVariantSKU("HALTER-XL"), testutil.WithVariantPrice(80), testutil.WithVariantStock(2))
+	other := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithPrice(300), testutil.WithStock(5))
+	otherV := testutil.CreateTestVariant(t, app.DB, storeIDParsed, other.ID,
+		testutil.WithVariantPrice(250), testutil.WithVariantStock(1))
+
+	t.Run("quotes a variant at its override price", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "variant_id": v.ID.String(), "quantity": 1},
+			},
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+
+		items, ok := data["items"].([]interface{})
+		require.True(t, ok)
+		require.Len(t, items, 1)
+		item, _ := items[0].(map[string]interface{})
+		assert.Equal(t, float64(80), item["list_price"], "quote must price by the variant")
+		assert.Equal(t, float64(80), data["subtotal_before_discount"])
+		total, _ := data["total"].(float64)
+		assert.InDelta(t, 95.20, total, 0.01, "total = variant price + 19%% IVA")
+	})
+
+	t.Run("omitted variant_id keeps product-level pricing", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "quantity": 1},
+			},
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+
+		items, _ := data["items"].([]interface{})
+		require.Len(t, items, 1)
+		item, _ := items[0].(map[string]interface{})
+		assert.Equal(t, float64(100), item["list_price"], "no variant_id = product price (backwards compatible)")
+	})
+
+	t.Run("unknown variant_id returns 422", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "variant_id": uuid.New().String(), "quantity": 1},
+			},
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "variant")
+	})
+
+	t.Run("variant of another product returns 422", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "variant_id": otherV.ID.String(), "quantity": 1},
+			},
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "variant")
+	})
+
+	t.Run("quantity above variant stock returns 422", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "variant_id": v.ID.String(), "quantity": 3},
+			},
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "stock")
 	})
 }

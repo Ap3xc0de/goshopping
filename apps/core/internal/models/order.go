@@ -42,18 +42,29 @@ type Order struct {
 	UpdatedAt       time.Time       `json:"updated_at"`
 }
 
-// OrderItem is a line-item within an order stored in JSONB.
+// OrderItem is a line-item within an order stored in JSONB. VariantID/SKU/
+// Size/Color are snapshots captured at order time; VariantID is only present
+// when the line referenced a variant. omitempty keeps pre-variant rows byte-
+// compatible — old orders simply lack these keys and still unmarshal fine.
 type OrderItem struct {
 	ProductID string `json:"product_id"`
 	Name      string `json:"product_name"`
 	Quantity  int    `json:"quantity"`
 	Price     Money  `json:"unit_price"`
 	Total     Money  `json:"total"`
+	VariantID string `json:"variant_id,omitempty"`
+	SKU       string `json:"sku,omitempty"`
+	Size      string `json:"size,omitempty"`
+	Color     string `json:"color,omitempty"`
 }
 
-// OrderItemInput is the input DTO when creating an order (only product_id + quantity).
+// OrderItemInput is the input DTO when creating an order. VariantID is
+// optional: empty (zero value) = product-level line — legacy payloads that
+// predate variants keep working unchanged (product-variants REQ: Variant
+// Order Lines, Old Orders Readable).
 type OrderItemInput struct {
 	ProductID string `json:"product_id"`
+	VariantID string `json:"variant_id"`
 	Quantity  int    `json:"quantity"`
 }
 

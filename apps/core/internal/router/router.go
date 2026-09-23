@@ -24,6 +24,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	couponSvc := services.NewCouponService(db)
 	apiKeySvc := services.NewAPIKeyService(db)
 	categorySvc := services.NewCategoryService(db)
+	variantSvc := services.NewVariantService(db)
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -80,6 +81,12 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Post("/categories", handlers.CreateCategory(categorySvc))
 	store.Put("/categories/:categoryId", handlers.UpdateCategory(categorySvc))
 	store.Delete("/categories/:categoryId", handlers.DeleteCategory(categorySvc))
+
+	// Product variants (product-variants REQ: Admin Variant CRUD)
+	store.Get("/products/:productId/variants", handlers.ListVariants(variantSvc))
+	store.Post("/products/:productId/variants", handlers.CreateVariant(variantSvc))
+	store.Patch("/products/:productId/variants/:variantId", handlers.UpdateVariant(variantSvc))
+	store.Delete("/products/:productId/variants/:variantId", handlers.DeleteVariant(variantSvc))
 
 	// Orders
 	store.Get("/orders", handlers.ListOrders(orderSvc))

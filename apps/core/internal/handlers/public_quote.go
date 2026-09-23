@@ -18,9 +18,12 @@ type QuoteCartInput struct {
 	CouponCode *string          `json:"coupon_code,omitempty"`
 }
 
-// QuoteItemInput is a line item in the quote request.
+// QuoteItemInput is a line item in the quote request. VariantID is optional:
+// when present, price and stock checks use that variant; omitted keeps
+// product-level behavior (product-variants REQ: Variant-Aware Quote).
 type QuoteItemInput struct {
 	ProductID string `json:"product_id"`
+	VariantID string `json:"variant_id"`
 	Quantity  int    `json:"quantity"`
 }
 
@@ -49,6 +52,7 @@ func QuoteCart(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 		prodSvc := services.NewProductService(db, cfg, nil)
 		offerSvc := services.NewOfferService(db)
 		couponSvc := services.NewCouponService(db)
+		variantSvc := services.NewVariantService(db)
 
 		ctx := context.Background()
 
@@ -75,7 +79,31 @@ func QuoteCart(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 				})
 			}
 
-			if p.Stock < inp.Quantity {
+			// Variant pre-stage (product-variants REQ): variant_id present →
+			// resolve that variant (must belong to this product, active) and
+			// price + stock-check against it; omitted → product-level
+			// behavior, old quote payloads keep working unchanged.
+			listPrice := p.Price
+			if inp.VariantID != "" {
+				variantID, err := uuid.Parse(inp.VariantID)
+				if err != nil {
+					return c.Status(fiber.StatusUnprocessableEntity).JSON(map[string]string{
+						"error": "invalid variant_id",
+					})
+				}
+				variant, err := variantSvc.GetActiveVariantForProduct(ctx, storeID, variantID, pid)
+				if err != nil {
+					return c.Status(fiber.StatusUnprocessableEntity).JSON(map[string]string{
+						"error": "variant not found for product " + p.Name,
+					})
+				}
+				if variant.Stock < inp.Quantity {
+					return c.Status(fiber.StatusUnprocessableEntity).JSON(map[string]string{
+						"error": "insufficient stock for " + p.Name,
+					})
+				}
+				listPrice = variant.ResolvePrice(p.Price)
+			} else if p.Stock < inp.Quantity {
 				return c.Status(fiber.StatusUnprocessableEntity).JSON(map[string]string{
 					"error": "insufficient stock for " + p.Name,
 				})
@@ -84,7 +112,7 @@ func QuoteCart(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			lineItems = append(lineItems, services.LineItem{
 				ProductID: p.ID,
 				Quantity:  inp.Quantity,
-				ListPrice: p.Price,
+				ListPrice: listPrice,
 				Category:  p.Category,
 			})
 		}

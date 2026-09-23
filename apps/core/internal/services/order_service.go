@@ -45,21 +45,23 @@ type OrderDetail struct {
 
 // OrderService handles business logic for orders.
 type OrderService struct {
-	db        *pgxpool.Pool
-	cfg       *config.Config
-	eventSvc  *EventService
-	custSvc   *CustomerService
-	prodSvc   *ProductService
-	offerSvc  *OfferService
-	couponSvc *CouponService
+	db         *pgxpool.Pool
+	cfg        *config.Config
+	eventSvc   *EventService
+	custSvc    *CustomerService
+	prodSvc    *ProductService
+	offerSvc   *OfferService
+	couponSvc  *CouponService
+	variantSvc *VariantService
 }
 
 // NewOrderService creates a new OrderService.
 func NewOrderService(db *pgxpool.Pool, cfg *config.Config, eventSvc *EventService, custSvc *CustomerService, prodSvc *ProductService) *OrderService {
 	return &OrderService{
 		db: db, cfg: cfg, eventSvc: eventSvc, custSvc: custSvc, prodSvc: prodSvc,
-		offerSvc:  NewOfferService(db),
-		couponSvc: NewCouponService(db),
+		offerSvc:   NewOfferService(db),
+		couponSvc:  NewCouponService(db),
+		variantSvc: NewVariantService(db),
 	}
 }
 
@@ -273,9 +275,11 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		}
 	}
 
-	// ── Stage 1: Resolve products and build line items
+	// ── Stage 1: Resolve products (and optional variants) and build line items
 	var lineItems []LineItem
-	for _, inp := range req.Items {
+	products := make([]*models.Product, len(req.Items))
+	variants := make([]*models.ProductVariant, len(req.Items))
+	for i, inp := range req.Items {
 		if inp.Quantity <= 0 {
 			return nil, fmt.Errorf("quantity must be > 0")
 		}
@@ -287,10 +291,30 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		if err != nil {
 			return nil, fmt.Errorf("product %s: %w", inp.ProductID, err)
 		}
+		products[i] = p
+
+		// Variant pre-stage (product-variants REQ): variant_id present →
+		// resolve that variant (must belong to this product, active) and
+		// price against it; omitted → product-level behavior, old payloads
+		// keep working unchanged.
+		listPrice := p.Price
+		if inp.VariantID != "" {
+			variantID, err := uuid.Parse(inp.VariantID)
+			if err != nil {
+				return nil, fmt.Errorf("invalid variant_id %q for product %q", inp.VariantID, inp.ProductID)
+			}
+			variant, err := s.variantSvc.GetActiveVariantForProduct(ctx, storeID, variantID, pid)
+			if err != nil {
+				return nil, fmt.Errorf("variant %s for product %s: %w", inp.VariantID, inp.ProductID, err)
+			}
+			variants[i] = variant
+			listPrice = variant.ResolvePrice(p.Price)
+		}
+
 		lineItems = append(lineItems, LineItem{
 			ProductID: p.ID,
 			Quantity:  inp.Quantity,
-			ListPrice: p.Price,
+			ListPrice: listPrice,
 			Category:  p.Category,
 		})
 	}
@@ -326,8 +350,30 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	// ── Stage 5: Validate stock and lock products FOR UPDATE
-	for _, item := range lineItems {
+	// ── Stage 5: Validate stock and lock (variant or product) FOR UPDATE
+	for i, item := range lineItems {
+		// Variant lines reserve against the variant's own stock; product
+		// lines keep the original product-level lock (product-variants REQ:
+		// stock deduction at variant level when variant_id present).
+		if v := variants[i]; v != nil {
+			var stock int
+			err := tx.QueryRow(ctx, `
+				SELECT stock FROM product_variants WHERE id = $1 AND store_id = $2 FOR UPDATE`,
+				v.ID, storeID,
+			).Scan(&stock)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return nil, fmt.Errorf("variant not found: %s", v.ID)
+				}
+				return nil, fmt.Errorf("lock variant %s: %w", v.ID, err)
+			}
+			if stock < item.Quantity {
+				return nil, fmt.Errorf("%w: variant %s needs %d but has %d",
+					ErrInsufficientStock, v.ID, item.Quantity, stock)
+			}
+			continue
+		}
+
 		var stock int
 		err := tx.QueryRow(ctx, `
 			SELECT stock FROM products WHERE id = $1 AND store_id = $2 FOR UPDATE`,
@@ -345,24 +391,24 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		}
 	}
 
-	// ── Stage 6: Build OrderItems with effective prices
+	// ── Stage 6: Build OrderItems with effective prices and variant snapshots
 	resolvedItems := make([]models.OrderItem, len(lineItems))
 	for i, item := range lineItems {
 		offer := ResolveOffer(offers, item.ProductID, item.Category, item.ListPrice, now)
 		effectivePrice := ApplyOffer(item.ListPrice, offer)
 		resolvedItems[i] = models.OrderItem{
 			ProductID: item.ProductID.String(),
-			Name:      "", // Filled below
+			Name:      products[i].Name,
 			Quantity:  item.Quantity,
 			Price:     effectivePrice,
 			Total:     effectivePrice.MulInt(item.Quantity),
 		}
-	}
-
-	// Get product names
-	for i, lineItem := range lineItems {
-		p, _ := s.prodSvc.GetProduct(storeID, lineItem.ProductID)
-		resolvedItems[i].Name = p.Name
+		if v := variants[i]; v != nil {
+			resolvedItems[i].VariantID = v.ID.String()
+			resolvedItems[i].SKU = v.SKU
+			resolvedItems[i].Size = v.Size
+			resolvedItems[i].Color = v.Color
+		}
 	}
 
 	itemsJSON, err := json.Marshal(resolvedItems)
@@ -422,8 +468,23 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		return nil, fmt.Errorf("insert order: %w", err)
 	}
 
-	// ── Stage 9: Deduct stock
-	for _, item := range lineItems {
+	// ── Stage 9: Deduct stock (variant lines deduct variant stock only;
+	// product lines keep the product-level pattern). Variant status is left
+	// alone — the 011 CHECK only allows active|inactive, there is no
+	// out_of_stock state for variants.
+	for i, item := range lineItems {
+		if v := variants[i]; v != nil {
+			_, err := tx.Exec(ctx, `
+				UPDATE product_variants
+				SET stock = stock - $1, updated_at = NOW()
+				WHERE id = $2 AND store_id = $3`,
+				item.Quantity, v.ID, storeID)
+			if err != nil {
+				return nil, fmt.Errorf("deduct variant stock for %s: %w", v.ID, err)
+			}
+			continue
+		}
+
 		_, err := tx.Exec(ctx, `
 			UPDATE products
 			SET stock = stock - $1,
@@ -512,9 +573,21 @@ func (s *OrderService) ChangeOrderStatus(storeID, orderID uuid.UUID, req models.
 
 	// "pending" belongs here: an order holds its reserved units from the moment
 	// it is created, so cancelling one that was never paid must return them.
+	// Variant lines restore VARIANT stock; product lines keep the original
+	// product-level restore.
 	if req.Status == "cancelled" &&
 		(curStatus == "pending" || curStatus == "paid" || curStatus == "preparing" || curStatus == "shipped") {
 		for _, item := range items {
+			if item.VariantID != "" {
+				if _, err = tx.Exec(ctx, `
+					UPDATE product_variants
+					SET stock = stock + $1, updated_at = NOW()
+					WHERE id = $2::uuid AND store_id = $3`,
+					item.Quantity, item.VariantID, storeID); err != nil {
+					return nil, fmt.Errorf("restore variant stock for %s: %w", item.VariantID, err)
+				}
+				continue
+			}
 			if _, err = tx.Exec(ctx, `
 				UPDATE products
 				SET stock = stock + $1,

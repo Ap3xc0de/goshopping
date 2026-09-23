@@ -104,6 +104,77 @@ func SetProductStock(t *testing.T, db *pgxpool.Pool, productID uuid.UUID, stock 
 	}
 }
 
+// ── Variant fixtures ─────────────────────────────────────────────────────────
+
+type variantArgs struct {
+	sku    string
+	size   string
+	color  string
+	price  *models.Money
+	stock  int
+	status string
+}
+
+// VariantOverride is a functional option for CreateTestVariant.
+type VariantOverride func(*variantArgs)
+
+func WithVariantSKU(v string) VariantOverride    { return func(a *variantArgs) { a.sku = v } }
+func WithVariantSize(v string) VariantOverride   { return func(a *variantArgs) { a.size = v } }
+func WithVariantColor(v string) VariantOverride  { return func(a *variantArgs) { a.color = v } }
+func WithVariantStatus(v string) VariantOverride { return func(a *variantArgs) { a.status = v } }
+func WithVariantPrice(v float64) VariantOverride {
+	return func(a *variantArgs) { m := models.NewMoney(v); a.price = &m }
+}
+func WithVariantStock(v int) VariantOverride { return func(a *variantArgs) { a.stock = v } }
+
+// CreateTestVariant inserts a product_variants row (migration 011) and returns
+// the model. price_override stays NULL unless WithVariantPrice is set; empty
+// size/color are stored NULL (mirroring the DDL's nullable columns).
+func CreateTestVariant(t *testing.T, db *pgxpool.Pool, storeID, productID uuid.UUID, opts ...VariantOverride) models.ProductVariant {
+	t.Helper()
+
+	args := &variantArgs{
+		sku:    "VAR-" + uuid.New().String()[:8],
+		size:   "M",
+		stock:  0,
+		status: "active",
+	}
+	for _, o := range opts {
+		o(args)
+	}
+
+	var priceOverride any
+	if args.price != nil {
+		priceOverride = *args.price
+	}
+
+	var v models.ProductVariant
+	err := db.QueryRow(context.Background(), `
+		INSERT INTO product_variants (id, store_id, product_id, sku, size, color, price_override, stock, status)
+		VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), $7, $8, $9)
+		RETURNING id, store_id, product_id, sku, COALESCE(size,''), COALESCE(color,''),
+		          price_override, stock, status, created_at, updated_at`,
+		uuid.New(), storeID, productID, args.sku, args.size, args.color, priceOverride, args.stock, args.status,
+	).Scan(&v.ID, &v.StoreID, &v.ProductID, &v.SKU, &v.Size, &v.Color,
+		&v.PriceOverride, &v.Stock, &v.Status, &v.CreatedAt, &v.UpdatedAt)
+	if err != nil {
+		t.Fatalf("CreateTestVariant: %v", err)
+	}
+	return v
+}
+
+// GetVariantStock reads a variant's current stock directly from the DB.
+func GetVariantStock(t *testing.T, db *pgxpool.Pool, variantID uuid.UUID) int {
+	t.Helper()
+	var stock int
+	if err := db.QueryRow(context.Background(),
+		"SELECT stock FROM product_variants WHERE id = $1", variantID,
+	).Scan(&stock); err != nil {
+		t.Fatalf("GetVariantStock: %v", err)
+	}
+	return stock
+}
+
 // ── Category fixtures ─────────────────────────────────────────────────────────
 
 type categoryArgs struct {

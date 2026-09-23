@@ -33,20 +33,60 @@ func normalizeHost(raw string) string {
 	return h
 }
 
-// PublicProduct is the public-facing product (no cost field).
+// PublicProduct is the public-facing product (no cost field). Variants embeds
+// the product's purchasable variants (always an array, never null — additive
+// evolution per product-variants spec).
 type PublicProduct struct {
-	ID             uuid.UUID    `json:"id"`
-	StoreID        uuid.UUID    `json:"store_id"`
-	Name           string       `json:"name"`
-	SKU            string       `json:"sku"`
-	Description    string       `json:"description"`
-	Price          models.Money `json:"price"`
-	EffectivePrice models.Money `json:"effective_price"`
-	ActiveOffer    *PublicOffer `json:"active_offer"`
-	Stock          int          `json:"stock"`
-	Category       string       `json:"category"`
-	Images         interface{}  `json:"images"`
-	Status         string       `json:"status"`
+	ID             uuid.UUID       `json:"id"`
+	StoreID        uuid.UUID       `json:"store_id"`
+	Name           string          `json:"name"`
+	SKU            string          `json:"sku"`
+	Description    string          `json:"description"`
+	Price          models.Money    `json:"price"`
+	EffectivePrice models.Money    `json:"effective_price"`
+	ActiveOffer    *PublicOffer    `json:"active_offer"`
+	Stock          int             `json:"stock"`
+	Category       string          `json:"category"`
+	Images         interface{}     `json:"images"`
+	Status         string          `json:"status"`
+	Variants       []PublicVariant `json:"variants"`
+}
+
+// PublicVariant is the public-facing variant view. Price is resolved server-
+// side (price_override when set, else the product price) so clients never do
+// fallback math themselves.
+type PublicVariant struct {
+	ID     uuid.UUID    `json:"id"`
+	SKU    string       `json:"sku"`
+	Size   string       `json:"size"`
+	Color  string       `json:"color"`
+	Price  models.Money `json:"price"`
+	Stock  int          `json:"stock"`
+	Status string       `json:"status"`
+}
+
+// toPublicVariant maps a stored variant into its public shape, resolving the
+// effective per-variant price via the product-level fallback.
+func toPublicVariant(v models.ProductVariant, productPrice models.Money) PublicVariant {
+	return PublicVariant{
+		ID:     v.ID,
+		SKU:    v.SKU,
+		Size:   v.Size,
+		Color:  v.Color,
+		Price:  v.ResolvePrice(productPrice),
+		Stock:  v.Stock,
+		Status: v.Status,
+	}
+}
+
+// toPublicVariants maps a product's stored variants, guaranteeing the result
+// is a JSON array (never null) so legacy clients see additive-only change.
+func toPublicVariants(variants []models.ProductVariant, productPrice models.Money) []PublicVariant {
+	public := make([]PublicVariant, 0, len(variants))
+	for _, v := range variants {
+		public = append(public, toPublicVariant(v, productPrice))
+	}
+	return public
 }
 
 // PublicOffer is the reduced, public-facing view of the offer currently
@@ -91,9 +131,16 @@ func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 		}
 		now := time.Now()
 
+		// Batch-load active variants for every listed product in ONE query
+		// (product-variants REQ: variants[] on the list path, no N+1).
+		variantsByProduct, err := loadVariantsByProducts(c, db, storeID, result.Products)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
 		public := make([]PublicProduct, len(result.Products))
 		for i, p := range result.Products {
-			public[i] = toPublicProduct(p, activeOffers, now)
+			public[i] = toPublicProduct(p, variantsByProduct[p.ID], activeOffers, now)
 		}
 		return c.JSON(fiber.Map{
 			"data":        public,
@@ -186,7 +233,12 @@ func PublicGetProduct(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 
-		return c.JSON(toPublicProduct(*p, activeOffers, time.Now()))
+		variantsByProduct, err := loadVariantsByProducts(c, db, storeID, []models.Product{*p})
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		return c.JSON(toPublicProduct(*p, variantsByProduct[p.ID], activeOffers, time.Now()))
 	}
 }
 
@@ -414,7 +466,9 @@ func resolveStoreBySlug(ctx context.Context, db *pgxpool.Pool, slug string) (uui
 // toPublicProduct maps a Product plus the store's already-loaded active
 // offers into a PublicProduct, resolving the single applicable offer (if
 // any) in memory via services.ResolveOffer — no DB access happens here.
-func toPublicProduct(p models.Product, activeOffers []models.Offer, now time.Time) PublicProduct {
+// variants must already be loaded (batch-loaded by the caller) so the
+// mapping stays pure.
+func toPublicProduct(p models.Product, variants []models.ProductVariant, activeOffers []models.Offer, now time.Time) PublicProduct {
 	offer := services.ResolveOffer(activeOffers, p.ID, p.Category, p.Price, now)
 	effectivePrice := services.ApplyOffer(p.Price, offer)
 
@@ -442,7 +496,18 @@ func toPublicProduct(p models.Product, activeOffers []models.Offer, now time.Tim
 		Category:       p.Category,
 		Images:         p.Images,
 		Status:         p.Status,
+		Variants:       toPublicVariants(variants, p.Price),
 	}
+}
+
+// loadVariantsByProducts batch-loads active variants for the given products
+// in a single query (no N+1) and returns the productID-indexed result.
+func loadVariantsByProducts(c *fiber.Ctx, db *pgxpool.Pool, storeID uuid.UUID, products []models.Product) (map[uuid.UUID][]models.ProductVariant, error) {
+	ids := make([]uuid.UUID, len(products))
+	for i, p := range products {
+		ids[i] = p.ID
+	}
+	return services.NewVariantService(db).ListVariantsByProductIDs(c.Context(), storeID, ids, "active")
 }
 
 func generateOrderAccessToken(orderID uuid.UUID, secret string) (string, error) {

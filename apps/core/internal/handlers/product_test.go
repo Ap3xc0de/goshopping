@@ -174,3 +174,128 @@ func TestBulkImportProducts(t *testing.T) {
 		assert.GreaterOrEqual(t, imported, float64(1))
 	})
 }
+
+// product-variants REQ: Admin Variant CRUD — GET list, POST create, PATCH
+// update, DELETE under /stores/:storeId/products/:productId/variants, JWT +
+// StoreContext gated, store-scoped by the context store.
+func TestVariantAdminCRUD(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	auth, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Breeches"))
+
+	variantPath := "/stores/" + storeID + "/products/" + p.ID.String() + "/variants"
+
+	t.Run("creates a variant and lists it", func(t *testing.T) {
+		body := map[string]interface{}{
+			"sku": "BREE-S-L", "size": "L", "color": "Brown",
+			"price_override": 120, "stock": 5,
+		}
+		resp := app.POST(t, variantPath, body, auth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, "BREE-S-L", data["sku"])
+		assert.Equal(t, float64(120), data["price_override"])
+		assert.Equal(t, float64(5), data["stock"])
+		assert.Equal(t, "active", data["status"])
+
+		listResp := app.GET(t, variantPath, auth)
+		testutil.AssertStatus(t, listResp, http.StatusOK)
+		list := testutil.AssertJSON(t, listResp)
+		variants, _ := list["variants"].([]interface{})
+		require.Len(t, variants, 1)
+	})
+
+	t.Run("seller edits variant stock via PATCH", func(t *testing.T) {
+		createResp := app.POST(t, variantPath, map[string]interface{}{
+			"sku": "BREE-S-M", "size": "M", "stock": 3,
+		}, auth)
+		testutil.AssertStatus(t, createResp, http.StatusCreated)
+		created := testutil.AssertJSON(t, createResp)
+		variantID, _ := created["id"].(string)
+		require.NotEmpty(t, variantID)
+
+		resp := app.PATCH(t, variantPath+"/"+variantID, map[string]interface{}{"stock": 7}, auth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, float64(7), data["stock"], "PATCH stock must persist (spec: seller edits variant stock)")
+		assert.Equal(t, "BREE-S-M", data["sku"], "untouched fields must survive a partial update")
+	})
+
+	t.Run("creates variant without price_override (falls back to product price in public API)", func(t *testing.T) {
+		resp := app.POST(t, variantPath, map[string]interface{}{
+			"sku": "BREE-S-XL", "size": "XL", "stock": 2,
+		}, auth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		assert.Nil(t, data["price_override"], "price_override must stay null when omitted")
+	})
+
+	t.Run("duplicate SKU on the same product returns 422", func(t *testing.T) {
+		resp := app.POST(t, variantPath, map[string]interface{}{
+			"sku": "BREE-S-L", "stock": 1,
+		}, auth)
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "SKU")
+	})
+
+	t.Run("creating on an unknown product returns 404", func(t *testing.T) {
+		resp := app.POST(t, "/stores/"+storeID+"/products/00000000-0000-0000-0000-000000000001/variants",
+			map[string]interface{}{"sku": "BREE-ORPHAN"}, auth)
+		testutil.AssertStatus(t, resp, http.StatusNotFound)
+	})
+
+	t.Run("missing sku returns 422", func(t *testing.T) {
+		resp := app.POST(t, variantPath, map[string]interface{}{"size": "S"}, auth)
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "sku")
+	})
+
+	t.Run("delete removes the variant and public responses drop it", func(t *testing.T) {
+		createResp := app.POST(t, variantPath, map[string]interface{}{
+			"sku": "BREE-S-XXL", "size": "XXL", "stock": 1, "price_override": 250,
+		}, auth)
+		testutil.AssertStatus(t, createResp, http.StatusCreated)
+		created := testutil.AssertJSON(t, createResp)
+		variantID, _ := created["id"].(string)
+
+		delResp := app.DELETE(t, variantPath+"/"+variantID, auth)
+		testutil.AssertStatus(t, delResp, http.StatusNoContent)
+
+		listResp := app.GET(t, variantPath, auth)
+		list := testutil.AssertJSON(t, listResp)
+		variants, _ := list["variants"].([]interface{})
+		for _, raw := range variants {
+			v, _ := raw.(map[string]interface{})
+			assert.NotEqual(t, variantID, v["id"], "deleted variant must be gone from the admin list")
+		}
+
+		pubResp := app.GET(t, "/public/"+slug+"/products/"+p.ID.String(), "")
+		testutil.AssertStatus(t, pubResp, http.StatusOK)
+		pub := testutil.AssertJSON(t, pubResp)
+		pubVariants, _ := pub["variants"].([]interface{})
+		for _, raw := range pubVariants {
+			v, _ := raw.(map[string]interface{})
+			assert.NotEqual(t, variantID, v["id"], "deleted variant must vanish from public responses too")
+		}
+	})
+
+	t.Run("patch/delete on unknown variant returns 404", func(t *testing.T) {
+		patchResp := app.PATCH(t, variantPath+"/00000000-0000-0000-0000-000000000001",
+			map[string]interface{}{"stock": 1}, auth)
+		testutil.AssertStatus(t, patchResp, http.StatusNotFound)
+
+		delResp := app.DELETE(t, variantPath+"/00000000-0000-0000-0000-000000000001", auth)
+		testutil.AssertStatus(t, delResp, http.StatusNotFound)
+	})
+
+	t.Run("requires auth and denies other owners", func(t *testing.T) {
+		noAuth := app.GET(t, variantPath, "")
+		testutil.AssertStatus(t, noAuth, http.StatusUnauthorized)
+
+		otherAuth, _, _ := app.CreateOtherOwner(t)
+		otherList := app.GET(t, variantPath, otherAuth)
+		testutil.AssertStatus(t, otherList, http.StatusForbidden)
+	})
+}

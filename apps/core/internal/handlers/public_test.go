@@ -485,6 +485,124 @@ func TestPublicListProductsLegacyCategoryFilter(t *testing.T) {
 	assert.Equal(t, mine.ID.String(), item["id"], "legacy exact category match must return only that product")
 }
 
+// product-variants REQ: Public Product Response Gains Variants — GET
+// /products/:id serializes variants[] (id, sku, size, color, price, stock,
+// status) with price = price_override when set, else the product-level price.
+func TestPublicGetProductVariants(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Breeches"), testutil.WithPrice(100))
+	xl := testutil.CreateTestVariant(t, app.DB, storeIDParsed, p.ID,
+		testutil.WithVariantSKU("BREE-S-XL"), testutil.WithVariantSize("XL"),
+		testutil.WithVariantColor("Black"), testutil.WithVariantPrice(120), testutil.WithVariantStock(3))
+	m := testutil.CreateTestVariant(t, app.DB, storeIDParsed, p.ID,
+		testutil.WithVariantSKU("BREE-S-M"), testutil.WithVariantSize("M"),
+		testutil.WithVariantColor("Beige"), testutil.WithVariantStock(0))
+
+	t.Run("variants serialize with price override and product fallback", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products/"+p.ID.String(), "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+
+		assert.Equal(t, float64(100), data["price"], "product-level price stays 100")
+
+		variants, ok := data["variants"].([]interface{})
+		require.True(t, ok, "response should include a variants array")
+		require.Len(t, variants, 2)
+
+		byID := map[string]map[string]interface{}{}
+		for _, raw := range variants {
+			v, _ := raw.(map[string]interface{})
+			byID[v["id"].(string)] = v
+		}
+
+		xlV := byID[xl.ID.String()]
+		require.NotNil(t, xlV, "XL variant should be present")
+		assert.Equal(t, float64(120), xlV["price"], "price_override must become the public price")
+		assert.Equal(t, float64(3), xlV["stock"])
+		assert.Equal(t, "XL", xlV["size"])
+		assert.Equal(t, "Black", xlV["color"])
+		assert.Equal(t, "BREE-S-XL", xlV["sku"])
+		assert.Equal(t, "active", xlV["status"])
+
+		mV := byID[m.ID.String()]
+		require.NotNil(t, mV, "M variant should be present")
+		assert.Equal(t, float64(100), mV["price"], "variant without price_override falls back to product price")
+		assert.Equal(t, float64(0), mV["stock"])
+	})
+
+	t.Run("product without variants still carries an empty variants array", func(t *testing.T) {
+		plain := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Plain Pad"))
+
+		resp := app.GET(t, "/public/"+slug+"/products/"+plain.ID.String(), "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+
+		variants, ok := data["variants"].([]interface{})
+		assert.True(t, ok, "variants key must remain present (additive evolution)")
+		assert.Len(t, variants, 0)
+	})
+}
+
+// product-variants REQ: Public Product Response Gains Variants — the LIST path
+// (GET /products) must embed each product's variants too, batch-loaded in a
+// single query (no N+1). Products without variants keep an empty variants[].
+func TestPublicListProductsIncludesVariants(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	withVariant := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Breeches"), testutil.WithPrice(100))
+	inactiveSheet := testutil.CreateTestVariant(t, app.DB, storeIDParsed, withVariant.ID,
+		testutil.WithVariantSKU("BREE-INACTIVE"), testutil.WithVariantPrice(200), testutil.WithVariantStatus("inactive"))
+	xl := testutil.CreateTestVariant(t, app.DB, storeIDParsed, withVariant.ID,
+		testutil.WithVariantSKU("BREE-XL"), testutil.WithVariantPrice(150), testutil.WithVariantStock(2))
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Plain Pad"), testutil.WithPrice(50))
+
+	resp := app.GET(t, "/public/"+slug+"/products", "")
+	testutil.AssertStatus(t, resp, http.StatusOK)
+	data := testutil.AssertJSON(t, resp)
+
+	items, _ := data["data"].([]interface{})
+	require.Len(t, items, 2)
+
+	breachesItem := findByID(items, withVariant.ID.String())
+	require.NotNil(t, breachesItem, "product with variants should be in the list")
+
+	variants, ok := breachesItem["variants"].([]interface{})
+	require.True(t, ok, "list path must embed variants")
+	require.Len(t, variants, 1, "inactive variants are not exposed publicly")
+
+	xlV, _ := variants[0].(map[string]interface{})
+	assert.Equal(t, float64(150), xlV["price"], "variant price override wins on the list path too")
+	assert.Equal(t, xl.ID.String(), xlV["id"])
+	// The inactive one must NOT come back through the public list:
+	for _, raw := range variants {
+		v, _ := raw.(map[string]interface{})
+		assert.NotEqual(t, inactiveSheet.ID.String(), v["id"], "inactive variants must be excluded")
+	}
+
+	var plainItem map[string]interface{}
+	for _, raw := range items {
+		item, _ := raw.(map[string]interface{})
+		if item["id"] != withVariant.ID.String() {
+			plainItem = item
+		}
+	}
+	require.NotNil(t, plainItem, "the second product should be in the list")
+	plainVariants, ok := plainItem["variants"].([]interface{})
+	assert.True(t, ok, "products without variants still carry the variants key")
+	assert.Len(t, plainVariants, 0)
+}
+
 // readRawBody reads and closes a response body as raw bytes (for responses
 // that are not a JSON object, e.g. the category tree's bare array).
 func readRawBody(t *testing.T, resp *http.Response) []byte {
