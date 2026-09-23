@@ -1,15 +1,17 @@
 import type {
+  Category,
   CreateOrderRequest,
   CreateOrderResponse,
   OrderStatusResponse,
   PaginatedResponse,
   Product,
   ProductListParams,
-  QuoteLineItem,
+  QuoteRequest,
   QuoteResponse,
+  ShippingMethod,
   StoreConfig,
 } from '@/lib/api/types';
-import { mockConfig, mockProducts } from '@/lib/mock-data';
+import { mockConfig, mockProducts, mockShippingMethods } from '@/lib/mock-data';
 import 'server-only';
 
 // SERVER-ONLY module. Reads server env vars and talks to the Go core API.
@@ -33,6 +35,30 @@ export class NotFoundError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'NotFoundError';
+  }
+}
+
+export class ConflictError extends Error {
+  status = 409;
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConflictError';
+  }
+}
+
+export class ValidationError extends Error {
+  status = 400;
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+export class RateLimitError extends Error {
+  status = 429;
+  constructor(message: string) {
+    super(message);
+    this.name = 'RateLimitError';
   }
 }
 
@@ -82,25 +108,36 @@ function mockProductList(params?: ProductListParams): PaginatedResponse<Product>
   };
 }
 
-function mockQuote(items: QuoteLineItem[]): QuoteResponse {
-  const lines = items.map((li) => {
+// mockQuote emulates the core's ComputeQuote formula (no offers/coupons in
+// mock mode — those need real store data) so preview mode stays useful
+// without an API key. shipping_total is always 0 in mock mode: the mock
+// catalog has no weight/shipping-method data to compute it from.
+function mockQuote(req: QuoteRequest): QuoteResponse {
+  const items = req.items.map((li) => {
     const product = mockProducts.find((p) => p.id === li.product_id);
     if (!product) {
       throw new NotFoundError(`Product ${li.product_id} not found`);
     }
     return {
       product_id: product.id,
-      name: product.name,
-      sku: product.sku,
-      unit_price: product.effective_price,
       quantity: li.quantity,
-      line_total: product.effective_price * li.quantity,
+      list_price: product.effective_price,
+      category: product.category,
     };
   });
-  const subtotal = lines.reduce((sum, l) => sum + l.line_total, 0);
+  const subtotal = items.reduce((sum, l) => sum + l.list_price * l.quantity, 0);
   const tax = round2(subtotal * TAX_RATE);
-  const total = round2(subtotal + tax);
-  return { items: lines, subtotal: round2(subtotal), tax, total, currency: 'USD' };
+  const shippingTotal = 0;
+  const total = round2(subtotal + shippingTotal + tax);
+  return {
+    items,
+    subtotal_before_discount: round2(subtotal),
+    effective_subtotal: round2(subtotal),
+    discount_total: 0,
+    tax,
+    shipping_total: shippingTotal,
+    total,
+  };
 }
 
 function round2(n: number): number {
@@ -175,31 +212,80 @@ export async function getProduct(id: string): Promise<Product> {
   }
 }
 
-export async function getCategories(): Promise<{ name: string; count: number }[]> {
-  const res = await getProducts({ per_page: 100 });
+// flattenCategories collapses the category tree into a flat list (name +
+// direct product_count) so existing catalog UI (built around a flat
+// {name,count}[] filter list) keeps working unchanged while the data source
+// switches to the real GET /categories endpoint.
+function flattenCategories(nodes: Category[]): { name: string; count: number }[] {
+  const flat: { name: string; count: number }[] = [];
+  for (const node of nodes) {
+    flat.push({ name: node.name, count: node.product_count });
+    flat.push(...flattenCategories(node.children ?? []));
+  }
+  return flat;
+}
+
+function mockCategoryCounts(): { name: string; count: number }[] {
   const counts = new Map<string, number>();
-  for (const p of res.data) {
+  for (const p of mockProducts) {
     counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
   }
   return [...counts.entries()].map(([name, count]) => ({ name, count }));
 }
 
-export async function quote(items: QuoteLineItem[]): Promise<QuoteResponse> {
+export async function getCategories(): Promise<{ name: string; count: number }[]> {
   if (isMockMode()) {
     await delay(MOCK_LATENCY_MS);
-    return mockQuote(items);
+    return mockCategoryCounts();
+  }
+  try {
+    const res = await fetch(`${BASE}/categories`, {
+      next: { revalidate: 60 },
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`getCategories failed: ${res.status}`);
+    const tree = (await res.json()) as Category[];
+    return flattenCategories(tree);
+  } catch (err) {
+    warn('getCategories failed, falling back to mock', err);
+    return mockCategoryCounts();
+  }
+}
+
+export async function getShippingMethods(): Promise<ShippingMethod[]> {
+  if (isMockMode()) {
+    await delay(MOCK_LATENCY_MS);
+    return mockShippingMethods;
+  }
+  try {
+    const res = await fetch(`${BASE}/shipping-methods`, {
+      next: { revalidate: 60 },
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`getShippingMethods failed: ${res.status}`);
+    return (await res.json()) as ShippingMethod[];
+  } catch (err) {
+    warn('getShippingMethods failed, falling back to mock', err);
+    return mockShippingMethods;
+  }
+}
+
+export async function quote(req: QuoteRequest): Promise<QuoteResponse> {
+  if (isMockMode()) {
+    await delay(MOCK_LATENCY_MS);
+    return mockQuote(req);
   }
   try {
     const res = await fetch(`${BASE}/quote`, {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify(req),
     });
     if (!res.ok) throw new Error(`quote failed: ${res.status}`);
     return (await res.json()) as QuoteResponse;
   } catch (err) {
     warn('quote failed, falling back to mock', err);
-    return mockQuote(items);
+    return mockQuote(req);
   }
 }
 
@@ -208,12 +294,10 @@ export async function createOrder(
 ): Promise<CreateOrderResponse> {
   if (isMockMode()) {
     await delay(MOCK_LATENCY_MS);
-    const res = mockQuote(payload.items);
+    const res = mockQuote({ items: payload.items, shipping_method: payload.shipping_method });
     return {
-      order_id: genId(),
-      status: 'pending',
+      order: { id: genId(), status: 'pending', total: res.total },
       access_token: genId(),
-      total: res.total,
     };
   }
   try {
@@ -226,12 +310,10 @@ export async function createOrder(
     return (await res.json()) as CreateOrderResponse;
   } catch (err) {
     warn('createOrder failed, falling back to mock', err);
-    const res = mockQuote(payload.items);
+    const res = mockQuote({ items: payload.items, shipping_method: payload.shipping_method });
     return {
-      order_id: genId(),
-      status: 'pending',
+      order: { id: genId(), status: 'pending', total: res.total },
       access_token: genId(),
-      total: res.total,
     };
   }
 }
@@ -255,4 +337,24 @@ export async function getOrderStatus(
     warn('getOrderStatus failed, falling back to mock', err);
     return { order_id: orderId, status: 'processing', items: [] };
   }
+}
+
+// subscribeNewsletter posts to POST /newsletter (store-newsletter REQ:
+// 201/400/409/429). Mock mode always "succeeds" (no real persistence, no rate
+// limiter) so the preview UI stays usable without an API key.
+export async function subscribeNewsletter(email: string): Promise<{ email: string }> {
+  if (isMockMode()) {
+    await delay(MOCK_LATENCY_MS);
+    return { email };
+  }
+  const res = await fetch(`${BASE}/newsletter`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (res.status === 409) throw new ConflictError('email already subscribed');
+  if (res.status === 400) throw new ValidationError('invalid email');
+  if (res.status === 429) throw new RateLimitError('too many requests');
+  if (!res.ok) throw new Error(`subscribeNewsletter failed: ${res.status}`);
+  return (await res.json()) as { email: string };
 }

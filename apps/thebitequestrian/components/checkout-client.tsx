@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart';
 import { formatPrice } from '@/lib/format';
-import type { CreateOrderRequest } from '@/lib/api/types';
+import type { CreateOrderRequest, CreateOrderResponse, QuoteResponse, ShippingMethod } from '@/lib/api/types';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
-
-const TAX_RATE = 0.19;
 
 const inputClass =
   'w-full rounded-sm border border-border bg-background px-3 py-2.5 font-body text-[13px] text-foreground outline-none placeholder:text-muted focus:border-accent-bright';
@@ -44,7 +42,15 @@ function Field({
   );
 }
 
-export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+export function CheckoutClient({
+  locale,
+  dict,
+  shippingMethods,
+}: {
+  locale: Locale;
+  dict: Dictionary;
+  shippingMethods: ShippingMethod[];
+}) {
   const router = useRouter();
   const { items, subtotal, clear } = useCart();
 
@@ -54,23 +60,59 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
   const [phone, setPhone] = useState('');
   const [street, setStreet] = useState('');
   const [apartment, setApartment] = useState('');
-  const [postalCode, setPostalCode] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('');
-  const [shippingMethod, setShippingMethod] = useState('standard');
+  const [shippingMethod, setShippingMethod] = useState(shippingMethods[0]?.code ?? '');
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const tax = subtotal * TAX_RATE;
-  const total = subtotal + tax;
+  // quote-driven totals (shipping-zones REQ: Quote Carrier Cost) — the server
+  // computes subtotal/tax/shipping_total/total; the client never re-derives
+  // them locally (no client-side TAX_RATE).
+  const [quote, setQuote] = useState<QuoteResponse | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
-  const shippingOptions = [
-    { value: 'standard', label: dict.checkout.standard, note: dict.checkout.standardNote, price: 0 },
-    { value: 'express', label: dict.checkout.express, note: dict.checkout.expressNote, price: 0 },
-    { value: 'show-ground', label: dict.checkout.showGround, note: dict.checkout.showGroundNote, price: 0 },
-  ];
+  const itemsKey = items.map((i) => `${i.productId}:${i.qty}`).join('|');
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setQuoteLoading(true);
+    fetch('/api/quote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: items.map((i) => ({ product_id: i.productId, quantity: i.qty })),
+        shipping_method: shippingMethod || undefined,
+      }),
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<QuoteResponse>) : Promise.reject(res)))
+      .then((data) => {
+        if (!cancelled) setQuote(data);
+      })
+      .catch(() => {
+        if (!cancelled) setQuote(null);
+      })
+      .finally(() => {
+        if (!cancelled) setQuoteLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsKey, shippingMethod]);
+
+  const displaySubtotal = quote?.subtotal_before_discount ?? subtotal;
+  const shippingTotal = quote?.shipping_total ?? 0;
+  const tax = quote?.tax ?? 0;
+  const total = quote?.total ?? subtotal;
 
   function validate(): boolean {
     const next: Record<string, boolean> = {
@@ -78,7 +120,8 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
       lastName: lastName.trim().length === 0,
       email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()),
       street: street.trim().length === 0,
-      postalCode: postalCode.trim().length === 0,
+      state: state.trim().length === 0,
+      zip: zip.trim().length === 0,
       city: city.trim().length === 0,
       country: country.trim().length === 0,
     };
@@ -100,14 +143,14 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
       customer_email: email.trim(),
       customer_phone: phone.trim() || undefined,
       shipping_address: {
-        line1: street.trim(),
-        line2: apartment.trim() || undefined,
+        street: apartment.trim() ? `${street.trim()}, ${apartment.trim()}` : street.trim(),
         city: city.trim(),
-        postal_code: postalCode.trim(),
-        country: country.trim(),
+        state: state.trim(),
+        zip: zip.trim(),
+        country: country.trim() || undefined,
       },
       items: items.map((i) => ({ product_id: i.productId, quantity: i.qty })),
-      shipping_method: shippingMethod,
+      shipping_method: shippingMethod || undefined,
     };
 
     setPending(true);
@@ -121,9 +164,9 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error ?? 'checkout failed');
       }
-      const data = (await res.json()) as { order_id: string; access_token: string };
+      const data = (await res.json()) as CreateOrderResponse;
       clear();
-      router.push(`/${locale}/order/${data.order_id}?token=${encodeURIComponent(data.access_token)}`);
+      router.push(`/${locale}/order/${data.order.id}?token=${encodeURIComponent(data.access_token)}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'checkout failed');
       setPending(false);
@@ -154,8 +197,9 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
               <Field label={dict.checkout.street} value={street} onChange={setStreet} error={errors.street} />
             </div>
             <Field label={dict.checkout.apartment} value={apartment} onChange={setApartment} />
-            <Field label={dict.checkout.postalCode} value={postalCode} onChange={setPostalCode} error={errors.postalCode} />
             <Field label={dict.checkout.city} value={city} onChange={setCity} error={errors.city} />
+            <Field label={dict.checkout.state} value={state} onChange={setState} error={errors.state} />
+            <Field label={dict.checkout.postalCode} value={zip} onChange={setZip} error={errors.zip} />
             <Field label={dict.checkout.country} value={country} onChange={setCountry} error={errors.country} />
           </div>
         </section>
@@ -165,30 +209,39 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
             3 · {dict.checkout.delivery}
           </h2>
           <div className="flex flex-col gap-2">
-            {shippingOptions.map((opt) => (
+            {shippingMethods.map((opt) => (
               <label
-                key={opt.value}
+                key={opt.code}
                 className={`flex cursor-pointer items-center justify-between rounded-sm border px-4 py-3 ${
-                  shippingMethod === opt.value ? 'border-foreground' : 'border-border'
+                  shippingMethod === opt.code ? 'border-foreground' : 'border-border'
                 }`}
               >
                 <span className="flex items-center gap-3">
                   <input
                     type="radio"
                     name="shipping"
-                    value={opt.value}
-                    checked={shippingMethod === opt.value}
-                    onChange={() => setShippingMethod(opt.value)}
+                    value={opt.code}
+                    checked={shippingMethod === opt.code}
+                    onChange={() => setShippingMethod(opt.code)}
                     className="accent-accent-bright"
                   />
                   <span className="flex flex-col">
-                    <span className="font-body text-sm text-foreground">{opt.label}</span>
-                    <span className="font-body text-[12px] text-muted">{opt.note}</span>
+                    <span className="font-body text-sm text-foreground">{opt.name}</span>
+                    <span className="font-body text-[12px] text-muted">{opt.zone.name}</span>
                   </span>
                 </span>
-                <span className="font-body text-[13px] text-accent-bright">{dict.checkout.free}</span>
+                <span className="font-body text-[13px] text-accent-bright">
+                  {shippingMethod === opt.code
+                    ? formatPrice(shippingTotal, locale)
+                    : opt.base_price > 0
+                      ? formatPrice(opt.base_price, locale)
+                      : dict.checkout.free}
+                </span>
               </label>
             ))}
+            {shippingMethods.length === 0 && (
+              <p className="font-body text-[13px] text-muted">{dict.cart.freeShippingNote}</p>
+            )}
           </div>
         </section>
 
@@ -229,11 +282,13 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
         <dl className="flex flex-col gap-3 font-body text-[14px]">
           <div className="flex justify-between text-muted">
             <dt>{dict.cart.subtotal}</dt>
-            <dd className="text-foreground">{formatPrice(subtotal, locale)}</dd>
+            <dd className="text-foreground">{formatPrice(displaySubtotal, locale)}</dd>
           </div>
           <div className="flex justify-between text-muted">
             <dt>{dict.cart.shipping}</dt>
-            <dd className="text-foreground">{dict.cart.freeShippingNote}</dd>
+            <dd className="text-foreground">
+              {shippingTotal > 0 ? formatPrice(shippingTotal, locale) : dict.checkout.free}
+            </dd>
           </div>
           <div className="flex justify-between text-muted">
             <dt>{dict.cart.tax}</dt>
@@ -254,7 +309,7 @@ export function CheckoutClient({ locale, dict }: { locale: Locale; dict: Diction
         <button
           type="submit"
           form="checkout-form"
-          disabled={pending || items.length === 0}
+          disabled={pending || quoteLoading || items.length === 0}
           className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-foreground font-label text-xs uppercase tracking-widest text-background transition-colors hover:bg-accent-bright hover:text-foreground disabled:cursor-not-allowed disabled:bg-border disabled:text-muted"
         >
           {pending

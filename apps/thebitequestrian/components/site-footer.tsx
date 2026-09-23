@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Instagram } from 'lucide-react';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { NewsletterForm } from '@/components/newsletter-form';
 
 export function SiteFooter({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const browsePairs = dict.nav.browseLinks.map((link, i) => ({
@@ -89,20 +90,7 @@ export function SiteFooter({ locale, dict }: { locale: Locale; dict: Dictionary 
             <p className="font-body text-[13px] leading-relaxed">
               {dict.footer.subscribeBody}
             </p>
-            <div className="flex">
-              <input
-                type="email"
-                placeholder={dict.footer.emailPlaceholder}
-                aria-label={dict.footer.emailPlaceholder}
-                className="w-full rounded-sm rounded-r-none border border-border bg-background px-3 py-2.5 font-body text-[13px] text-foreground outline-none placeholder:text-muted"
-              />
-              <button
-                type="button"
-                className="whitespace-nowrap rounded-sm rounded-l-none bg-foreground px-4 py-2.5 font-label text-xs uppercase tracking-widest text-background transition-colors hover:bg-accent-bright hover:text-foreground"
-              >
-                {dict.footer.subscribe}
-              </button>
-            </div>
+            <NewsletterForm dict={dict} />
           </div>
         </div>
       </div>
