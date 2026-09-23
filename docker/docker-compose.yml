@@ -42,6 +42,9 @@ services:
     environment:
       - SERVICES=s3,secretsmanager,ssm
       - DEFAULT_REGION=us-east-1
+      # Local dev only: skip LocalStack's origin allow-list so any frontend
+      # port/LAN host can call S3 directly (browser presigned PUT/GET).
+      - DISABLE_CORS_CHECKS=1
     volumes:
       - localstack_data:/var/lib/localstack
       - ./localstack-init:/etc/localstack/init/ready.d
