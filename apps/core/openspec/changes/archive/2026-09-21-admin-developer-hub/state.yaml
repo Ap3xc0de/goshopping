@@ -1,0 +1,17 @@
+change: admin-developer-hub
+title: "Admin: reorient Crear Tienda / Mi Tienda to public-API developer hub"
+mode: hybrid
+project: goshopping
+openspec_root: apps/core/openspec
+delivery_strategy: ask-on-risk
+strict_tdd: true
+created: 2026-09-21
+phases:
+  explore: in_progress
+  propose: pending
+  spec: pending
+  design: pending
+  tasks: pending
+  apply: pending
+  verify: pending
+  archive: pending

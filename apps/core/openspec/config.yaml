@@ -1,0 +1,93 @@
+schema: spec-driven
+version: "1.0"
+project: goshopping-core
+updated: "2026-09-17"
+
+context: |
+  Tech stack: Go 1.25, Fiber v2 (v2.52.4), PostgreSQL via pgx/v5, AWS SDK v2 (S3, SQS, SSM, SecretsManager)
+  Architecture: Layered — cmd / router / handlers / services / models / database; multi-tenant (accounts → stores)
+  Module: github.com/goshopping/core
+  Monorepo root: C:/Users/usuario/Desktop/goshopping — siblings: admin, superadmin, storefront (Node), integrations (Node)
+  Deployment: Docker → AWS ECR → ECS (staging + production) via GitHub Actions OIDC
+  Testing: go test -p 1 ./internal/... — unit (models, pure services) + integration (handlers + real PostgreSQL)
+
+strict_tdd: true
+
+testing:
+  runner:
+    command: "go test -p 1 ./internal/... -timeout 120s"
+    framework: "Go testing + testify v1.11.1"
+  make_alias: "make test-core"
+  layers:
+    unit:
+      available: true
+      tools: ["go test", "testify/assert", "testify/require"]
+      packages: ["internal/models", "internal/services (pure logic)"]
+    integration:
+      available: true
+      tools: ["go test", "testutil.SetupTestApp", "Fiber.Test", "pgx/v5"]
+      packages: ["internal/handlers", "internal/database", "internal/services (DB-backed)"]
+      note: "Requires PostgreSQL at localhost:5434 — run `make dev` first"
+    e2e:
+      available: false
+  coverage:
+    available: true
+    command: "go test -p 1 ./internal/... -cover -timeout 120s"
+    tool: "go test built-in"
+  env_required:
+    - DB_HOST=127.0.0.1
+    - DB_PORT=5434
+    - DB_USER=goshopping
+    - DB_PASSWORD=localdev123
+    - DB_NAME=goshopping
+    - DB_SSL_MODE=disable
+    - JWT_SECRET=test-secret-for-goshopping-tests
+    - APP_ENV=development
+  testutil:
+    location: "internal/testutil"
+    helpers: ["SetupTestApp", "CleanDB", "OwnerAuthHeader", "SuperAdminAuthHeader", "CreateOtherOwner"]
+    fixtures: ["CreateTestProduct", "CreateTestCustomer", "CreateTestOrder", "SetProductStock"]
+    assertions: ["AssertStatus", "AssertJSON", "AssertError", "AssertPaginated"]
+    http: ["GET", "GETWithHeaders", "POST", "PUT", "PATCH", "DELETE", "POSTFile"]
+
+quality:
+  linter:
+    available: false
+    note: "No .golangci.yml found; use `go vet ./...` as baseline"
+  type_checker:
+    available: true
+    command: "go build ./..."
+    note: "Go compiler is the type checker"
+  formatter:
+    available: true
+    command: "gofmt -w ."
+    note: "Standard gofmt; no extra config needed"
+
+rules:
+  proposal:
+    - Include rollback plan for risky DB or domain changes
+    - Consider multi-tenant isolation impacts (store-scoped vs. account-scoped)
+  specs:
+    - Use Given/When/Then for scenario blocks
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Reference table names and field names from existing schema
+  design:
+    - Include sequence diagrams for cross-service flows
+    - Document architecture decisions with rationale
+    - Consider CleanDB isolation strategy for integration tests
+  tasks:
+    - Group by phase, use hierarchical numbering (1.1, 1.2, ...)
+    - Keep each task completable in one session
+    - Integration tasks must include testutil fixture plan
+  apply:
+    - Follow existing handler pattern (Fiber ctx, JSON marshal, fiber.Error returns)
+    - Follow existing service pattern (pgxpool.Pool injection, context.Context first arg)
+    tdd: true
+    test_command: "make test-core"
+  verify:
+    test_command: "make test-core"
+    build_command: "go build ./..."
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive delta specs
+    - Preserve test fixture names in main specs
