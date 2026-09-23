@@ -45,23 +45,25 @@ type OrderDetail struct {
 
 // OrderService handles business logic for orders.
 type OrderService struct {
-	db         *pgxpool.Pool
-	cfg        *config.Config
-	eventSvc   *EventService
-	custSvc    *CustomerService
-	prodSvc    *ProductService
-	offerSvc   *OfferService
-	couponSvc  *CouponService
-	variantSvc *VariantService
+	db          *pgxpool.Pool
+	cfg         *config.Config
+	eventSvc    *EventService
+	custSvc     *CustomerService
+	prodSvc     *ProductService
+	offerSvc    *OfferService
+	couponSvc   *CouponService
+	variantSvc  *VariantService
+	shippingSvc *ShippingService
 }
 
 // NewOrderService creates a new OrderService.
 func NewOrderService(db *pgxpool.Pool, cfg *config.Config, eventSvc *EventService, custSvc *CustomerService, prodSvc *ProductService) *OrderService {
 	return &OrderService{
 		db: db, cfg: cfg, eventSvc: eventSvc, custSvc: custSvc, prodSvc: prodSvc,
-		offerSvc:   NewOfferService(db),
-		couponSvc:  NewCouponService(db),
-		variantSvc: NewVariantService(db),
+		offerSvc:    NewOfferService(db),
+		couponSvc:   NewCouponService(db),
+		variantSvc:  NewVariantService(db),
+		shippingSvc: NewShippingService(db),
 	}
 }
 
@@ -125,6 +127,7 @@ func (s *OrderService) ListOrders(storeID uuid.UUID, page, perPage int, status, 
 		       COALESCE(o.shipping_tracking,'') AS shipping_tracking,
 		       COALESCE(o.notes,'') AS notes, o.created_at, o.updated_at,
 		       o.shipping_address, o.payment_status,
+		       COALESCE(o.shipping_method,'') AS shipping_method, o.shipping_total, o.currency,
 		       UPPER(SUBSTRING(o.id::text, 1, 8))    AS order_number,
 		       COALESCE(c.name,'')                   AS customer_name,
 		       COALESCE(c.email,'')                  AS customer_email,
@@ -149,6 +152,7 @@ func (s *OrderService) ListOrders(storeID uuid.UUID, page, perPage int, status, 
 			&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 			&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
 			&o.ShippingAddress, &o.PaymentStatus,
+			&o.ShippingMethod, &o.ShippingTotal, &o.Currency,
 			&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
@@ -173,6 +177,7 @@ func (s *OrderService) GetOrder(storeID, orderID uuid.UUID) (*OrderDetail, error
 		       COALESCE(o.shipping_tracking,'')  AS shipping_tracking,
 		       COALESCE(o.notes,'')              AS notes, o.created_at, o.updated_at,
 		       o.shipping_address, o.payment_status,
+		       COALESCE(o.shipping_method,'') AS shipping_method, o.shipping_total, o.currency,
 		       UPPER(SUBSTRING(o.id::text, 1, 8)) AS order_number,
 		       COALESCE(c.name,'')               AS customer_name,
 		       COALESCE(c.email,'')              AS customer_email,
@@ -186,6 +191,7 @@ func (s *OrderService) GetOrder(storeID, orderID uuid.UUID) (*OrderDetail, error
 		&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 		&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
 		&o.ShippingAddress, &o.PaymentStatus,
+		&o.ShippingMethod, &o.ShippingTotal, &o.Currency,
 		&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -212,6 +218,7 @@ func (s *OrderService) GetOrderByIDOnly(orderID uuid.UUID) (*OrderDetail, error)
 		       COALESCE(o.shipping_tracking,'') AS shipping_tracking,
 		       COALESCE(o.notes,'')             AS notes, o.created_at, o.updated_at,
 		       o.shipping_address, o.payment_status,
+		       COALESCE(o.shipping_method,'') AS shipping_method, o.shipping_total, o.currency,
 		       UPPER(SUBSTRING(o.id::text, 1, 8)) AS order_number,
 		       COALESCE(c.name,'')              AS customer_name,
 		       COALESCE(c.email,'')             AS customer_email,
@@ -224,6 +231,7 @@ func (s *OrderService) GetOrderByIDOnly(orderID uuid.UUID) (*OrderDetail, error)
 		&o.Tax, &o.Total, &o.CouponID, &o.PaymentMethod, &o.PaymentRef,
 		&o.ShippingTracking, &o.Notes, &o.CreatedAt, &o.UpdatedAt,
 		&o.ShippingAddress, &o.PaymentStatus,
+		&o.ShippingMethod, &o.ShippingTotal, &o.Currency,
 		&o.OrderNumber, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &o.CustomerAddress)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -336,9 +344,27 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 		}
 	}
 
+	// ── Stage 2.5: Resolve shipping method (pre-stage; pure formula fed by a
+	// DB-resolved method + already-known product weights) — never trust a
+	// client-provided shipping_total (shipping-zones REQ: Quote Carrier Cost).
+	shippingTotal := models.MoneyZero()
+	var shippingMethodCode string
+	if req.ShippingMethod != nil && *req.ShippingMethod != "" {
+		method, err := s.shippingSvc.GetActiveMethodByCode(ctx, storeID, *req.ShippingMethod)
+		if err != nil {
+			return nil, fmt.Errorf("shipping_method %q: %w", *req.ShippingMethod, err)
+		}
+		weightTotal := 0.0
+		for i, item := range lineItems {
+			weightTotal += products[i].Weight * float64(item.Quantity)
+		}
+		shippingTotal = method.BasePrice.Add(method.WeightRate.Mul(decimal.NewFromFloat(weightTotal))).Round2()
+		shippingMethodCode = method.Code
+	}
+
 	// ── Stage 3: Compute quote (pure, no DB)
 	now := time.Now()
-	quote, err := ComputeQuote(lineItems, offers, coupon, now)
+	quote, err := ComputeQuote(lineItems, offers, coupon, shippingTotal, now)
 	if err != nil {
 		return nil, fmt.Errorf("compute quote: %w", err)
 	}
@@ -457,13 +483,14 @@ func (s *OrderService) CreateOrder(storeID uuid.UUID, req models.CreateOrderInpu
 	}
 
 	if err = tx.QueryRow(ctx, `
-		INSERT INTO orders (store_id, customer_id, status, items, subtotal, discount_total, tax, total, coupon_id, payment_method, notes, shipping_address, payment_status)
-		VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending')
+		INSERT INTO orders (store_id, customer_id, status, items, subtotal, discount_total, tax, total, coupon_id, payment_method, notes, shipping_address, payment_status, shipping_method, shipping_total, currency)
+		VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', NULLIF($12,''), $13, 'USD')
 		RETURNING id`,
 		storeID, customerID, itemsJSON,
 		quote.SubtotalBeforeDiscount, quote.DiscountTotal, quote.Tax, quote.Total,
 		couponID,
 		req.PaymentMethod, req.Notes, shippingAddressJSON,
+		shippingMethodCode, quote.ShippingTotal,
 	).Scan(&orderID); err != nil {
 		return nil, fmt.Errorf("insert order: %w", err)
 	}

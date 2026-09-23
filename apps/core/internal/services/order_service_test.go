@@ -278,3 +278,82 @@ func TestOrderService_VariantOldOrdersRemainReadable(t *testing.T) {
 	assert.Empty(t, items[0].VariantID, "legacy rows simply have no variant fields")
 	assert.Empty(t, items[0].SKU)
 }
+
+// shipping-zones REQ: Quote Carrier Cost — CreateOrder persists shipping_method
+// and a server-computed shipping_total (never trusting a client-provided
+// number); store-currency REQ: orders are stamped with currency='USD'.
+func TestOrderService_CreateOrder_PersistsShippingAndCurrency(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	eventSvc := services.NewEventService(app.Config)
+	custSvc := services.NewCustomerService(app.DB, app.Config)
+	prodSvc := services.NewProductService(app.DB, app.Config, eventSvc)
+	orderSvc := services.NewOrderService(app.DB, app.Config, eventSvc, custSvc, prodSvc)
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := uuid.MustParse(storeID)
+
+	zone := testutil.CreateTestShippingZone(t, app.DB, storeIDParsed)
+	method := testutil.CreateTestShippingMethod(t, app.DB, storeIDParsed, zone.ID,
+		testutil.WithMethodCode("std"), testutil.WithMethodBasePrice(5), testutil.WithMethodWeightRate(0.1))
+
+	t.Run("persists shipping_method, computed shipping_total, and currency=USD", func(t *testing.T) {
+		p := testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+			testutil.WithPrice(100), testutil.WithStock(10), testutil.WithWeight(2))
+		shippingMethod := method.Code
+
+		detail, err := orderSvc.CreateOrder(storeIDParsed, models.CreateOrderInput{
+			CustomerName: "Shipping Buyer",
+			Items: []models.OrderItemInput{
+				{ProductID: p.ID.String(), Quantity: 3},
+			},
+			PaymentMethod:  "cash",
+			ShippingMethod: &shippingMethod,
+		}, nil)
+		require.NoError(t, err)
+
+		// weight_total = 2kg * 3 = 6; shipping_total = 5 + 6*0.1 = 5.6
+		assert.Equal(t, "std", detail.Order.ShippingMethod)
+		assert.Equal(t, "5.6", detail.Order.ShippingTotal.Decimal.StringFixed(1))
+		assert.Equal(t, "USD", detail.Order.Currency)
+
+		// Round-trip through GetOrder to prove it is really persisted.
+		fetched, err := orderSvc.GetOrder(storeIDParsed, detail.Order.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "std", fetched.Order.ShippingMethod)
+		assert.Equal(t, "5.6", fetched.Order.ShippingTotal.Decimal.StringFixed(1))
+		assert.Equal(t, "USD", fetched.Order.Currency)
+	})
+
+	t.Run("unknown shipping_method rejects the order", func(t *testing.T) {
+		p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(10))
+		bad := "does-not-exist"
+
+		_, err := orderSvc.CreateOrder(storeIDParsed, models.CreateOrderInput{
+			CustomerName: "Bad Shipping Buyer",
+			Items: []models.OrderItemInput{
+				{ProductID: p.ID.String(), Quantity: 1},
+			},
+			PaymentMethod:  "cash",
+			ShippingMethod: &bad,
+		}, nil)
+		require.Error(t, err)
+	})
+
+	t.Run("omitted shipping_method keeps shipping_total at 0 and currency USD", func(t *testing.T) {
+		p := testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithStock(10))
+
+		detail, err := orderSvc.CreateOrder(storeIDParsed, models.CreateOrderInput{
+			CustomerName: "No Shipping Buyer",
+			Items: []models.OrderItemInput{
+				{ProductID: p.ID.String(), Quantity: 1},
+			},
+			PaymentMethod: "cash",
+		}, nil)
+		require.NoError(t, err)
+		assert.Empty(t, detail.Order.ShippingMethod)
+		assert.True(t, detail.Order.ShippingTotal.IsZero(), "shipping_total should default to 0")
+		assert.Equal(t, "USD", detail.Order.Currency)
+	})
+}

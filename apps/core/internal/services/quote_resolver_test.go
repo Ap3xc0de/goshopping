@@ -15,13 +15,14 @@ func TestComputeQuote(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name         string
-		items        []LineItem
-		offers       []models.Offer
-		coupon       *models.Coupon
-		now          time.Time
-		wantErr      bool
-		checkResults func(t *testing.T, preview *CartPreview)
+		name          string
+		items         []LineItem
+		offers        []models.Offer
+		coupon        *models.Coupon
+		shippingTotal models.Money
+		now           time.Time
+		wantErr       bool
+		checkResults  func(t *testing.T, preview *CartPreview)
 	}{
 		{
 			name: "no items no coupon",
@@ -265,11 +266,45 @@ func TestComputeQuote(t *testing.T) {
 				}
 			},
 		},
+		{
+			// shipping-zones REQ: Quote Carrier Cost — total = effective_subtotal
+			// − discount_total + shipping_total + tax; ShippingTotal is threaded
+			// through unchanged (this function never recomputes it).
+			name: "with shipping, no offers or coupon",
+			items: []LineItem{
+				{ProductID: prodID1, Quantity: 1, ListPrice: models.NewMoney(10000), Category: "general"},
+			},
+			offers:        []models.Offer{},
+			coupon:        nil,
+			shippingTotal: models.NewMoney(5.6),
+			now:           now,
+			checkResults: func(t *testing.T, preview *CartPreview) {
+				// subtotal = 10000, tax = 1900, shipping = 5.6
+				// total = 10000 + 5.6 + 1900 = 11905.6
+				if !preview.ShippingTotal.Equal(models.NewMoney(5.6).Decimal) {
+					t.Errorf("shipping_total = %v, want 5.6", preview.ShippingTotal)
+				}
+				expectedTotal := models.NewMoney(10000).Add(models.NewMoney(5.6)).Add(models.NewMoney(1900))
+				if !preview.Total.Equal(expectedTotal.Decimal) {
+					t.Errorf("total = %v, want %v", preview.Total, expectedTotal)
+				}
+			},
+		},
+		{
+			name:  "empty items still carries shipping_total into total",
+			items: []LineItem{},
+			now:   now,
+			checkResults: func(t *testing.T, preview *CartPreview) {
+				if !preview.Total.Equal(models.MoneyZero().Decimal) {
+					t.Errorf("total = %v, want 0 (no shipping requested)", preview.Total)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			preview, err := ComputeQuote(tt.items, tt.offers, tt.coupon, tt.now)
+			preview, err := ComputeQuote(tt.items, tt.offers, tt.coupon, tt.shippingTotal, tt.now)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ComputeQuote() error = %v, wantErr %v", err, tt.wantErr)
 				return

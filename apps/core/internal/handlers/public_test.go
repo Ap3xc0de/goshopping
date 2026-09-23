@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -76,6 +77,15 @@ func TestPublicStoreConfig(t *testing.T) {
 		templateID, ok := data["template_id"]
 		assert.True(t, ok, "response must carry a template_id key")
 		assert.Equal(t, "minimal", templateID, "new stores default to the 'minimal' template")
+	})
+
+	// store-currency REQ: USD is the only currency, default when the store's
+	// config does not set one.
+	t.Run("includes currency defaulting to USD", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/config", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, "USD", data["currency"])
 	})
 }
 
@@ -670,4 +680,84 @@ func TestPublicListCategories(t *testing.T) {
 		data := testutil.AssertJSON(t, resp)
 		testutil.AssertPaginated(t, data, 3)
 	})
+}
+
+// shipping-zones REQ: List Public Methods — active zones/methods only,
+// nested zone name; inactive methods excluded.
+func TestPublicListShippingMethods(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	zone := testutil.CreateTestShippingZone(t, app.DB, storeIDParsed, testutil.WithShippingZoneName("Colombia"))
+	testutil.CreateTestShippingMethod(t, app.DB, storeIDParsed, zone.ID,
+		testutil.WithMethodCode("std"), testutil.WithMethodName("Standard"),
+		testutil.WithMethodBasePrice(5), testutil.WithMethodWeightRate(0.1))
+	testutil.CreateTestShippingMethod(t, app.DB, storeIDParsed, zone.ID,
+		testutil.WithMethodCode("off"), testutil.WithMethodActive(false))
+
+	resp := app.GET(t, "/public/"+slug+"/shipping-methods", "")
+	testutil.AssertStatus(t, resp, http.StatusOK)
+
+	var methods []map[string]interface{}
+	require.NoError(t, json.Unmarshal(readRawBody(t, resp), &methods))
+	require.Len(t, methods, 1, "inactive methods must be excluded")
+
+	m := methods[0]
+	assert.Equal(t, "std", m["code"])
+	assert.Equal(t, "Standard", m["name"])
+	zoneObj, _ := m["zone"].(map[string]interface{})
+	require.NotNil(t, zoneObj)
+	assert.Equal(t, "Colombia", zoneObj["name"])
+}
+
+// store-newsletter REQ: 201/400/409 (429 covered separately — its own app so
+// the rate limiter starts fresh).
+func TestPublicNewsletterSubscribe(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	t.Run("subscribes a new email", func(t *testing.T) {
+		resp := app.POST(t, "/public/"+slug+"/newsletter", map[string]interface{}{"email": "new@test.com"}, "")
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, "new@test.com", data["email"])
+	})
+
+	t.Run("rejects invalid email", func(t *testing.T) {
+		resp := app.POST(t, "/public/"+slug+"/newsletter", map[string]interface{}{"email": "not-an-email"}, "")
+		testutil.AssertStatus(t, resp, http.StatusBadRequest)
+	})
+
+	t.Run("rejects duplicate email", func(t *testing.T) {
+		testutil.CreateTestSubscriber(t, app.DB, storeIDParsed, "dup@test.com")
+		resp := app.POST(t, "/public/"+slug+"/newsletter", map[string]interface{}{"email": "dup@test.com"}, "")
+		testutil.AssertStatus(t, resp, http.StatusConflict)
+	})
+}
+
+// store-newsletter REQ: rate limiting — 5/min per store_id|ip, 429 overflow.
+// Isolated in its own app/router so the fixed window starts empty.
+func TestPublicNewsletterRateLimit(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	slug := testutil.GetStoreSlug(t, app.DB, mustParseUUID(t, storeID))
+
+	for i := 0; i < 5; i++ {
+		email := fmt.Sprintf("burst%d@test.com", i)
+		resp := app.POST(t, "/public/"+slug+"/newsletter", map[string]interface{}{"email": email}, "")
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+	}
+
+	resp := app.POST(t, "/public/"+slug+"/newsletter", map[string]interface{}{"email": "burst-over@test.com"}, "")
+	testutil.AssertStatus(t, resp, http.StatusTooManyRequests)
 }

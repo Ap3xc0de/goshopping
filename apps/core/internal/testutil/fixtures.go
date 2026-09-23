@@ -24,6 +24,7 @@ type productArgs struct {
 	categoryID  uuid.UUID
 	status      string
 	sku         string
+	weight      float64
 }
 
 // ProductOverride is a functional option for CreateTestProduct.
@@ -41,6 +42,7 @@ func WithCategoryID(v uuid.UUID) ProductOverride {
 }
 func WithStatus(v string) ProductOverride { return func(a *productArgs) { a.status = v } }
 func WithSKU(v string) ProductOverride    { return func(a *productArgs) { a.sku = v } }
+func WithWeight(v float64) ProductOverride { return func(a *productArgs) { a.weight = v } }
 
 // CreateTestProduct inserts a product row and returns the model.
 func CreateTestProduct(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts ...ProductOverride) models.Product {
@@ -73,15 +75,15 @@ func CreateTestProduct(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts .
 	var p models.Product
 	err := db.QueryRow(ctx, `
 		INSERT INTO products (id, store_id, name, sku, description, price, cost,
-		                      stock, min_stock, category, category_id, images, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '[]', $12)
+		                      stock, min_stock, category, category_id, images, status, weight)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '[]', $12, $13)
 		RETURNING id, store_id, name, sku, description, price, cost,
-		          stock, min_stock, category, images, status, created_at, updated_at`,
+		          stock, min_stock, category, images, status, weight, created_at, updated_at`,
 		id, storeID, args.name, args.sku, args.description, args.price, args.cost,
-		args.stock, args.minStock, args.category, categoryID, args.status,
+		args.stock, args.minStock, args.category, categoryID, args.status, args.weight,
 	).Scan(
 		&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description, &p.Price, &p.Cost,
-		&p.Stock, &p.MinStock, &p.Category, &p.Images, &p.Status, &p.CreatedAt, &p.UpdatedAt,
+		&p.Stock, &p.MinStock, &p.Category, &p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		t.Fatalf("CreateTestProduct: %v", err)
@@ -366,6 +368,110 @@ func CreateTestAPIKey(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, name st
 // APIKeyAuthHeader returns the Authorization header value for a plaintext key.
 func APIKeyAuthHeader(plaintext string) string {
 	return "Bearer " + plaintext
+}
+
+// ── Shipping fixtures ────────────────────────────────────────────────────────
+
+type shippingZoneArgs struct {
+	name      string
+	sortOrder int
+}
+
+// ShippingZoneOverride is a functional option for CreateTestShippingZone.
+type ShippingZoneOverride func(*shippingZoneArgs)
+
+func WithShippingZoneName(v string) ShippingZoneOverride { return func(a *shippingZoneArgs) { a.name = v } }
+func WithShippingZoneSortOrder(v int) ShippingZoneOverride {
+	return func(a *shippingZoneArgs) { a.sortOrder = v }
+}
+
+// CreateTestShippingZone inserts a shipping_zones row (migration 011) and
+// returns the model.
+func CreateTestShippingZone(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts ...ShippingZoneOverride) models.ShippingZone {
+	t.Helper()
+
+	args := &shippingZoneArgs{name: "Test Zone"}
+	for _, o := range opts {
+		o(args)
+	}
+
+	var z models.ShippingZone
+	err := db.QueryRow(context.Background(), `
+		INSERT INTO shipping_zones (id, store_id, name, sort_order)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, store_id, name, sort_order, created_at, updated_at`,
+		uuid.New(), storeID, args.name, args.sortOrder,
+	).Scan(&z.ID, &z.StoreID, &z.Name, &z.SortOrder, &z.CreatedAt, &z.UpdatedAt)
+	if err != nil {
+		t.Fatalf("CreateTestShippingZone: %v", err)
+	}
+	return z
+}
+
+type shippingMethodArgs struct {
+	code       string
+	name       string
+	basePrice  float64
+	weightRate float64
+	active     bool
+}
+
+// ShippingMethodOverride is a functional option for CreateTestShippingMethod.
+type ShippingMethodOverride func(*shippingMethodArgs)
+
+func WithMethodCode(v string) ShippingMethodOverride { return func(a *shippingMethodArgs) { a.code = v } }
+func WithMethodName(v string) ShippingMethodOverride { return func(a *shippingMethodArgs) { a.name = v } }
+func WithMethodBasePrice(v float64) ShippingMethodOverride {
+	return func(a *shippingMethodArgs) { a.basePrice = v }
+}
+func WithMethodWeightRate(v float64) ShippingMethodOverride {
+	return func(a *shippingMethodArgs) { a.weightRate = v }
+}
+func WithMethodActive(v bool) ShippingMethodOverride { return func(a *shippingMethodArgs) { a.active = v } }
+
+// CreateTestShippingMethod inserts a shipping_methods row (migration 011)
+// under the given zone and returns the model.
+func CreateTestShippingMethod(t *testing.T, db *pgxpool.Pool, storeID, zoneID uuid.UUID, opts ...ShippingMethodOverride) models.ShippingMethod {
+	t.Helper()
+
+	args := &shippingMethodArgs{
+		code:   "STD-" + uuid.New().String()[:8],
+		name:   "Standard",
+		active: true,
+	}
+	for _, o := range opts {
+		o(args)
+	}
+
+	var m models.ShippingMethod
+	err := db.QueryRow(context.Background(), `
+		INSERT INTO shipping_methods (id, store_id, zone_id, code, name, base_price, weight_rate, active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, store_id, zone_id, code, name, base_price, weight_rate, active, created_at, updated_at`,
+		uuid.New(), storeID, zoneID, args.code, args.name, args.basePrice, args.weightRate, args.active,
+	).Scan(&m.ID, &m.StoreID, &m.ZoneID, &m.Code, &m.Name, &m.BasePrice, &m.WeightRate, &m.Active, &m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		t.Fatalf("CreateTestShippingMethod: %v", err)
+	}
+	return m
+}
+
+// CreateTestSubscriber inserts a newsletter_subscribers row directly — used to
+// seed a pre-existing subscriber for 409 duplicate tests.
+func CreateTestSubscriber(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, email string) models.NewsletterSubscriber {
+	t.Helper()
+
+	var s models.NewsletterSubscriber
+	err := db.QueryRow(context.Background(), `
+		INSERT INTO newsletter_subscribers (id, store_id, email, status)
+		VALUES ($1, $2, $3, 'active')
+		RETURNING id, store_id, email, status, created_at`,
+		uuid.New(), storeID, email,
+	).Scan(&s.ID, &s.StoreID, &s.Email, &s.Status, &s.CreatedAt)
+	if err != nil {
+		t.Fatalf("CreateTestSubscriber: %v", err)
+	}
+	return s
 }
 
 // ── Utility helpers ───────────────────────────────────────────────────────────

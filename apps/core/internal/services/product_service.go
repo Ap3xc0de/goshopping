@@ -154,7 +154,7 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 	query := fmt.Sprintf(`
 		SELECT id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		       price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		       images, status, created_at, updated_at
+		       images, status, weight, created_at, updated_at
 		FROM products %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d`, where, orderBy, idx, idx+1)
@@ -170,7 +170,7 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 		var p models.Product
 		if err := rows.Scan(&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description,
 			&p.Price, &p.Cost, &p.Stock, &p.MinStock, &p.Category,
-			&p.Images, &p.Status, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			&p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan product: %w", err)
 		}
 		products = append(products, p)
@@ -190,13 +190,13 @@ func (s *ProductService) GetProduct(storeID, productID uuid.UUID) (*models.Produ
 	err := s.db.QueryRow(ctx, `
 		SELECT id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		       price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		       images, status, created_at, updated_at
+		       images, status, weight, created_at, updated_at
 		FROM products
 		WHERE id = $1 AND store_id = $2 AND status != 'deleted'`,
 		productID, storeID,
 	).Scan(&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description,
 		&p.Price, &p.Cost, &p.Stock, &p.MinStock, &p.Category,
-		&p.Images, &p.Status, &p.CreatedAt, &p.UpdatedAt)
+		&p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrProductNotFound

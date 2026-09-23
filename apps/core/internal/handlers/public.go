@@ -282,6 +282,44 @@ func PublicCreateOrder(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	}
 }
 
+// PublicSubscribeNewsletter handles POST /public/:storeSlug/newsletter (also
+// mounted at /api/v1/:storeSlug/newsletter). limiter is shared across
+// requests (constructed once in router.Setup) so the fixed window actually
+// accumulates (store-newsletter REQ: rate limiting).
+func PublicSubscribeNewsletter(db *pgxpool.Pool, limiter *services.NewsletterRateLimiter) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		slug := c.Params("storeSlug")
+		storeID, err := resolveStoreBySlug(c.Context(), db, slug)
+		if err != nil {
+			return fiber.NewError(fiber.StatusNotFound, "store not found")
+		}
+
+		key := storeID.String() + "|" + c.IP()
+		if !limiter.Allow(key) {
+			return fiber.NewError(fiber.StatusTooManyRequests, "too many requests, try again later")
+		}
+
+		var req models.SubscribeNewsletterRequest
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
+		}
+
+		sub, err := services.NewNewsletterService(db).Subscribe(c.Context(), storeID, req.Email)
+		if err != nil {
+			switch {
+			case errors.Is(err, services.ErrInvalidEmail):
+				return fiber.NewError(fiber.StatusBadRequest, "invalid email")
+			case errors.Is(err, services.ErrSubscriberExists):
+				return fiber.NewError(fiber.StatusConflict, "email already subscribed")
+			default:
+				return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+			}
+		}
+
+		return c.Status(fiber.StatusCreated).JSON(sub)
+	}
+}
+
 // PublicOrderStatus handles GET /public/orders/:orderId/status
 func PublicOrderStatus(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -338,6 +376,9 @@ type PublicStoreConfigResponse struct {
 	Status     string                `json:"status"`
 	Branding   *models.StoreBranding `json:"branding"`
 	TemplateID string                `json:"template_id"`
+	// Currency defaults to services.DefaultCurrency ("USD") when the store's
+	// config does not set one (store-currency REQ: USD default).
+	Currency string `json:"currency"`
 }
 
 // errPublicStoreNotFound distinguishes "no active store matched storeID" from
@@ -351,11 +392,13 @@ var errPublicStoreNotFound = errors.New("store not found")
 // returns data for a store that became inactive between resolution and this call.
 func buildPublicStoreConfig(ctx context.Context, db *pgxpool.Pool, cfg *config.Config, storeID uuid.UUID) (*PublicStoreConfigResponse, error) {
 	var resp PublicStoreConfigResponse
+	var configJSON []byte
 	if err := db.QueryRow(ctx, `
-		SELECT id, name, slug, status, template_id FROM stores WHERE id = $1 AND status = 'active'`, storeID,
-	).Scan(&resp.ID, &resp.Name, &resp.Slug, &resp.Status, &resp.TemplateID); err != nil {
+		SELECT id, name, slug, status, template_id, config FROM stores WHERE id = $1 AND status = 'active'`, storeID,
+	).Scan(&resp.ID, &resp.Name, &resp.Slug, &resp.Status, &resp.TemplateID, &configJSON); err != nil {
 		return nil, errPublicStoreNotFound
 	}
+	resp.Currency = services.ResolveStoreCurrency(configJSON)
 
 	brandingSvc := services.NewBrandingService(db, cfg)
 	branding, err := brandingSvc.GetBranding(ctx, resp.ID)

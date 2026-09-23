@@ -27,7 +27,11 @@ type CartPreview struct {
 	DiscountTotal          models.Money   `json:"discount_total"`
 	AppliedCoupon          *models.Coupon `json:"applied_coupon,omitempty"`
 	Tax                    models.Money   `json:"tax"`
-	Total                  models.Money   `json:"total"`
+	// ShippingTotal is resolved by a DB-backed pre-stage (shipping method
+	// lookup + product weights) BEFORE calling ComputeQuote — this function
+	// stays pure/DB-free (shipping-zones REQ: Quote Carrier Cost).
+	ShippingTotal models.Money `json:"shipping_total"`
+	Total         models.Money `json:"total"`
 }
 
 var (
@@ -43,6 +47,7 @@ func ComputeQuote(
 	items []LineItem,
 	offers []models.Offer,
 	coupon *models.Coupon,
+	shippingTotal models.Money,
 	now time.Time,
 ) (*CartPreview, error) {
 	if len(items) == 0 {
@@ -53,7 +58,8 @@ func ComputeQuote(
 			DiscountTotal:          models.MoneyZero(),
 			AppliedCoupon:          nil,
 			Tax:                    models.MoneyZero(),
-			Total:                  models.MoneyZero(),
+			ShippingTotal:          shippingTotal,
+			Total:                  shippingTotal,
 		}, nil
 	}
 
@@ -107,10 +113,12 @@ func ComputeQuote(
 	}
 	// Note: line coupons are out of scope for this slice (REQ-COUPON-02 mentions but slice 4 does cart-scope only).
 
-	// Stage 4: Compute discount total, tax (on effective), total.
+	// Stage 4: Compute discount total, tax (on effective subtotal, not
+	// shipping), total (shipping-zones REQ: Quote Carrier Cost —
+	// total = effective_subtotal − discount_total + shipping_total + tax).
 	discountTotal := offerDiscount.Add(couponDiscount)
 	tax := effectiveSubtotal.Mul(IVARate).Round2()
-	total := effectiveSubtotal.Add(tax)
+	total := effectiveSubtotal.Add(shippingTotal).Add(tax)
 
 	return &CartPreview{
 		Items:                  resolvedItems,
@@ -119,6 +127,7 @@ func ComputeQuote(
 		DiscountTotal:          discountTotal,
 		AppliedCoupon:          appliedCoupon,
 		Tax:                    tax,
+		ShippingTotal:          shippingTotal,
 		Total:                  total,
 	}, nil
 }

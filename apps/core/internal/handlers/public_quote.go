@@ -10,12 +10,17 @@ import (
 	"github.com/goshopping/core/internal/models"
 	"github.com/goshopping/core/internal/services"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shopspring/decimal"
 )
 
-// QuoteCartInput is the DTO for quote request.
+// QuoteCartInput is the DTO for quote request. ShippingMethod is a shipping
+// method code (optional): present → shipping_total is computed and folded
+// into total; omitted → shipping_total 0, unchanged from before this change
+// (shipping-zones REQ: Quote Carrier Cost).
 type QuoteCartInput struct {
-	Items      []QuoteItemInput `json:"items"`
-	CouponCode *string          `json:"coupon_code,omitempty"`
+	Items          []QuoteItemInput `json:"items"`
+	CouponCode     *string          `json:"coupon_code,omitempty"`
+	ShippingMethod string           `json:"shipping_method,omitempty"`
 }
 
 // QuoteItemInput is a line item in the quote request. VariantID is optional:
@@ -58,6 +63,7 @@ func QuoteCart(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 
 		// ── Stage 1: Resolve products and build line items
 		var lineItems []services.LineItem
+		var products []*models.Product
 		for _, inp := range req.Items {
 			if inp.Quantity <= 0 {
 				return c.Status(fiber.StatusUnprocessableEntity).JSON(map[string]string{
@@ -78,6 +84,7 @@ func QuoteCart(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 					"error": "product not found",
 				})
 			}
+			products = append(products, p)
 
 			// Variant pre-stage (product-variants REQ): variant_id present →
 			// resolve that variant (must belong to this product, active) and
@@ -134,9 +141,27 @@ func QuoteCart(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			coupon = retrievedCoupon
 		}
 
+		// ── Stage 2.5: Resolve shipping (pre-stage; pure formula fed by a
+		// DB-resolved method + already-known product weights) — never trust a
+		// client-provided shipping_total (shipping-zones REQ: Quote Carrier Cost).
+		shippingTotal := models.MoneyZero()
+		if req.ShippingMethod != "" {
+			method, err := services.NewShippingService(db).GetActiveMethodByCode(ctx, storeID, req.ShippingMethod)
+			if err != nil {
+				return c.Status(fiber.StatusUnprocessableEntity).JSON(map[string]string{
+					"error": "unknown or inactive shipping_method",
+				})
+			}
+			weightTotal := 0.0
+			for i, li := range lineItems {
+				weightTotal += products[i].Weight * float64(li.Quantity)
+			}
+			shippingTotal = method.BasePrice.Add(method.WeightRate.Mul(decimal.NewFromFloat(weightTotal))).Round2()
+		}
+
 		// ── Stage 3: Compute quote (pure, no DB)
 		now := time.Now()
-		preview, err := services.ComputeQuote(lineItems, offers, coupon, now)
+		preview, err := services.ComputeQuote(lineItems, offers, coupon, shippingTotal, now)
 		if err != nil {
 			return c.Status(fiber.StatusUnprocessableEntity).JSON(map[string]string{
 				"error": err.Error(),

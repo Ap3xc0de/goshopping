@@ -38,8 +38,14 @@ type Order struct {
 	// payment lifecycle independently of Status (order fulfillment).
 	ShippingAddress json.RawMessage `json:"shipping_address,omitempty"`
 	PaymentStatus   string          `json:"payment_status"` // pending | paid | failed | refunded
-	CreatedAt       time.Time       `json:"created_at"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	// ShippingMethod/ShippingTotal/Currency are stamped server-side at
+	// creation (shipping-zones + store-currency REQs); ShippingMethod is the
+	// method code the buyer selected, empty for pre-shipping orders.
+	ShippingMethod string    `json:"shipping_method,omitempty"`
+	ShippingTotal  Money     `json:"shipping_total"`
+	Currency       string    `json:"currency"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // OrderItem is a line-item within an order stored in JSONB. VariantID/SKU/
@@ -84,6 +90,11 @@ type CreateOrderInput struct {
 	// the same customer must not silently inherit it.
 	ShippingAddress *ShippingAddress `json:"shipping_address,omitempty"`
 	Notes           string           `json:"notes"`
+	// ShippingMethod is a shipping method code (optional): present → the
+	// server resolves it, computes shipping_total server-side, and never
+	// trusts a client-provided number; omitted → shipping_total 0, unchanged
+	// from before this change (shipping-zones REQ: Quote Carrier Cost).
+	ShippingMethod *string `json:"shipping_method,omitempty"`
 }
 
 // ShippingAddress is the delivery address captured per order.

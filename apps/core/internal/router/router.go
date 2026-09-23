@@ -25,6 +25,8 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	apiKeySvc := services.NewAPIKeyService(db)
 	categorySvc := services.NewCategoryService(db)
 	variantSvc := services.NewVariantService(db)
+	shippingSvc := services.NewShippingService(db)
+	newsletterLimiter := services.NewNewsletterRateLimiter()
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -45,6 +47,8 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	pub.Get("/:storeSlug/products", handlers.PublicListProducts(db, cfg))
 	pub.Get("/:storeSlug/products/:productId", handlers.PublicGetProduct(db, cfg))
 	pub.Get("/:storeSlug/categories", handlers.PublicListCategories(db, cfg))
+	pub.Get("/:storeSlug/shipping-methods", handlers.PublicListShippingMethods(db, cfg))
+	pub.Post("/:storeSlug/newsletter", handlers.PublicSubscribeNewsletter(db, newsletterLimiter))
 	pub.Post("/:storeSlug/quote", handlers.QuoteCart(db, cfg))
 	pub.Post("/:storeSlug/orders", handlers.PublicCreateOrder(db, cfg))
 	pub.Get("/:storeSlug/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
@@ -57,6 +61,8 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	v1.Get("/products", handlers.PublicListProducts(db, cfg))
 	v1.Get("/products/:productId", handlers.PublicGetProduct(db, cfg))
 	v1.Get("/categories", handlers.PublicListCategories(db, cfg))
+	v1.Get("/shipping-methods", handlers.PublicListShippingMethods(db, cfg))
+	v1.Post("/newsletter", handlers.PublicSubscribeNewsletter(db, newsletterLimiter))
 	v1.Post("/quote", handlers.QuoteCart(db, cfg))
 	v1.Post("/orders", handlers.PublicCreateOrder(db, cfg))
 	v1.Get("/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
@@ -87,6 +93,15 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Post("/products/:productId/variants", handlers.CreateVariant(variantSvc))
 	store.Patch("/products/:productId/variants/:variantId", handlers.UpdateVariant(variantSvc))
 	store.Delete("/products/:productId/variants/:variantId", handlers.DeleteVariant(variantSvc))
+
+	// Shipping zones/methods (shipping-zones REQ: Admin Zone/Method
+	// Management — minimal, no admin UI this change; without it shipping
+	// stays $0)
+	store.Get("/shipping-zones", handlers.ListShippingZones(shippingSvc))
+	store.Post("/shipping-zones", handlers.CreateShippingZone(shippingSvc))
+	store.Post("/shipping-zones/:zoneId/methods", handlers.CreateShippingMethod(shippingSvc))
+	store.Put("/shipping-zones/:zoneId/methods/:methodId", handlers.UpdateShippingMethod(shippingSvc))
+	store.Delete("/shipping-zones/:zoneId/methods/:methodId", handlers.DeleteShippingMethod(shippingSvc))
 
 	// Orders
 	store.Get("/orders", handlers.ListOrders(orderSvc))

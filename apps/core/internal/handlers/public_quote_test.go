@@ -191,3 +191,77 @@ func TestPublicQuoteVariant(t *testing.T) {
 		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "stock")
 	})
 }
+
+// shipping-zones REQ: Quote Carrier Cost — shipping_total =
+// base_price + Σ(weight × qty) × weight_rate; unknown/inactive shipping_method
+// returns 422; omitted shipping_method keeps shipping_total 0 (backwards
+// compatible with pre-shipping quote payloads).
+func TestPublicQuoteShipping(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	zone := testutil.CreateTestShippingZone(t, app.DB, storeIDParsed)
+	method := testutil.CreateTestShippingMethod(t, app.DB, storeIDParsed, zone.ID,
+		testutil.WithMethodCode("std"), testutil.WithMethodBasePrice(5), testutil.WithMethodWeightRate(0.1))
+	inactive := testutil.CreateTestShippingMethod(t, app.DB, storeIDParsed, zone.ID,
+		testutil.WithMethodCode("off"), testutil.WithMethodActive(false))
+
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+		testutil.WithPrice(100), testutil.WithStock(10), testutil.WithWeight(2))
+
+	t.Run("computes shipping_total = base + weight_total * rate, folded into total", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "quantity": 3},
+			},
+			"shipping_method": method.Code,
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+
+		// weight_total = 2kg * 3 = 6; shipping_total = 5 + 6*0.1 = 5.6
+		assert.InDelta(t, 5.6, data["shipping_total"], 0.01)
+
+		// subtotal = 300; tax = 300*0.19 = 57; total = 300 + 5.6 + 57 = 362.6
+		assert.InDelta(t, 362.6, data["total"], 0.01)
+	})
+
+	t.Run("omitted shipping_method keeps shipping_total at 0", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "quantity": 1},
+			},
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		assert.InDelta(t, 0, data["shipping_total"], 0.01)
+	})
+
+	t.Run("unknown shipping_method returns 422", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "quantity": 1},
+			},
+			"shipping_method": "does-not-exist",
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "shipping")
+	})
+
+	t.Run("inactive shipping_method returns 422", func(t *testing.T) {
+		body := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{"product_id": p.ID.String(), "quantity": 1},
+			},
+			"shipping_method": inactive.Code,
+		}
+		resp := app.POST(t, "/public/"+slug+"/quote", body, "")
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "shipping")
+	})
+}

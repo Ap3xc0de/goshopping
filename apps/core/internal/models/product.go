@@ -21,8 +21,12 @@ type Product struct {
 	Category    string          `json:"category"    db:"category"`
 	Images      json.RawMessage `json:"images"      db:"images"`
 	Status      string          `json:"status"      db:"status"` // active | inactive | out_of_stock | deleted
-	CreatedAt   time.Time       `json:"created_at"  db:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"  db:"updated_at"`
+	// Weight is in kg (NUMERIC(8,3) in migration 011 — 1 g precision). It feeds
+	// shipping formulas: weight_total = Σ(weight × qty) (shipping-zones REQ:
+	// Product Weight Field). Product-level, NOT per-variant.
+	Weight    float64   `json:"weight"      db:"weight"`
+	CreatedAt time.Time `json:"created_at"  db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"  db:"updated_at"`
 }
 
 // CreateProductRequest is the DTO for product creation.
