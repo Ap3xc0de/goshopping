@@ -19,7 +19,7 @@ func ListProducts(svc *services.ProductService) fiber.Handler {
 		perPage, _ := strconv.Atoi(c.Query("per_page", "20"))
 
 		result, err := svc.ListProducts(storeID, page, perPage,
-			c.Query("category"), c.Query("status"), c.Query("search"))
+			c.Query("category"), c.Query("status"), c.Query("search"), "")
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}

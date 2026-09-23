@@ -80,6 +80,61 @@ func columnExists(t *testing.T, db *sql.DB, table, column string) bool {
 	return exists
 }
 
+// down_011_drops_catalog — migration 011 must be fully reversible: stepping
+// from HEAD (11) down to 10 drops every table/column/index/extension it
+// created, and the cleanup below migrates straight back UP so the shared
+// test database is always left at HEAD (same convention as the 007/008 test).
+func TestMigrations011DownIsReversible(t *testing.T) {
+	cfg := testConfig(t)
+
+	// Ensure we start from HEAD (idempotent if already there).
+	database.RunMigrations(cfg)
+
+	m, db := openTestMigrate(t, cfg)
+
+	// Always leave the schema back at HEAD for every other test/package,
+	// regardless of pass/fail below.
+	t.Cleanup(func() {
+		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+			t.Fatalf("cleanup: failed to restore schema to HEAD: %v", err)
+		}
+	})
+
+	for _, tbl := range []string{"categories", "product_variants", "shipping_zones", "shipping_methods", "newsletter_subscribers"} {
+		if !tableExists(t, db, tbl) {
+			t.Fatalf("expected %s to exist at HEAD (migration 011 applied)", tbl)
+		}
+	}
+	if !columnExists(t, db, "products", "weight") || !columnExists(t, db, "products", "category_id") {
+		t.Fatal("expected products.weight and products.category_id to exist at HEAD")
+	}
+	if !columnExists(t, db, "orders", "shipping_method") || !columnExists(t, db, "orders", "shipping_total") || !columnExists(t, db, "orders", "currency") {
+		t.Fatal("expected orders.shipping_method/shipping_total/currency to exist at HEAD")
+	}
+
+	// down_011_drops_catalog: step to the absolute post-010 version so this
+	// test always exercises 011's down script regardless of future HEAD.
+	if err := m.Migrate(10); err != nil {
+		t.Fatalf("migrate down to version 10 failed: %v", err)
+	}
+
+	for _, tbl := range []string{"categories", "product_variants", "shipping_zones", "shipping_methods", "newsletter_subscribers"} {
+		if tableExists(t, db, tbl) {
+			t.Fatalf("down_011_drops_catalog: expected %s to be gone after down 011", tbl)
+		}
+	}
+	if columnExists(t, db, "products", "weight") {
+		t.Fatal("down_011_drops_catalog: expected products.weight to be gone after down 011")
+	}
+	if columnExists(t, db, "products", "category_id") {
+		t.Fatal("down_011_drops_catalog: expected products.category_id to be gone after down 011")
+	}
+	if columnExists(t, db, "orders", "shipping_method") || columnExists(t, db, "orders", "shipping_total") || columnExists(t, db, "orders", "currency") {
+		t.Fatal("down_011_drops_catalog: expected orders shipping/currency columns to be gone after down 011")
+	}
+	// (Cleanup restores HEAD, re-applying 011.)
+}
+
 // REQ-DOMAIN-07: down_007_drops_table / down_008_drops_column.
 //
 // This test deliberately steps the schema DOWN and immediately back UP within

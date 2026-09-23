@@ -14,27 +14,33 @@ import (
 // ── Product fixtures ──────────────────────────────────────────────────────────
 
 type productArgs struct {
-	name     string
-	price    float64
-	cost     float64
-	stock    int
-	minStock int
-	category string
-	status   string
-	sku      string
+	name        string
+	description string
+	price       float64
+	cost        float64
+	stock       int
+	minStock    int
+	category    string
+	categoryID  uuid.UUID
+	status      string
+	sku         string
 }
 
 // ProductOverride is a functional option for CreateTestProduct.
 type ProductOverride func(*productArgs)
 
-func WithName(v string) ProductOverride     { return func(a *productArgs) { a.name = v } }
-func WithPrice(v float64) ProductOverride   { return func(a *productArgs) { a.price = v } }
-func WithCost(v float64) ProductOverride    { return func(a *productArgs) { a.cost = v } }
-func WithStock(v int) ProductOverride       { return func(a *productArgs) { a.stock = v } }
-func WithMinStock(v int) ProductOverride    { return func(a *productArgs) { a.minStock = v } }
-func WithCategory(v string) ProductOverride { return func(a *productArgs) { a.category = v } }
-func WithStatus(v string) ProductOverride   { return func(a *productArgs) { a.status = v } }
-func WithSKU(v string) ProductOverride      { return func(a *productArgs) { a.sku = v } }
+func WithName(v string) ProductOverride        { return func(a *productArgs) { a.name = v } }
+func WithDescription(v string) ProductOverride { return func(a *productArgs) { a.description = v } }
+func WithPrice(v float64) ProductOverride      { return func(a *productArgs) { a.price = v } }
+func WithCost(v float64) ProductOverride       { return func(a *productArgs) { a.cost = v } }
+func WithStock(v int) ProductOverride          { return func(a *productArgs) { a.stock = v } }
+func WithMinStock(v int) ProductOverride       { return func(a *productArgs) { a.minStock = v } }
+func WithCategory(v string) ProductOverride    { return func(a *productArgs) { a.category = v } }
+func WithCategoryID(v uuid.UUID) ProductOverride {
+	return func(a *productArgs) { a.categoryID = v }
+}
+func WithStatus(v string) ProductOverride { return func(a *productArgs) { a.status = v } }
+func WithSKU(v string) ProductOverride    { return func(a *productArgs) { a.sku = v } }
 
 // CreateTestProduct inserts a product row and returns the model.
 func CreateTestProduct(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts ...ProductOverride) models.Product {
@@ -57,15 +63,22 @@ func CreateTestProduct(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts .
 	id := uuid.New()
 	ctx := context.Background()
 
+	// category_id is nullable; pass NULL when no option set so the fixture
+	// stays migration-011 aware without forcing every caller to care.
+	var categoryID any
+	if args.categoryID != uuid.Nil {
+		categoryID = args.categoryID
+	}
+
 	var p models.Product
 	err := db.QueryRow(ctx, `
 		INSERT INTO products (id, store_id, name, sku, description, price, cost,
-		                      stock, min_stock, category, images, status)
-		VALUES ($1, $2, $3, $4, '', $5, $6, $7, $8, $9, '[]', $10)
+		                      stock, min_stock, category, category_id, images, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '[]', $12)
 		RETURNING id, store_id, name, sku, description, price, cost,
 		          stock, min_stock, category, images, status, created_at, updated_at`,
-		id, storeID, args.name, args.sku, args.price, args.cost,
-		args.stock, args.minStock, args.category, args.status,
+		id, storeID, args.name, args.sku, args.description, args.price, args.cost,
+		args.stock, args.minStock, args.category, categoryID, args.status,
 	).Scan(
 		&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description, &p.Price, &p.Cost,
 		&p.Stock, &p.MinStock, &p.Category, &p.Images, &p.Status, &p.CreatedAt, &p.UpdatedAt,
@@ -89,6 +102,54 @@ func SetProductStock(t *testing.T, db *pgxpool.Pool, productID uuid.UUID, stock 
 	); err != nil {
 		t.Fatalf("SetProductStock: %v", err)
 	}
+}
+
+// ── Category fixtures ─────────────────────────────────────────────────────────
+
+type categoryArgs struct {
+	name      string
+	slug      string
+	parentID  uuid.UUID
+	sortOrder int
+}
+
+// CategoryOverride is a functional option for CreateTestCategory.
+type CategoryOverride func(*categoryArgs)
+
+func WithCategoryName(v string) CategoryOverride { return func(a *categoryArgs) { a.name = v } }
+func WithCategorySlug(v string) CategoryOverride { return func(a *categoryArgs) { a.slug = v } }
+func WithParent(v uuid.UUID) CategoryOverride    { return func(a *categoryArgs) { a.parentID = v } }
+func WithSortOrder(v int) CategoryOverride       { return func(a *categoryArgs) { a.sortOrder = v } }
+
+// CreateTestCategory inserts a category row (migration 011) and returns the model.
+func CreateTestCategory(t *testing.T, db *pgxpool.Pool, storeID uuid.UUID, opts ...CategoryOverride) models.Category {
+	t.Helper()
+
+	args := &categoryArgs{
+		name:      "Test Category",
+		slug:      "test-category-" + uuid.New().String()[:8],
+		sortOrder: 0,
+	}
+	for _, o := range opts {
+		o(args)
+	}
+
+	var parentID *uuid.UUID
+	if args.parentID != uuid.Nil {
+		parentID = &args.parentID
+	}
+
+	var c models.Category
+	err := db.QueryRow(context.Background(), `
+		INSERT INTO categories (id, store_id, name, slug, parent_id, sort_order)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, store_id, name, slug, parent_id, sort_order, created_at, updated_at`,
+		uuid.New(), storeID, args.name, args.slug, parentID, args.sortOrder,
+	).Scan(&c.ID, &c.StoreID, &c.Name, &c.Slug, &c.ParentID, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		t.Fatalf("CreateTestCategory: %v", err)
+	}
+	return c
 }
 
 // ── Customer fixtures ─────────────────────────────────────────────────────────

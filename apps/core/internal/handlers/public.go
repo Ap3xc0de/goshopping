@@ -75,8 +75,11 @@ func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 
 		page, perPage := parsePublicPagination(c.Query("page", "1"), c.Query("per_page", "24"))
 
-		result, err := prodSvc.ListProducts(storeID, page, perPage, c.Query("category"), "active", c.Query("search"))
+		result, err := prodSvc.ListProducts(storeID, page, perPage, c.Query("category"), "active", c.Query("search"), c.Query("sort"))
 		if err != nil {
+			if errors.Is(err, services.ErrInvalidSort) {
+				return fiber.NewError(fiber.StatusBadRequest, err.Error())
+			}
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 
@@ -99,6 +102,56 @@ func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			"per_page":    result.PerPage,
 			"total_pages": result.TotalPages,
 		})
+	}
+}
+
+// PublicCategory is the public-facing category tree node: category fields plus
+// the real active product count and nested children.
+type PublicCategory struct {
+	ID           uuid.UUID        `json:"id"`
+	Name         string           `json:"name"`
+	Slug         string           `json:"slug"`
+	ProductCount int              `json:"product_count"`
+	Children     []PublicCategory `json:"children"`
+}
+
+// toPublicCategory maps a services.CategoryNode tree into the public shape,
+// guaranteeing children is always a JSON array (never null).
+func toPublicCategory(n models.CategoryNode) PublicCategory {
+	children := make([]PublicCategory, 0, len(n.Children))
+	for _, ch := range n.Children {
+		children = append(children, toPublicCategory(ch))
+	}
+	return PublicCategory{
+		ID:           n.ID,
+		Name:         n.Name,
+		Slug:         n.Slug,
+		ProductCount: n.ProductCount,
+		Children:     children,
+	}
+}
+
+// PublicListCategories handles GET /public/:storeSlug/categories — the
+// hierarchical category tree with SQL-computed active product counts.
+// Registered in both public route groups (/public and /api/v1).
+func PublicListCategories(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		slug := c.Params("storeSlug")
+		storeID, err := resolveStoreBySlug(c.Context(), db, slug)
+		if err != nil {
+			return fiber.NewError(fiber.StatusNotFound, "store not found")
+		}
+
+		tree, err := services.NewCategoryService(db).ListCategoryTree(c.Context(), storeID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		public := make([]PublicCategory, 0, len(tree))
+		for _, n := range tree {
+			public = append(public, toPublicCategory(n))
+		}
+		return c.JSON(public)
 	}
 }
 

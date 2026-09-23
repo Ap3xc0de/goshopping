@@ -23,6 +23,40 @@ import (
 
 var ErrProductNotFound = errors.New("product not found")
 
+// ErrInvalidSort is returned by ListProducts when the sort param is not in the
+// allowed whitelist (REQ: Server-Side Sort Whitelist). The error message names
+// the allowed values so handlers can surface a 400 payload naming them.
+var ErrInvalidSort = errors.New("invalid sort")
+
+// productSorts maps the public sort whitelist to ORDER BY clauses. Values are
+// constants here — user input is mapped, never interpolated into SQL.
+// price_asc/price_desc are null-safe on products.price (spec: deterministic
+// secondary key via id). newest defaults to created_at DESC.
+var productSorts = map[string]string{
+	"newest":     "created_at DESC, id DESC",
+	"price_asc":  "price ASC NULLS LAST, id ASC",
+	"price_desc": "price DESC NULLS LAST, id ASC",
+	"name":       "name ASC, id ASC",
+}
+
+// resolveProductOrderBy validates the sort param against the whitelist.
+func resolveProductOrderBy(sort string) (string, error) {
+	if sort == "" {
+		sort = "newest"
+	}
+	orderBy, ok := productSorts[sort]
+	if !ok {
+		return "", fmt.Errorf("%w: must be one of newest, price_asc, price_desc, name", ErrInvalidSort)
+	}
+	return orderBy, nil
+}
+
+// escapeLikePattern escapes ILIKE metacharacters (% _ \) in user input so it
+// matches literally (search REQ: input must be escaped before running ILIKE).
+func escapeLikePattern(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
 // ProductService handles business logic for products.
 type ProductService struct {
 	db       *pgxpool.Pool
@@ -45,7 +79,13 @@ type ListProductsResult struct {
 }
 
 // ListProducts returns a paginated, filtered list of products for a store.
-func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, category, status, search string) (*ListProductsResult, error) {
+//
+// sort must be one of the public whitelist (newest|price_asc|price_desc|name,
+// default newest); anything else returns ErrInvalidSort. When category matches
+// a categories.slug for this store, products are filtered by category_id;
+// otherwise it falls back to an exact match on the legacy flat
+// products.category string (transition compatibility).
+func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, category, status, search, sort string) (*ListProductsResult, error) {
 	ctx := context.Background()
 	if page < 1 {
 		page = 1
@@ -55,14 +95,35 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 	}
 	offset := (page - 1) * perPage
 
+	orderBy, err := resolveProductOrderBy(sort)
+	if err != nil {
+		return nil, err
+	}
+
 	conditions := []string{"store_id = $1", "status != 'deleted'"}
 	args := []interface{}{storeID}
 	idx := 2
 
 	if category != "" {
-		conditions = append(conditions, fmt.Sprintf("category = $%d", idx))
-		args = append(args, category)
-		idx++
+		var categoryID uuid.UUID
+		err := s.db.QueryRow(ctx,
+			`SELECT id FROM categories WHERE store_id = $1 AND slug = $2`, storeID, category,
+		).Scan(&categoryID)
+		switch {
+		case err == nil:
+			conditions = append(conditions, fmt.Sprintf("category_id = $%d", idx))
+			args = append(args, categoryID)
+			idx++
+		case errors.Is(err, pgx.ErrNoRows):
+			// Legacy flat fallback: unknown category slug keeps filtering on
+			// the exact products.category string so old links and the offer
+			// resolver's category-scope rows keep working.
+			conditions = append(conditions, fmt.Sprintf("category = $%d", idx))
+			args = append(args, category)
+			idx++
+		default:
+			return nil, fmt.Errorf("resolve category slug: %w", err)
+		}
 	}
 	if status != "" && status != "deleted" {
 		conditions = append(conditions, fmt.Sprintf("status = $%d", idx))
@@ -70,8 +131,15 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 		idx++
 	}
 	if search != "" {
-		conditions = append(conditions, fmt.Sprintf("(name ILIKE $%d OR sku ILIKE $%d)", idx, idx))
-		args = append(args, "%"+search+"%")
+		// Accent-insensitive search over name+sku+description. The expression
+		// is character-identical to the migration 011 trigram GIN index
+		// (idx_products_search_trgm) so the planner can use it; ILIKE stays as
+		// non-indexed fallback for small catalogs. The pattern side is
+		// unaccented too so accented queries match plain data and vice versa,
+		// and the user input is escaped so % _ \ match literally.
+		conditions = append(conditions, fmt.Sprintf(
+			`public.immutable_unaccent(COALESCE(name,'') || ' ' || COALESCE(sku,'') || ' ' || COALESCE(description,'')) ILIKE public.unaccent($%d)`, idx))
+		args = append(args, "%"+escapeLikePattern(search)+"%")
 		idx++
 	}
 
@@ -88,8 +156,8 @@ func (s *ProductService) ListProducts(storeID uuid.UUID, page, perPage int, cate
 		       price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
 		       images, status, created_at, updated_at
 		FROM products %s
-		ORDER BY created_at DESC
-		LIMIT $%d OFFSET $%d`, where, idx, idx+1)
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d`, where, orderBy, idx, idx+1)
 
 	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {

@@ -25,6 +25,38 @@ func setupAPIV1Store(t *testing.T, app *testutil.TestApp) (storeID uuid.UUID, st
 	return storeID, storeIDStr, slug, testutil.APIKeyAuthHeader(plaintext), plaintext, ownerAuth
 }
 
+// TestAPIV1CategoriesMatchesPublic verifies GET /categories parity between the
+// two surfaces (storefront-developer-api REQ: Versioned Endpoint Group).
+func TestAPIV1CategoriesMatchesPublic(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	storeID, _, slug, keyAuth, _, _ := setupAPIV1Store(t, app)
+	testutil.CreateTestCategory(t, app.DB, storeID,
+		testutil.WithCategoryName("Tack"), testutil.WithCategorySlug("tack"))
+
+	pubResp := app.GET(t, "/public/"+slug+"/categories", "")
+	testutil.AssertStatus(t, pubResp, http.StatusOK)
+
+	v1Resp := app.GET(t, "/api/v1/"+slug+"/categories", keyAuth)
+	testutil.AssertStatus(t, v1Resp, http.StatusOK)
+
+	assert.JSONEq(t, string(readRawBody(t, pubResp)), string(readRawBody(t, v1Resp)),
+		"/api/v1 categories must match /public categories exactly")
+}
+
+// TestAPIV1CategoriesRequiresKey ensures the categories route sits behind the
+// API key middleware like every other /api/v1 route.
+func TestAPIV1CategoriesRequiresKey(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, slug, _, _, _ := setupAPIV1Store(t, app)
+
+	resp := app.GET(t, "/api/v1/"+slug+"/categories", "")
+	testutil.AssertStatus(t, resp, http.StatusUnauthorized)
+}
+
 // TestAPIV1ConfigMatchesPublic verifies the versioned endpoint serves exactly
 // the same JSON shape as the existing /public endpoint — only the
 // authentication differs.

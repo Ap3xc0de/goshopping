@@ -2,6 +2,8 @@ package handlers_test
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -379,5 +381,175 @@ func TestPublicOrderStatus(t *testing.T) {
 	t.Run("returns 401 without a token", func(t *testing.T) {
 		resp := app.GET(t, "/public/"+slug+"/orders/"+orderID+"/status", "")
 		testutil.AssertStatus(t, resp, http.StatusUnauthorized)
+	})
+}
+
+// catalog-browsing REQ: Server-Side Sort Whitelist - the public handler must
+// reject unknown sort values with 400 naming the allowed ones.
+func TestPublicListProductsSortValidation(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	t.Run("unknown sort returns 400 naming allowed values", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products?sort=popularity", "")
+		testutil.AssertStatus(t, resp, http.StatusBadRequest)
+		data := testutil.AssertJSON(t, resp)
+		errMsg, _ := data["error"].(string)
+		assert.Contains(t, errMsg, "price_asc", "error payload must name the allowed values")
+		assert.Contains(t, errMsg, "name")
+	})
+
+	t.Run("price_asc is honored server-side", func(t *testing.T) {
+		testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Pricy"), testutil.WithPrice(30000))
+		testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName("Cheap"), testutil.WithPrice(5000))
+
+		resp := app.GET(t, "/public/"+slug+"/products?sort=price_asc", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		items, _ := data["data"].([]interface{})
+		require.Len(t, items, 2)
+		first, _ := items[0].(map[string]interface{})
+		assert.Equal(t, "Cheap", first["name"], "cheapest product must come first")
+	})
+
+	t.Run("explicit valid sorts are accepted", func(t *testing.T) {
+		for _, sort := range []string{"newest", "price_desc", "name"} {
+			resp := app.GET(t, "/public/"+slug+"/products?sort="+sort, "")
+			if resp.Body != nil {
+				resp.Body.Close()
+			}
+			assert.NotEqual(t, http.StatusBadRequest, resp.StatusCode, "sort=%s must be accepted", sort)
+		}
+	})
+}
+
+// catalog-browsing REQ: Accent-Insensitive Search - ?search= matches name,
+// description and sku accent-insensitively through the public endpoint.
+func TestPublicSearchMatchesDescriptionAccented(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	p := testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+		testutil.WithName("Halter Ajustable"),
+		testutil.WithDescription("para caballos de tiro, cuero argentino"))
+
+	t.Run("accented description search finds the product", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products?search=caballos", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		items, _ := data["data"].([]interface{})
+		found := findByID(items, p.ID.String())
+		assert.NotNil(t, found, "search over description must find the product")
+	})
+
+	t.Run("accent-insensitive name search finds the product", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products?search=ajustable", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		items, _ := data["data"].([]interface{})
+		assert.NotNil(t, findByID(items, p.ID.String()))
+	})
+}
+
+// Legacy ?category= exact-match fallback: a flat products.category string that
+// is NOT a categories.slug must keep filtering exactly (transition compatibility).
+func TestPublicListProductsLegacyCategoryFilter(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	mine := testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+		testutil.WithName("Bridle"), testutil.WithCategory("saddles-x"))
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+		testutil.WithName("Boots"), testutil.WithCategory("footwear"))
+
+	resp := app.GET(t, "/public/"+slug+"/products?category=saddles-x", "")
+	testutil.AssertStatus(t, resp, http.StatusOK)
+	data := testutil.AssertJSON(t, resp)
+	testutil.AssertPaginated(t, data, 1)
+
+	items, _ := data["data"].([]interface{})
+	require.Len(t, items, 1)
+	item, _ := items[0].(map[string]interface{})
+	assert.Equal(t, mine.ID.String(), item["id"], "legacy exact category match must return only that product")
+}
+
+// readRawBody reads and closes a response body as raw bytes (for responses
+// that are not a JSON object, e.g. the category tree's bare array).
+func readRawBody(t *testing.T, resp *http.Response) []byte {
+	t.Helper()
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	return raw
+}
+
+// catalog-browsing REQ: Hierarchical Categories with Real Counts.
+func TestPublicListCategories(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	tack := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+		testutil.WithCategoryName("Tack"), testutil.WithCategorySlug("tack"))
+	saddles := testutil.CreateTestCategory(t, app.DB, storeIDParsed,
+		testutil.WithCategoryName("Saddles"), testutil.WithCategorySlug("saddles"),
+		testutil.WithParent(tack.ID))
+
+	// 2 active products on Tack; 3 active + 1 inactive on Saddles.
+	for i := 0; i < 2; i++ {
+		testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+			testutil.WithCategory("tack"), testutil.WithCategoryID(tack.ID))
+	}
+	for i := 0; i < 3; i++ {
+		testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+			testutil.WithCategory("saddles"), testutil.WithCategoryID(saddles.ID))
+	}
+	testutil.CreateTestProduct(t, app.DB, storeIDParsed,
+		testutil.WithCategory("saddles"), testutil.WithCategoryID(saddles.ID),
+		testutil.WithStatus("inactive"))
+
+	t.Run("returns a tree with SQL-computed product_count (active only)", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/categories", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+
+		var tree []map[string]interface{}
+		require.NoError(t, json.Unmarshal(readRawBody(t, resp), &tree))
+		require.Len(t, tree, 1, "Tack is the only root")
+
+		tackNode := tree[0]
+		assert.Equal(t, "Tack", tackNode["name"])
+		assert.Equal(t, float64(2), tackNode["product_count"], "Tack count = its direct active products only")
+
+		children, _ := tackNode["children"].([]interface{})
+		require.Len(t, children, 1, "Tack nests Saddles")
+		saddlesNode, _ := children[0].(map[string]interface{})
+		assert.Equal(t, "Saddles", saddlesNode["name"])
+		assert.Equal(t, float64(3), saddlesNode["product_count"], "inactive products must not count")
+
+		leafChildren, ok := saddlesNode["children"].([]interface{})
+		assert.True(t, ok, "leaf nodes must still carry a children key")
+		assert.Len(t, leafChildren, 0)
+	})
+
+	t.Run("products filter by subcategory slug", func(t *testing.T) {
+		resp := app.GET(t, "/public/"+slug+"/products?category=saddles", "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		data := testutil.AssertJSON(t, resp)
+		testutil.AssertPaginated(t, data, 3)
 	})
 }

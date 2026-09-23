@@ -23,6 +23,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	offerSvc := services.NewOfferService(db)
 	couponSvc := services.NewCouponService(db)
 	apiKeySvc := services.NewAPIKeyService(db)
+	categorySvc := services.NewCategoryService(db)
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -42,6 +43,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	pub.Get("/:storeSlug/config", handlers.PublicStoreConfig(db, cfg))
 	pub.Get("/:storeSlug/products", handlers.PublicListProducts(db, cfg))
 	pub.Get("/:storeSlug/products/:productId", handlers.PublicGetProduct(db, cfg))
+	pub.Get("/:storeSlug/categories", handlers.PublicListCategories(db, cfg))
 	pub.Post("/:storeSlug/quote", handlers.QuoteCart(db, cfg))
 	pub.Post("/:storeSlug/orders", handlers.PublicCreateOrder(db, cfg))
 	pub.Get("/:storeSlug/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
@@ -53,6 +55,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	v1.Get("/config", handlers.PublicStoreConfig(db, cfg))
 	v1.Get("/products", handlers.PublicListProducts(db, cfg))
 	v1.Get("/products/:productId", handlers.PublicGetProduct(db, cfg))
+	v1.Get("/categories", handlers.PublicListCategories(db, cfg))
 	v1.Post("/quote", handlers.QuoteCart(db, cfg))
 	v1.Post("/orders", handlers.PublicCreateOrder(db, cfg))
 	v1.Get("/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
@@ -71,6 +74,12 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	store.Put("/products/:productId", handlers.UpdateProduct(prodSvc))
 	store.Delete("/products/:productId", handlers.DeleteProduct(prodSvc))
 	store.Post("/products/:productId/images", handlers.ProductImageUpload(prodSvc))
+
+	// Categories
+	store.Get("/categories", handlers.ListCategories(categorySvc))
+	store.Post("/categories", handlers.CreateCategory(categorySvc))
+	store.Put("/categories/:categoryId", handlers.UpdateCategory(categorySvc))
+	store.Delete("/categories/:categoryId", handlers.DeleteCategory(categorySvc))
 
 	// Orders
 	store.Get("/orders", handlers.ListOrders(orderSvc))
