@@ -40,17 +40,19 @@ type CreateProductRequest struct {
 	MinStock    int      `json:"min_stock"   validate:"min=0"`
 	Category    string   `json:"category"`
 	Images      []string `json:"images"`
+	Weight      float64  `json:"weight"`
 }
 
 // UpdateProductRequest is the DTO for partial product update (all fields optional).
 type UpdateProductRequest struct {
-	Name        *string `json:"name"`
-	SKU         *string `json:"sku"`
-	Description *string `json:"description"`
-	Price       *Money  `json:"price"`
-	Cost        *Money  `json:"cost"`
-	Stock       *int    `json:"stock"`
-	MinStock    *int    `json:"min_stock"`
-	Category    *string `json:"category"`
-	Status      *string `json:"status"`
+	Name        *string  `json:"name"`
+	SKU         *string  `json:"sku"`
+	Description *string  `json:"description"`
+	Price       *Money   `json:"price"`
+	Cost        *Money   `json:"cost"`
+	Stock       *int     `json:"stock"`
+	MinStock    *int     `json:"min_stock"`
+	Category    *string  `json:"category"`
+	Status      *string  `json:"status"`
+	Weight      *float64 `json:"weight"`
 }

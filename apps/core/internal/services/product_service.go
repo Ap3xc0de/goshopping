@@ -218,6 +218,9 @@ func (s *ProductService) CreateProduct(storeID uuid.UUID, req models.CreateProdu
 	if req.Stock < 0 {
 		return nil, fmt.Errorf("stock must be non-negative")
 	}
+	if req.Weight < 0 {
+		return nil, fmt.Errorf("weight cannot be negative")
+	}
 
 	status := "active"
 	if req.Stock == 0 {
@@ -226,16 +229,16 @@ func (s *ProductService) CreateProduct(storeID uuid.UUID, req models.CreateProdu
 
 	var p models.Product
 	err := s.db.QueryRow(ctx, `
-		INSERT INTO products (store_id, name, sku, description, price, cost, stock, min_stock, category, images, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '[]', $10)
+		INSERT INTO products (store_id, name, sku, description, price, cost, stock, min_stock, category, images, status, weight)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '[]', $10, $11)
 		RETURNING id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		          price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		          images, status, created_at, updated_at`,
+		          images, status, weight, created_at, updated_at`,
 		storeID, req.Name, req.SKU, req.Description, req.Price, req.Cost,
-		req.Stock, req.MinStock, req.Category, status,
+		req.Stock, req.MinStock, req.Category, status, req.Weight,
 	).Scan(&p.ID, &p.StoreID, &p.Name, &p.SKU, &p.Description,
 		&p.Price, &p.Cost, &p.Stock, &p.MinStock, &p.Category,
-		&p.Images, &p.Status, &p.CreatedAt, &p.UpdatedAt)
+		&p.Images, &p.Status, &p.Weight, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create product: %w", err)
 	}
@@ -251,6 +254,9 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 	}
 	if req.Stock != nil && *req.Stock < 0 {
 		return nil, fmt.Errorf("stock must be non-negative")
+	}
+	if req.Weight != nil && *req.Weight < 0 {
+		return nil, fmt.Errorf("weight cannot be negative")
 	}
 
 	cur, err := s.GetProduct(storeID, productID)
@@ -284,6 +290,9 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 	}
 
 	// Auto-adjust status based on stock changes (unless explicitly setting inactive/deleted)
+	if req.Weight != nil {
+		cur.Weight = *req.Weight
+	}
 	if req.Status != nil {
 		cur.Status = *req.Status
 	} else if cur.Status == "active" || cur.Status == "out_of_stock" {
@@ -299,17 +308,17 @@ func (s *ProductService) UpdateProduct(storeID, productID uuid.UUID, req models.
 	err = s.db.QueryRow(ctx, `
 		UPDATE products
 		SET name=$1, sku=$2, description=$3, price=$4, cost=$5,
-		    stock=$6, min_stock=$7, category=$8, status=$9, updated_at=NOW()
-		WHERE id=$10 AND store_id=$11
+		    stock=$6, min_stock=$7, category=$8, status=$9, weight=$10, updated_at=NOW()
+		WHERE id=$11 AND store_id=$12
 		RETURNING id, store_id, name, COALESCE(sku,'') as sku, COALESCE(description,'') as description,
 		          price, COALESCE(cost,0) as cost, stock, min_stock, COALESCE(category,'') as category,
-		          images, status, created_at, updated_at`,
+		          images, status, weight, created_at, updated_at`,
 		cur.Name, cur.SKU, cur.Description, cur.Price, cur.Cost,
-		cur.Stock, cur.MinStock, cur.Category, cur.Status,
+		cur.Stock, cur.MinStock, cur.Category, cur.Status, cur.Weight,
 		productID, storeID,
 	).Scan(&updated.ID, &updated.StoreID, &updated.Name, &updated.SKU, &updated.Description,
 		&updated.Price, &updated.Cost, &updated.Stock, &updated.MinStock, &updated.Category,
-		&updated.Images, &updated.Status, &updated.CreatedAt, &updated.UpdatedAt)
+		&updated.Images, &updated.Status, &updated.Weight, &updated.CreatedAt, &updated.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("update product: %w", err)
 	}

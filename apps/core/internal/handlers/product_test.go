@@ -299,3 +299,49 @@ func TestVariantAdminCRUD(t *testing.T) {
 		testutil.AssertStatus(t, otherList, http.StatusForbidden)
 	})
 }
+
+// TestProductWeightRoundTrip pins the write path for products.weight. The
+// column and the GET response existed, but neither the create nor the update
+// DTO carried it, so a seller could type a weight and have it silently
+// discarded — which in turn made weight-based shipping always price at the
+// method's base rate.
+func TestProductWeightRoundTrip(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	auth, _, storeID := app.OwnerAuthHeader(t)
+
+	t.Run("persists weight on create", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name":   "Saddle",
+			"price":  250000,
+			"stock":  3,
+			"weight": 7.5,
+		}
+		resp := app.POST(t, "/stores/"+storeID+"/products", body, auth)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, 7.5, data["weight"])
+	})
+
+	t.Run("persists weight on update", func(t *testing.T) {
+		created := testutil.AssertJSON(t, app.POST(t, "/stores/"+storeID+"/products",
+			map[string]interface{}{"name": "Bridle", "price": 80000, "stock": 5}, auth))
+		productID := created["id"].(string)
+		assert.Equal(t, float64(0), created["weight"])
+
+		resp := app.PUT(t, "/stores/"+storeID+"/products/"+productID,
+			map[string]interface{}{"weight": 1.25}, auth)
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		assert.Equal(t, 1.25, testutil.AssertJSON(t, resp)["weight"])
+
+		reread := testutil.AssertJSON(t, app.GET(t, "/stores/"+storeID+"/products/"+productID, auth))
+		assert.Equal(t, 1.25, reread["weight"])
+	})
+
+	t.Run("rejects negative weight", func(t *testing.T) {
+		resp := app.POST(t, "/stores/"+storeID+"/products",
+			map[string]interface{}{"name": "Bad", "price": 100, "stock": 1, "weight": -1}, auth)
+		testutil.AssertError(t, resp, http.StatusUnprocessableEntity, "weight cannot be negative")
+	})
+}
