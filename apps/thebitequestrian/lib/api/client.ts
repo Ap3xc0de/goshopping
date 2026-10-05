@@ -212,43 +212,46 @@ export async function getProduct(id: string): Promise<Product> {
   }
 }
 
-// flattenCategories collapses the category tree into a flat list (name +
-// direct product_count) so existing catalog UI (built around a flat
-// {name,count}[] filter list) keeps working unchanged while the data source
-// switches to the real GET /categories endpoint.
-function flattenCategories(nodes: Category[]): { name: string; count: number }[] {
-  const flat: { name: string; count: number }[] = [];
-  for (const node of nodes) {
-    flat.push({ name: node.name, count: node.product_count });
-    flat.push(...flattenCategories(node.children ?? []));
-  }
-  return flat;
-}
-
-function mockCategoryCounts(): { name: string; count: number }[] {
+// mockCategoryTree fabricates a flat, one-level tree (no children) from the
+// mock product data's `category` string, so mock mode has something shaped
+// like the real GET /categories response to feed the nav/catalog sidebar.
+function mockCategoryTree(): Category[] {
   const counts = new Map<string, number>();
   for (const p of mockProducts) {
     counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
   }
-  return [...counts.entries()].map(([name, count]) => ({ name, count }));
+  return [...counts.entries()].map(([name, count], i) => ({
+    id: name,
+    name,
+    slug: name.toLowerCase().replace(/\s+/g, '-'),
+    parent_id: null,
+    depth: 0,
+    sort_order: i,
+    path: [],
+    product_count: count,
+    total_product_count: count,
+    children: [],
+  }));
 }
 
-export async function getCategories(): Promise<{ name: string; count: number }[]> {
+// getCategoryTree returns the full nested category tree (level-0 roots with
+// their descendants under `children`) straight from GET /categories, so
+// callers can render root-category nav and per-category subcategory lists.
+export async function getCategoryTree(): Promise<Category[]> {
   if (isMockMode()) {
     await delay(MOCK_LATENCY_MS);
-    return mockCategoryCounts();
+    return mockCategoryTree();
   }
   try {
     const res = await fetch(`${BASE}/categories`, {
       next: { revalidate: 60 },
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error(`getCategories failed: ${res.status}`);
-    const tree = (await res.json()) as Category[];
-    return flattenCategories(tree);
+    if (!res.ok) throw new Error(`getCategoryTree failed: ${res.status}`);
+    return (await res.json()) as Category[];
   } catch (err) {
-    warn('getCategories failed, falling back to mock', err);
-    return mockCategoryCounts();
+    warn('getCategoryTree failed, falling back to mock', err);
+    return mockCategoryTree();
   }
 }
 

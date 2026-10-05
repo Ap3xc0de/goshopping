@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { slugify, formatPrice } from '@/lib/format';
+import { cssUrl } from '@/lib/css';
 import type { Product } from '@/lib/api/types';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 function productImageStyle(product: Product): CSSProperties {
   const url = product.images[0];
   if (url) {
-    return { backgroundImage: `url(${url})` };
+    return { backgroundImage: cssUrl(url) };
   }
   return {
     backgroundImage:

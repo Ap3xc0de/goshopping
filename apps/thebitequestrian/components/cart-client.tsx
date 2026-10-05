@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Minus, Plus, X } from 'lucide-react';
 import { useCart } from '@/lib/cart';
 import { formatPrice } from '@/lib/format';
+import { cssUrl } from '@/lib/css';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 const TAX_RATE = 0.19;
@@ -44,7 +45,7 @@ export function CartClient({ locale, dict }: { locale: Locale; dict: Dictionary 
               className="block h-28 w-20 shrink-0 overflow-hidden rounded-sm border border-border bg-elevated"
               style={
                 item.image
-                  ? { backgroundImage: `url(${item.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  ? { backgroundImage: cssUrl(item.image), backgroundSize: 'cover', backgroundPosition: 'center' }
                   : { backgroundImage: 'linear-gradient(135deg, var(--elevated), var(--accent))' }
               }
             />

@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { getDictionary, isLocale, type Locale } from '@/lib/i18n/dictionaries';
 import { getProduct, NotFoundError } from '@/lib/api/client';
 import { formatPrice, slugify } from '@/lib/format';
+import { cssUrl } from '@/lib/css';
 import { siteUrl, productJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { ProductBuyBox } from '@/components/product-buy-box';
@@ -117,7 +118,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             className="aspect-[3/4] w-full overflow-hidden rounded-sm border border-border bg-elevated bg-cover bg-center"
             style={
               images[0]
-                ? { backgroundImage: `url(${images[0]})` }
+                ? { backgroundImage: cssUrl(images[0]) }
                 : {
                     backgroundImage:
                       'linear-gradient(135deg, var(--elevated) 0%, var(--accent) 100%)',
@@ -131,7 +132,7 @@ export default async function ProductPage({ params }: { params: Params }) {
                   key={i}
                   type="button"
                   className="h-20 w-16 shrink-0 rounded-sm border border-border bg-elevated bg-cover bg-center"
-                  style={{ backgroundImage: `url(${img})` }}
+                  style={{ backgroundImage: cssUrl(img) }}
                   aria-label={`${dict.product.colour} ${i + 1}`}
                 />
               ))}

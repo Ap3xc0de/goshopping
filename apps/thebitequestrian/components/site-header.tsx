@@ -1,18 +1,21 @@
 import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import type { Category } from '@/lib/api/types';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { CartCount } from '@/components/cart-count';
 import { SearchForm } from '@/components/search-form';
 
-const navItems = [
-  { key: 'women', label: (d: Dictionary) => d.nav.women, category: 'Women' },
-  { key: 'men', label: (d: Dictionary) => d.nav.men, category: 'Men' },
-  { key: 'casuals', label: (d: Dictionary) => d.nav.casuals, category: 'Casuals' },
-] as const;
-
-export function SiteHeader({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+export function SiteHeader({
+  locale,
+  dict,
+  categories,
+}: {
+  locale: Locale;
+  dict: Dictionary;
+  categories: Category[];
+}) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-4">
@@ -24,13 +27,13 @@ export function SiteHeader({ locale, dict }: { locale: Locale; dict: Dictionary 
         </Link>
 
         <nav className="ml-2 flex items-center gap-5 whitespace-nowrap">
-          {navItems.map((item) => (
+          {categories.map((cat) => (
             <Link
-              key={item.key}
-              href={`/${locale}/catalog?category=${item.category}`}
+              key={cat.id}
+              href={`/${locale}/catalog?category=${cat.slug}`}
               className="border-b-2 border-transparent py-1.5 font-body text-[13px] font-medium tracking-wide transition-colors hover:border-accent-bright hover:text-accent-bright"
             >
-              {item.label(dict)}
+              {cat.name}
             </Link>
           ))}
         </nav>

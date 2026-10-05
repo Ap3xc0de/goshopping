@@ -7,7 +7,7 @@ import { AnnouncementBar } from '@/components/announcement-bar';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { getDictionary, isLocale, locales, type Locale } from '@/lib/i18n/dictionaries';
-import { previewBanner } from '@/lib/api/client';
+import { getCategoryTree, previewBanner } from '@/lib/api/client';
 import { siteUrl, organizationJsonLd, webSiteJsonLd } from '@/lib/seo';
 
 const bodoniModa = Bodoni_Moda({
@@ -74,7 +74,7 @@ export function generateMetadata({
   };
 }
 
-export default function LocaleLayout({
+export default async function LocaleLayout({
   children,
   params,
 }: {
@@ -83,6 +83,7 @@ export default function LocaleLayout({
 }) {
   const locale: Locale = isLocale(params.locale) ? params.locale : 'es';
   const dict = getDictionary(locale);
+  const categories = await getCategoryTree();
 
   return (
     <html
@@ -98,7 +99,7 @@ export default function LocaleLayout({
               {dict.preview.banner}
             </div>
           )}
-          <SiteHeader locale={locale} dict={dict} />
+          <SiteHeader locale={locale} dict={dict} categories={categories} />
           <main className="flex-1">{children}</main>
           <SiteFooter locale={locale} dict={dict} />
         </ThemeProvider>

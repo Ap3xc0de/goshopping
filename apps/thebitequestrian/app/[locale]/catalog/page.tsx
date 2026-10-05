@@ -1,11 +1,23 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getDictionary, isLocale, type Locale } from '@/lib/i18n/dictionaries';
-import { getCategories, getProducts } from '@/lib/api/client';
+import { getCategoryTree, getProducts } from '@/lib/api/client';
+import type { Category } from '@/lib/api/types';
 import { siteUrl } from '@/lib/seo';
-import { Breadcrumbs } from '@/components/breadcrumbs';
+import { Breadcrumbs, type BreadcrumbItem } from '@/components/breadcrumbs';
 import { CatalogSort } from '@/components/catalog-sort';
 import { SectionHeading } from '@/components/section-heading';
+
+// findCategoryBySlug walks the tree (any depth) to locate the node behind
+// the current ?category= slug, so the sidebar can show its subcategories.
+function findCategoryBySlug(nodes: Category[], slug: string): Category | undefined {
+  for (const node of nodes) {
+    if (node.slug === slug) return node;
+    const found = findCategoryBySlug(node.children ?? [], slug);
+    if (found) return found;
+  }
+  return undefined;
+}
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -30,18 +42,21 @@ function buildQuery(category: string | undefined, search: string | undefined): s
   return s ? `?${s}` : '';
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params,
   searchParams,
 }: {
   params: { locale: string };
   searchParams: SearchParams;
-}): Metadata {
+}): Promise<Metadata> {
   const locale = isLocale(params.locale) ? params.locale : 'es';
   const dict = getDictionary(locale);
   const category = coerceString(searchParams.category);
   const base = siteUrl();
-  const title = category ? `${category} — ${dict.catalog.title}` : dict.catalog.title;
+  const categoryName = category
+    ? (findCategoryBySlug(await getCategoryTree(), category)?.name ?? category)
+    : undefined;
+  const title = categoryName ? `${categoryName} — ${dict.catalog.title}` : dict.catalog.title;
   return {
     title,
     description: dict.catalog.subtitle,
@@ -70,9 +85,12 @@ export default async function CatalogPage({
   const page = coercePage(searchParams.page);
 
   const [categories, result] = await Promise.all([
-    getCategories(),
+    getCategoryTree(),
     getProducts({ category, search, page, per_page: 24 }),
   ]);
+
+  const activeCategory = category ? findCategoryBySlug(categories, category) : undefined;
+  const sidebarCategories = activeCategory ? (activeCategory.children ?? []) : categories;
 
   const query = buildQuery(category, search);
   const prevHref = page > 1 ? `/${locale}/catalog${query}${query ? '&' : '?'}page=${page - 1}` : null;
@@ -81,13 +99,21 @@ export default async function CatalogPage({
       ? `/${locale}/catalog${query}${query ? '&' : '?'}page=${page + 1}`
       : null;
 
-  const heading = category ?? (search ? `“${search}”` : dict.catalog.title);
+  const heading = activeCategory?.name ?? category ?? (search ? `“${search}”` : dict.catalog.title);
   const headingIsCategory = Boolean(category);
+
+  const breadcrumbItems: BreadcrumbItem[] =
+    activeCategory && activeCategory.path?.length
+      ? activeCategory.path.map((p, i, arr) => ({
+          label: p.name,
+          href: i < arr.length - 1 ? `/${locale}/catalog?category=${p.slug}` : undefined,
+        }))
+      : [{ label: heading }];
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">
       <Breadcrumbs
-        items={[{ label: heading }]}
+        items={breadcrumbItems}
         locale={locale}
         dict={dict}
       />
@@ -112,12 +138,12 @@ export default async function CatalogPage({
             <span className="font-label text-[11px] uppercase tracking-widest text-muted">
               {dict.catalog.filterLabel}
             </span>
-            {categories.map((cat) => {
-              const active = cat.name === category;
+            {sidebarCategories.map((cat) => {
+              const active = cat.slug === category;
               return (
                 <Link
-                  key={cat.name}
-                  href={`/${locale}/catalog?category=${encodeURIComponent(cat.name)}`}
+                  key={cat.id}
+                  href={`/${locale}/catalog?category=${encodeURIComponent(cat.slug)}`}
                   className={`flex items-center justify-between rounded-sm px-3 py-2 font-body text-[13px] transition-colors ${
                     active
                       ? 'bg-foreground text-background'
@@ -125,7 +151,7 @@ export default async function CatalogPage({
                   }`}
                 >
                   <span>{cat.name}</span>
-                  <span className="text-muted">{cat.count}</span>
+                  <span className="text-muted">{cat.total_product_count}</span>
                 </Link>
               );
             })}

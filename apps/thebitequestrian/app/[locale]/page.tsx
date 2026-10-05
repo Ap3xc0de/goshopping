@@ -109,7 +109,7 @@ export default async function HomePage({ params }: { params: { locale: string } 
             className="min-h-[320px] bg-cover bg-center md:min-h-[520px]"
             style={{
               backgroundImage:
-                'url(https://picsum.photos/seed/thebit-hero/1200/900), linear-gradient(135deg, var(--elevated), var(--accent))',
+                'url(/banner.jpeg), linear-gradient(135deg, var(--elevated), var(--accent))',
             }}
           />
         </div>
