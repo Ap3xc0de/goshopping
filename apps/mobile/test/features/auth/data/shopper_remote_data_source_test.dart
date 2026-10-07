@@ -9,7 +9,7 @@ import 'package:http/testing.dart';
 ShopperRemoteDataSource sourceFor(http.Response Function(http.Request) h) =>
     ShopperRemoteDataSource(
       ApiClient(
-        baseUrl: 'http://api.test',
+        baseUrl: 'https://api.test',
         httpClient: MockClient((r) async => h(r)),
       ),
     );

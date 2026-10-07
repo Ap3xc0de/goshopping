@@ -18,7 +18,7 @@ const configuredAppConfig = AppConfig(
   appClientId: 'client',
   region: 'us-east-1',
   hostedUiDomain: 'test.auth.us-east-1.amazoncognito.com',
-  apiBaseUrl: 'http://api.test',
+  apiBaseUrl: 'https://api.test',
 );
 
 const meBody =

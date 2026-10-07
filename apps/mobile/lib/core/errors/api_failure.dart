@@ -29,3 +29,13 @@ final class ServerApiFailure extends ApiFailure {
 final class MalformedResponseApiFailure extends ApiFailure {
   const MalformedResponseApiFailure();
 }
+
+/// The configured base URL or the request path is not a valid http(s) URL.
+final class InvalidUrlApiFailure extends ApiFailure {
+  const InvalidUrlApiFailure();
+}
+
+/// Refused to send credentials over cleartext http to a non-local host.
+final class InsecureTransportApiFailure extends ApiFailure {
+  const InsecureTransportApiFailure();
+}

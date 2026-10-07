@@ -33,7 +33,9 @@ class AppConfig {
     ),
   );
 
-  /// On the Android emulator the host machine is reachable at 10.0.2.2.
+  /// Local Core API. On an Android emulator, localhost is the emulator itself:
+  /// override with `--dart-define=API_BASE_URL=http://10.0.2.2:3000`. Cleartext
+  /// http is only accepted for local hosts; use https anywhere else.
   static const defaultApiBaseUrl = 'http://localhost:3000';
 
   /// Deep links registered in the Cognito app client (Terraform defaults).
@@ -62,6 +64,10 @@ class AppConfig {
       .replaceFirst(RegExp(r'/+$'), '');
 
   /// Builds the Amplify configuration JSON from the compile-time values.
+  ///
+  /// The two `UserAgent`/`Version` pairs are boilerplate copied from the file
+  /// `amplify push` generates (`amplifyconfiguration.json`); Amplify Flutter
+  /// only reads the plugin settings below them.
   String toAmplifyConfigJson() => jsonEncode({
     'UserAgent': 'aws-amplify-cli/2.0',
     'Version': '1.0',
