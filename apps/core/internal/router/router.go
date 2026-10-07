@@ -18,6 +18,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	orderSvc := services.NewOrderService(db, cfg, eventSvc, custSvc, prodSvc)
 	dashSvc := services.NewDashboardService(db, cfg)
 	adminSvc := services.NewAdminService(db, cfg)
+	marketplaceSvc := services.NewMarketplaceService(db)
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -34,6 +35,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	pub.Get("/:storeSlug/products/:productId", handlers.PublicGetProduct(db, cfg))
 	pub.Post("/:storeSlug/orders", handlers.PublicCreateOrder(db, cfg))
 	pub.Get("/:storeSlug/orders/:orderId/status", handlers.PublicOrderStatus(db, cfg))
+
+	// Marketplace (no auth, cross-store read-only)
+	market := app.Group("/marketplace")
+	market.Get("/stores", handlers.MarketplaceListStores(marketplaceSvc))
 
 	// ── Protected routes ──────────────────────────────────────────────────────
 	api := app.Group("/", middleware.Auth(cfg.JWTSecret))
