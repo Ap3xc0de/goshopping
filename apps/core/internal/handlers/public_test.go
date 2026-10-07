@@ -73,6 +73,62 @@ func TestPublicListProducts(t *testing.T) {
 	})
 }
 
+func TestPublicListProductsPagination(t *testing.T) {
+	app := testutil.SetupTestApp(t)
+	defer app.Cleanup()
+
+	_, _, storeID := app.OwnerAuthHeader(t)
+	storeIDParsed := mustParseUUID(t, storeID)
+	slug := testutil.GetStoreSlug(t, app.DB, storeIDParsed)
+
+	for _, name := range []string{"Alpha", "Bravo", "Charlie"} {
+		testutil.CreateTestProduct(t, app.DB, storeIDParsed, testutil.WithName(name), testutil.WithCategory("cat-"+name))
+	}
+
+	get := func(t *testing.T, query string) map[string]interface{} {
+		t.Helper()
+		resp := app.GET(t, "/public/"+slug+"/products"+query, "")
+		testutil.AssertStatus(t, resp, http.StatusOK)
+		return testutil.AssertJSON(t, resp)
+	}
+
+	t.Run("defaults to page 1 and per_page 50", func(t *testing.T) {
+		data := get(t, "")
+		assert.EqualValues(t, 1, data["page"])
+		assert.EqualValues(t, 50, data["per_page"])
+	})
+
+	t.Run("honors page and per_page", func(t *testing.T) {
+		data := get(t, "?per_page=2&page=2")
+		assert.EqualValues(t, 2, data["page"])
+		assert.EqualValues(t, 2, data["per_page"])
+		assert.EqualValues(t, 3, data["total"])
+		assert.EqualValues(t, 2, data["total_pages"])
+		items, _ := data["data"].([]interface{})
+		assert.Len(t, items, 1)
+	})
+
+	t.Run("caps per_page at 100", func(t *testing.T) {
+		data := get(t, "?per_page=500")
+		assert.EqualValues(t, 100, data["per_page"])
+	})
+
+	t.Run("invalid values fall back to defaults", func(t *testing.T) {
+		for _, q := range []string{"?page=0&per_page=0", "?page=-1&per_page=-5", "?page=abc&per_page=xyz"} {
+			data := get(t, q)
+			assert.EqualValues(t, 1, data["page"], q)
+			assert.EqualValues(t, 50, data["per_page"], q)
+		}
+	})
+
+	t.Run("category and search still work with pagination", func(t *testing.T) {
+		data := get(t, "?category=cat-Bravo&per_page=10")
+		testutil.AssertPaginated(t, data, 1)
+		data = get(t, "?search=charl&per_page=10")
+		testutil.AssertPaginated(t, data, 1)
+	})
+}
+
 func TestPublicCreateOrder(t *testing.T) {
 	app := testutil.SetupTestApp(t)
 	defer app.Cleanup()

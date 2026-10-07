@@ -29,6 +29,25 @@ type PublicProduct struct {
 	Status      string       `json:"status"`
 }
 
+const (
+	publicDefaultPerPage = 50
+	publicMaxPerPage     = 100
+)
+
+// publicPaging applies defaults for invalid values and caps per_page.
+func publicPaging(page, perPage int) (int, int) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = publicDefaultPerPage
+	}
+	if perPage > publicMaxPerPage {
+		perPage = publicMaxPerPage
+	}
+	return page, perPage
+}
+
 // PublicListProducts handles GET /public/:storeSlug/products
 func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -38,10 +57,12 @@ func PublicListProducts(db *pgxpool.Pool, cfg *config.Config) fiber.Handler {
 			return fiber.NewError(fiber.StatusNotFound, "store not found")
 		}
 
+		page, perPage := publicPaging(c.QueryInt("page", 1), c.QueryInt("per_page", publicDefaultPerPage))
+
 		eventSvc := services.NewEventService(cfg)
 		prodSvc := services.NewProductService(db, cfg, eventSvc)
 
-		result, err := prodSvc.ListProducts(storeID, 1, 50, c.Query("category"), "active", c.Query("search"))
+		result, err := prodSvc.ListProducts(storeID, page, perPage, c.Query("category"), "active", c.Query("search"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
