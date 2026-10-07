@@ -60,10 +60,12 @@ resource "aws_cognito_user_pool" "shoppers" {
     }
   }
 
+  # Not required: Apple only returns the name on the first authorization, and
+  # a required attribute missing from a federated profile fails the sign-in.
   schema {
     name                = "name"
     attribute_data_type = "String"
-    required            = true
+    required            = false
     mutable             = true
 
     string_attribute_constraints {
