@@ -58,8 +58,14 @@ type CognitoVerifier struct {
 
 	mu          sync.Mutex
 	keys        map[string]*rsa.PublicKey
-	fetchedAt   time.Time // last successful fetch
-	lastAttempt time.Time // last fetch attempt (success or failure)
+	fetchedAt   time.Time   // last successful fetch
+	lastAttempt time.Time   // last fetch attempt (success or failure)
+	flight      *jwksFlight // in-flight fetch shared by concurrent requests, nil when idle
+}
+
+// jwksFlight is one in-flight JWKS fetch that concurrent requests wait on.
+type jwksFlight struct {
+	done chan struct{}
 }
 
 // NewCognitoVerifier builds a verifier. When the pool or client id is empty the
@@ -189,34 +195,66 @@ func audienceMatches(aud any, want string) bool {
 }
 
 // keyFor returns the public key for kid, refreshing the JWKS when the cache is
-// stale or the kid is unknown. Fetches are spaced at least jwksMinFetchGap apart.
+// stale or the kid is unknown. Fetches are spaced at least jwksMinFetchGap
+// apart. The mutex only guards the cache state and is never held during
+// network I/O: a cached key is served immediately, and concurrent requests that
+// need a refetch share a single in-flight fetch.
 func (v *CognitoVerifier) keyFor(ctx context.Context, kid string) (*rsa.PublicKey, error) {
 	v.mu.Lock()
-	defer v.mu.Unlock()
-
 	now := v.now()
 	stale := v.keys == nil || now.Sub(v.fetchedAt) >= jwksCacheTTL
 	if !stale {
 		if k, ok := v.keys[kid]; ok {
+			v.mu.Unlock()
 			return k, nil
 		}
 	}
 
-	if v.lastAttempt.IsZero() || now.Sub(v.lastAttempt) >= jwksMinFetchGap {
+	flight := v.flight
+	leader := false
+	if flight == nil && (v.lastAttempt.IsZero() || now.Sub(v.lastAttempt) >= jwksMinFetchGap) {
+		flight = &jwksFlight{done: make(chan struct{})}
+		v.flight = flight
 		v.lastAttempt = now
-		keys, err := v.fetchJWKS(ctx)
-		if err != nil {
-			// Keep serving previously fetched keys on a transient failure.
-			log.Printf("cognito: jwks fetch failed: %v", err)
-		} else {
-			v.keys, v.fetchedAt = keys, now
+		leader = true
+	}
+	v.mu.Unlock()
+
+	if leader {
+		v.runFetch(ctx, flight, now)
+	} else if flight != nil {
+		select {
+		case <-flight.done:
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		}
 	}
 
+	v.mu.Lock()
+	defer v.mu.Unlock()
 	if k, ok := v.keys[kid]; ok {
 		return k, nil
 	}
 	return nil, errors.New("unknown kid")
+}
+
+// runFetch performs the shared fetch outside the lock and publishes the result.
+// The fetch is detached from the leader's cancellation so one aborted request
+// cannot fail the fetch the others are waiting on; it is still bounded by
+// jwksFetchTimeout.
+func (v *CognitoVerifier) runFetch(ctx context.Context, flight *jwksFlight, now time.Time) {
+	keys, err := v.fetchJWKS(context.WithoutCancel(ctx))
+
+	v.mu.Lock()
+	if err != nil {
+		// Keep serving previously fetched keys on a transient failure.
+		log.Printf("cognito: jwks fetch failed: %v", err)
+	} else {
+		v.keys, v.fetchedAt = keys, now
+	}
+	v.flight = nil
+	v.mu.Unlock()
+	close(flight.done)
 }
 
 func (v *CognitoVerifier) fetchJWKS(ctx context.Context) (map[string]*rsa.PublicKey, error) {

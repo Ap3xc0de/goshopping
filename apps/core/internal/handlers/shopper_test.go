@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -203,4 +204,19 @@ func TestSellerRoutesIgnoreCognitoTokens(t *testing.T) {
 	e := newShopperEnv(t)
 	resp := e.app.GET(t, "/stores/00000000-0000-0000-0000-000000000000/products", e.token(t, shopperAccess("sub-s")))
 	testutil.AssertStatus(t, resp, http.StatusUnauthorized)
+}
+
+func TestGetMe_HidesInternalErrors(t *testing.T) {
+	e := newShopperEnv(t)
+	auth := e.token(t, shopperAccess("sub-db-fail"))
+
+	// A closed pool makes the upsert fail deterministically.
+	e.app.DB.Close()
+
+	resp := e.app.GET(t, "/me", auth)
+	testutil.AssertStatus(t, resp, http.StatusInternalServerError)
+	body, _ := io.ReadAll(resp.Body)
+	assert.JSONEq(t, `{"error":"internal server error"}`, string(body))
+	assert.NotContains(t, string(body), "pool")
+	assert.NotContains(t, string(body), "upsert")
 }

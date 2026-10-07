@@ -30,13 +30,21 @@ type jwksServer struct {
 	keys  map[string]*rsa.PublicKey
 	hits  atomic.Int32
 	fails atomic.Bool
+	// gate, when set, makes every request block until it is closed; entered
+	// receives one value per request that reached the handler.
+	gate    atomic.Pointer[chan struct{}]
+	entered chan struct{}
 }
 
 func newJWKSServer(t *testing.T, keys map[string]*rsa.PublicKey) *jwksServer {
 	t.Helper()
-	s := &jwksServer{keys: keys}
+	s := &jwksServer{keys: keys, entered: make(chan struct{}, 64)}
 	s.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.hits.Add(1)
+		if g := s.gate.Load(); g != nil {
+			s.entered <- struct{}{}
+			<-*g
+		}
 		if s.fails.Load() {
 			http.Error(w, "boom", http.StatusInternalServerError)
 			return
@@ -289,10 +297,18 @@ func TestCognitoAuth_JWKSCachedBetweenRequests(t *testing.T) {
 
 func TestCognitoAuth_CacheExpiresAfterTTL(t *testing.T) {
 	f := newCognitoFixture(t)
-	tok := "Bearer " + signRS256(t, f.key, "kid-1", accessClaims())
-	f.do(t, tok)
+	// The token outlives the clock jump below, so the second request is valid
+	// and only the expired JWKS cache can trigger the refetch.
+	claims := accessClaims()
+	claims["exp"] = f.now.Add(3 * time.Hour).Unix()
+	tok := "Bearer " + signRS256(t, f.key, "kid-1", claims)
+	if code, _ := f.do(t, tok); code != 200 {
+		t.Fatalf("expected 200, got %d", code)
+	}
 	f.now = f.now.Add(61 * time.Minute)
-	f.do(t, tok)
+	if code, _ := f.do(t, tok); code != 200 {
+		t.Fatalf("expected 200 after TTL expiry and refetch, got %d", code)
+	}
 	if h := f.srv.hits.Load(); h != 2 {
 		t.Fatalf("expected 2 JWKS fetches, got %d", h)
 	}
@@ -340,5 +356,125 @@ func TestCognitoAuth_JWKSFetchFailureIs401(t *testing.T) {
 	code, body := f.do(t, "Bearer "+signRS256(t, f.key, "kid-1", accessClaims()))
 	if code != 401 {
 		t.Fatalf("expected 401, got %d %v", code, body)
+	}
+}
+
+// block gates every JWKS request; the returned func opens the gate (idempotent).
+func (s *jwksServer) block() (release func()) {
+	g := make(chan struct{})
+	s.gate.Store(&g)
+	var once sync.Once
+	release = func() { once.Do(func() { close(g) }) }
+	return release
+}
+
+func (f *cognitoFixture) doAsync(t *testing.T, header string) <-chan int {
+	t.Helper()
+	out := make(chan int, 1)
+	go func() {
+		req := httptest.NewRequest(http.MethodGet, "/who", nil)
+		req.Header.Set("Authorization", header)
+		resp, err := f.app.Test(req, 10000)
+		if err != nil {
+			out <- -1
+			return
+		}
+		resp.Body.Close()
+		out <- resp.StatusCode
+	}()
+	return out
+}
+
+func TestCognitoAuth_SlowJWKSDoesNotBlockCachedKeys(t *testing.T) {
+	f := newCognitoFixture(t)
+	cached := "Bearer " + signRS256(t, f.key, "kid-1", accessClaims())
+	if code, _ := f.do(t, cached); code != 200 {
+		t.Fatalf("warm-up: expected 200, got %d", code)
+	}
+
+	release := f.srv.block()
+	defer release()
+	f.now = f.now.Add(time.Minute) // past the minimum gap: unknown kid forces a refetch
+
+	unknown := f.doAsync(t, "Bearer "+signRS256(t, f.key, "unknown", accessClaims()))
+	select {
+	case <-f.srv.entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("refetch never started")
+	}
+
+	select {
+	case code := <-f.doAsync(t, cached):
+		if code != 200 {
+			t.Fatalf("cached-key request: expected 200, got %d", code)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("cached-key request blocked behind the in-flight JWKS fetch")
+	}
+
+	release()
+	if code := <-unknown; code != 401 {
+		t.Fatalf("unknown kid: expected 401, got %d", code)
+	}
+}
+
+func TestCognitoAuth_ConcurrentUnknownKidsShareOneFetch(t *testing.T) {
+	f := newCognitoFixture(t)
+	if code, _ := f.do(t, "Bearer "+signRS256(t, f.key, "kid-1", accessClaims())); code != 200 {
+		t.Fatalf("warm-up: expected 200, got %d", code)
+	}
+	newKey := genKey(t)
+	f.srv.setKeys(map[string]*rsa.PublicKey{"kid-1": &f.key.PublicKey, "kid-2": &newKey.PublicKey})
+	f.now = f.now.Add(time.Minute)
+
+	release := f.srv.block()
+	defer release()
+	const n = 10
+	tok := "Bearer " + signRS256(t, newKey, "kid-2", accessClaims())
+	results := make([]<-chan int, n)
+	for i := range results {
+		results[i] = f.doAsync(t, tok)
+	}
+	select {
+	case <-f.srv.entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("refetch never started")
+	}
+	time.Sleep(200 * time.Millisecond) // let the other requests pile up behind the flight
+	release()
+	for i, r := range results {
+		if code := <-r; code != 200 {
+			t.Fatalf("request %d: expected 200 after shared refetch, got %d", i, code)
+		}
+	}
+	if h := f.srv.hits.Load(); h != 2 {
+		t.Fatalf("expected 1 shared refetch (2 total), got %d", h)
+	}
+}
+
+func TestCognitoAuth_ColdCacheConcurrentRequestsShareOneFetch(t *testing.T) {
+	f := newCognitoFixture(t)
+	release := f.srv.block()
+	defer release()
+	const n = 10
+	tok := "Bearer " + signRS256(t, f.key, "kid-1", accessClaims())
+	results := make([]<-chan int, n)
+	for i := range results {
+		results[i] = f.doAsync(t, tok)
+	}
+	select {
+	case <-f.srv.entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial fetch never started")
+	}
+	time.Sleep(200 * time.Millisecond)
+	release()
+	for i, r := range results {
+		if code := <-r; code != 200 {
+			t.Fatalf("request %d: expected 200, got %d", i, code)
+		}
+	}
+	if h := f.srv.hits.Load(); h != 1 {
+		t.Fatalf("expected a single shared fetch, got %d", h)
 	}
 }
