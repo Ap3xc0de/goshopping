@@ -36,10 +36,20 @@ type TestApp struct {
 // Callers MUST defer app.Cleanup().
 func SetupTestApp(t *testing.T) *TestApp {
 	t.Helper()
+	return SetupTestAppWithConfig(t, nil)
+}
+
+// SetupTestAppWithConfig is SetupTestApp with a hook to adjust the config
+// before the router is built (e.g. to point Cognito at a test JWKS server).
+func SetupTestAppWithConfig(t *testing.T, mutate func(*config.Config)) *TestApp {
+	t.Helper()
 
 	cfg := config.Load()
 	cfg.JWTSecret = TestJWTSecret
 	cfg.AppEnv = "development"
+	if mutate != nil {
+		mutate(cfg)
+	}
 
 	db := database.Connect(cfg)
 
@@ -68,6 +78,7 @@ func (ta *TestApp) CleanDB(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	tables := []string{
+		"shoppers",
 		"audit_log",
 		"order_timeline",
 		"integrations",

@@ -311,3 +311,42 @@ All events published to SQS queues follow:
 | `goshopping-accounting-events` | `invoice.requested` |
 | `goshopping-notification-events` | `whatsapp.send`, `email.send` |
 | `goshopping-marketing-events` | `conversion.track` |
+
+---
+
+## Shopper Profile (Cognito)
+
+Shoppers (mobile app users) authenticate with Amazon Cognito, not the seller JWT. Seller endpoints keep using the seller access token.
+
+### `GET /me`
+
+Validates the Cognito token, creates the shopper on first call (keyed by the token `sub`) and returns the profile.
+
+**Headers:** `Authorization: Bearer <cognito access or id token>`
+
+**Response 200**
+```json
+{
+  "id": "uuid",
+  "email": "ana@example.com",
+  "name": "Ana",
+  "avatar_url": "",
+  "auth_provider": "cognito",
+  "created_at": "2024-01-15T10:00:00Z"
+}
+```
+
+**Accepted tokens** (RS256 only, verified against the user pool JWKS):
+- `access` token: `client_id` must equal the app client id.
+- `id` token: `aud` must equal the app client id. Only ID tokens carry `email`/`name`; an access token never clears a stored email or name.
+- `iss` must be `https://cognito-idp.<region>.amazonaws.com/<userPoolId>` and the token must not be expired.
+
+**Errors:** `401` invalid, expired or wrong-pool token; `503` Cognito is not configured (the endpoint fails closed).
+
+**Environment variables**
+| Variable | Description |
+|----------|-------------|
+| `COGNITO_USER_POOL_ID` | Shopper user pool id (required) |
+| `COGNITO_APP_CLIENT_ID` | Mobile app client id (required) |
+| `COGNITO_REGION` | Pool region (defaults to `AWS_REGION`) |
+| `COGNITO_JWKS_URL` | Optional JWKS URL override (tests only) |

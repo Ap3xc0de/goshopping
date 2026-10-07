@@ -19,6 +19,13 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	dashSvc := services.NewDashboardService(db, cfg)
 	adminSvc := services.NewAdminService(db, cfg)
 	marketplaceSvc := services.NewMarketplaceService(db)
+	shopperSvc := services.NewShopperService(db)
+	cognito := middleware.NewCognitoVerifier(middleware.CognitoConfig{
+		Region:      cfg.CognitoRegion,
+		UserPoolID:  cfg.CognitoUserPoolID,
+		AppClientID: cfg.CognitoAppClientID,
+		JWKSURL:     cfg.CognitoJWKSURL,
+	})
 
 	// ── Public routes (no auth) ───────────────────────────────────────────────
 	app.Get("/health", handlers.Health(db, cfg))
@@ -40,6 +47,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	market := app.Group("/marketplace")
 	market.Get("/stores", handlers.MarketplaceListStores(marketplaceSvc))
 	market.Get("/products", handlers.MarketplaceListProducts(marketplaceSvc))
+
+	// Shopper routes (Cognito tokens; must be registered before the seller
+	// group below, whose auth middleware matches every remaining path).
+	app.Get("/me", middleware.CognitoAuth(cognito), handlers.GetMe(shopperSvc))
 
 	// ── Protected routes ──────────────────────────────────────────────────────
 	api := app.Group("/", middleware.Auth(cfg.JWTSecret))
