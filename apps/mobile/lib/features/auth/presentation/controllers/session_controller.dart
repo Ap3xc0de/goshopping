@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/sign_out_outcome.dart';
 import '../providers.dart';
 
 /// Holds the signed-in user. Restores the session from storage on startup.
@@ -10,13 +11,16 @@ class SessionController extends AsyncNotifier<AuthUser?> {
 
   void setUser(AuthUser user) => state = AsyncData(user);
 
-  /// Always ends signed out locally, even if the remote call fails.
-  Future<void> signOut() async {
+  /// Always ends signed out in the app, even if the remote call fails. The
+  /// returned outcome lets the caller tell the user what did not finish.
+  Future<SignOutOutcome> signOut() async {
+    var outcome = SignOutOutcome.failed;
     try {
-      await ref.read(signOutUseCaseProvider)();
+      outcome = await ref.read(signOutUseCaseProvider)();
     } catch (_) {
-      // The local session is cleared regardless.
+      // Reported as failed; the local session is cleared regardless.
     }
     if (ref.mounted) state = const AsyncData(null);
+    return outcome;
   }
 }

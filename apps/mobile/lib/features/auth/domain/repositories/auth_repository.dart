@@ -1,4 +1,5 @@
 import '../entities/auth_user.dart';
+import '../entities/sign_out_outcome.dart';
 import '../entities/social_provider.dart';
 
 /// Authentication contract. Every method throws an `AuthFailure` on error.
@@ -12,7 +13,9 @@ abstract class AuthRepository {
   Future<void> resendSignUpCode(String email);
   Future<AuthUser> signIn({required String email, required String password});
   Future<AuthUser> signInWithSocial(SocialProvider provider);
-  Future<void> signOut();
+
+  /// Never throws: the outcome says whether the remote side also finished.
+  Future<SignOutOutcome> signOut();
   Future<void> requestPasswordReset(String email);
   Future<void> confirmPasswordReset({
     required String email,

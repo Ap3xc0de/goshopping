@@ -32,12 +32,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       return authRedirect(
         isConfigured: configured,
         isRestoring: session?.isLoading ?? false,
+        restoreFailed: session?.hasError ?? false,
         user: session?.value,
         location: state.uri.path,
       );
     },
     routes: [
       GoRoute(path: AppRoutes.splash, builder: (_, _) => const SplashScreen()),
+      GoRoute(
+        path: AppRoutes.sessionError,
+        builder: (_, _) => SessionRestoreErrorScreen(
+          onRetry: () => ref.invalidate(sessionProvider),
+        ),
+      ),
       GoRoute(
         path: AppRoutes.notConfigured,
         builder: (_, _) => const NotConfiguredScreen(),

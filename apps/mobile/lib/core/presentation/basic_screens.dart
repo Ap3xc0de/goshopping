@@ -55,3 +55,37 @@ class NotConfiguredScreen extends StatelessWidget {
     );
   }
 }
+
+/// Shown when the stored session could not be restored (not "signed out").
+class SessionRestoreErrorScreen extends StatelessWidget {
+  const SessionRestoreErrorScreen({super.key, required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  AppStrings.sessionRestoreError,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: onRetry,
+                  child: const Text(AppStrings.retry),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

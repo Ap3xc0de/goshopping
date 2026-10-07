@@ -66,8 +66,18 @@ abstract final class AppStrings {
   // Home
   static const homeTitle = 'Inicio';
   static const signOut = 'Cerrar sesión';
+  static const signOutPartialNotice =
+      'Cerraste sesión en este dispositivo, pero no pudimos cerrarla en el '
+      'servidor.';
+  static const signOutFailedNotice =
+      'No pudimos cerrar tu sesión por completo. Inténtalo de nuevo más tarde.';
   static const profileLoadError = 'No pudimos cargar tu perfil.';
   static const profileProviderLabel = 'Método de acceso';
+
+  // Session restore
+  static const sessionRestoreError =
+      'No pudimos recuperar tu sesión. Revisa tu conexión e inténtalo de '
+      'nuevo.';
 
   // Not configured
   static const notConfiguredTitle = 'Autenticación no configurada';
@@ -79,6 +89,9 @@ abstract final class AppStrings {
   static const errorInvalidCredentials = 'Correo o contraseña incorrectos.';
   static const errorUserNotConfirmed =
       'Tu cuenta aún no está confirmada. Revisa tu correo.';
+  static const errorSocialNotConfirmed =
+      'No pudimos completar el acceso con ese método. Inténtalo de nuevo o '
+      'usa tu correo y contraseña.';
   static const errorUserExists = 'Ya existe una cuenta con ese correo.';
   static const errorCodeMismatch = 'El código no es correcto.';
   static const errorCodeExpired = 'El código venció. Solicita uno nuevo.';

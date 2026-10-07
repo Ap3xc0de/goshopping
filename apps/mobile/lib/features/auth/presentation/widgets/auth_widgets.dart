@@ -39,6 +39,7 @@ class EmailField extends StatelessWidget {
     this.autofocus = false,
     this.textInputAction = TextInputAction.next,
     this.enabled = true,
+    this.forceErrorText,
   });
 
   final TextEditingController controller;
@@ -48,10 +49,14 @@ class EmailField extends StatelessWidget {
   final TextInputAction textInputAction;
   final bool enabled;
 
+  /// Shows this error regardless of the form validation state.
+  final String? forceErrorText;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       key: AuthKeys.email,
+      forceErrorText: forceErrorText,
       controller: controller,
       enabled: enabled,
       autofocus: autofocus,

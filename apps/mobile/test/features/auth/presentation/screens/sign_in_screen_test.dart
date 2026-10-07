@@ -123,6 +123,65 @@ void main() {
     expect(find.text(AppStrings.confirmTitle), findsOneWidget);
   });
 
+  testWidgets(
+    'confirm account with an empty email shows a validation message',
+    (tester) async {
+      final repo = FakeAuthRepository()..user = null;
+      await pumpApp(tester, repo: repo);
+      repo.error = const UserNotConfirmedFailure();
+      await enter(tester, AuthKeys.email, 'ana@example.com');
+      await enter(tester, AuthKeys.password, 'Abcdef12');
+      await tester.tap(find.byKey(AuthKeys.submit));
+      await tester.pumpAndSettle();
+      await enter(tester, AuthKeys.email, '');
+
+      await tester.tap(find.text(AppStrings.confirmAccountAction));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppStrings.emailInvalid), findsOneWidget);
+      expect(find.text(AppStrings.confirmTitle), findsNothing);
+
+      await enter(tester, AuthKeys.email, 'ana@example.com');
+      expect(find.text(AppStrings.emailInvalid), findsNothing);
+      await tester.tap(find.text(AppStrings.confirmAccountAction));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.confirmTitle), findsOneWidget);
+    },
+  );
+
+  testWidgets('confirm account with an invalid email shows the message', (
+    tester,
+  ) async {
+    final repo = FakeAuthRepository()..user = null;
+    await pumpApp(tester, repo: repo);
+    repo.error = const UserNotConfirmedFailure();
+    await enter(tester, AuthKeys.email, 'ana@example.com');
+    await enter(tester, AuthKeys.password, 'Abcdef12');
+    await tester.tap(find.byKey(AuthKeys.submit));
+    await tester.pumpAndSettle();
+    await enter(tester, AuthKeys.email, 'nope');
+
+    await tester.tap(find.text(AppStrings.confirmAccountAction));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.emailInvalid), findsOneWidget);
+    expect(find.text(AppStrings.confirmTitle), findsNothing);
+  });
+
+  testWidgets('a social sign-in that is not confirmed shows a message', (
+    tester,
+  ) async {
+    final repo = FakeAuthRepository()..user = null;
+    await pumpApp(tester, repo: repo);
+    repo.error = const UserNotConfirmedFailure();
+    await tester.tap(find.text(AppStrings.continueWithGoogle));
+    await tester.pumpAndSettle();
+
+    expect(find.text(AppStrings.errorSocialNotConfirmed), findsOneWidget);
+    expect(find.text(AppStrings.confirmAccountAction), findsNothing);
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(AuthKeys.email), findsOneWidget);
+  });
+
   testWidgets('social buttons call the matching provider', (tester) async {
     final repo = FakeAuthRepository()..user = null;
     await pumpApp(tester, repo: repo);

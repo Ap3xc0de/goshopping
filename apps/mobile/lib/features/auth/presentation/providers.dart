@@ -105,7 +105,12 @@ final shopperRemoteDataSourceProvider = Provider(
 
 /// The profile from `GET /me` for the signed-in shopper.
 final shopperProvider = FutureProvider.autoDispose<Shopper>((ref) async {
-  final token = await ref.watch(getIdTokenUseCaseProvider)();
+  final api = ref.watch(apiClientProvider);
+  // Reading the token may refresh it over the network: bound it with the same
+  // timeout as the API call so the profile can never load forever.
+  final token = await ref
+      .watch(getIdTokenUseCaseProvider)()
+      .timeout(api.timeout, onTimeout: () => throw const NetworkApiFailure());
   if (token == null) throw const UnauthorizedApiFailure();
   return ref.watch(shopperRemoteDataSourceProvider).fetchMe(token);
 }, retry: _noRetry);

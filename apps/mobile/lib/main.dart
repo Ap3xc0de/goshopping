@@ -6,15 +6,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'core/config/app_config.dart';
 import 'core/config/config_providers.dart';
+import 'core/config/startup_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  var config = AppConfig.fromEnvironment();
-  if (config.isCognitoConfigured && !await _configureAmplify(config)) {
-    // Startup must not crash: fall back to the "not configured" screen.
-    config = const AppConfig.empty();
-  }
+  final config = await resolveStartupConfig(
+    AppConfig.fromEnvironment(),
+    configure: _configureAmplify,
+  );
 
   runApp(
     ProviderScope(

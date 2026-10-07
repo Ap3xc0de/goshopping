@@ -22,6 +22,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  String? _confirmEmailError;
+  bool _fromSocial = false;
 
   @override
   void dispose() {
@@ -32,9 +34,31 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    _fromSocial = false;
     await ref
         .read(signInControllerProvider.notifier)
         .signIn(email: _email.text, password: _password.text);
+  }
+
+  Future<void> _social(SocialProvider provider) async {
+    _fromSocial = true;
+    await ref
+        .read(signInControllerProvider.notifier)
+        .signInWithSocial(provider);
+  }
+
+  void _confirmAccount() {
+    final email = _email.text.trim();
+    if (!isValidEmail(email)) {
+      setState(() => _confirmEmailError = AppStrings.emailInvalid);
+      return;
+    }
+    context.push(
+      Uri(
+        path: AppRoutes.confirm,
+        queryParameters: {'email': email},
+      ).toString(),
+    );
   }
 
   @override
@@ -59,15 +83,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         ),
         const SizedBox(height: 24),
         if (failure != null) ...[
-          ErrorBanner(message: authFailureMessage(failure)),
-          if (failure is UserNotConfirmedFailure)
+          ErrorBanner(
+            message: failure is UserNotConfirmedFailure && _fromSocial
+                ? AppStrings.errorSocialNotConfirmed
+                : authFailureMessage(failure),
+          ),
+          // A social account is confirmed by its provider: only password
+          // sign-ins can be completed with a confirmation code.
+          if (failure is UserNotConfirmedFailure && !_fromSocial)
             TextButton(
-              onPressed: () => context.push(
-                Uri(
-                  path: AppRoutes.confirm,
-                  queryParameters: {'email': _email.text.trim()},
-                ).toString(),
-              ),
+              onPressed: _confirmAccount,
               child: const Text(AppStrings.confirmAccountAction),
             ),
           const SizedBox(height: 16),
@@ -79,6 +104,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               EmailField(
                 controller: _email,
                 enabled: !loading,
+                forceErrorText: _confirmEmailError,
+                onChanged: (_) {
+                  if (_confirmEmailError != null) {
+                    setState(() => _confirmEmailError = null);
+                  }
+                },
                 validator: (v) =>
                     isValidEmail(v ?? '') ? null : AppStrings.emailInvalid,
               ),
@@ -121,11 +152,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         for (final provider in providers) ...[
           _SocialButton(
             provider: provider,
-            onPressed: loading
-                ? null
-                : () => ref
-                      .read(signInControllerProvider.notifier)
-                      .signInWithSocial(provider),
+            onPressed: loading ? null : () => _social(provider),
           ),
           const SizedBox(height: 12),
         ],

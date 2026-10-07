@@ -1,4 +1,5 @@
 import '../../../core/strings/app_strings.dart';
+import '../domain/entities/sign_out_outcome.dart';
 import '../domain/failures/auth_failure.dart';
 
 /// UI copy for a failure. Anything that is not an `AuthFailure` is unknown.
@@ -13,4 +14,11 @@ String authFailureMessage(Object? error) => switch (error) {
   NetworkFailure() => AppStrings.errorNetwork,
   CancelledByUserFailure() => AppStrings.errorCancelled,
   _ => AppStrings.errorUnknown,
+};
+
+/// Notice for a sign out that did not fully finish; `null` when it did.
+String? signOutNotice(SignOutOutcome outcome) => switch (outcome) {
+  SignOutOutcome.complete => null,
+  SignOutOutcome.partial => AppStrings.signOutPartialNotice,
+  SignOutOutcome.failed => AppStrings.signOutFailedNotice,
 };

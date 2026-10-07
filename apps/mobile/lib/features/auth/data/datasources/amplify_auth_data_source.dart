@@ -3,10 +3,12 @@ import 'package:amplify_flutter/amplify_flutter.dart'
     hide AuthUser, SocialProvider;
 
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/sign_out_outcome.dart';
 import '../../domain/entities/social_provider.dart';
 import '../../domain/failures/auth_failure.dart';
 import 'amplify_failure_mapper.dart';
 import 'auth_data_source.dart';
+import 'sign_out_result_mapper.dart';
 
 /// Thin wrapper over `Amplify.Auth`. Not unit tested (it needs the native
 /// plugin); the error mapping lives in `mapAmplifyError`, which is.
@@ -85,9 +87,8 @@ class AmplifyAuthDataSource implements AuthDataSource {
       });
 
   @override
-  Future<void> signOut() => _guard(() async {
-    await Amplify.Auth.signOut();
-  });
+  Future<SignOutOutcome> signOut() =>
+      _guard(() async => mapSignOutResult(await Amplify.Auth.signOut()));
 
   @override
   Future<void> requestPasswordReset(String email) => _guard(() async {

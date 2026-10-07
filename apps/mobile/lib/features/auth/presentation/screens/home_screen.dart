@@ -3,14 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/strings/app_strings.dart';
 import '../../data/models/shopper.dart';
+import '../auth_failure_messages.dart';
 import '../providers.dart';
 
 /// Placeholder home: shows the profile returned by `GET /me`.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _signingOut = false;
+
+  Future<void> _signOut() async {
+    // The app-level messenger outlives this screen, which the router replaces
+    // as soon as the session ends.
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _signingOut = true);
+    final outcome = await ref.read(sessionProvider.notifier).signOut();
+    if (mounted) setState(() => _signingOut = false);
+    final notice = signOutNotice(outcome);
+    if (notice != null) {
+      messenger.showSnackBar(SnackBar(content: Text(notice)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final shopper = ref.watch(shopperProvider);
     final sessionEmail = ref.watch(sessionProvider).value?.email ?? '';
 
@@ -45,7 +66,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               OutlinedButton(
-                onPressed: () => ref.read(sessionProvider.notifier).signOut(),
+                onPressed: _signingOut ? null : _signOut,
                 child: const Text(AppStrings.signOut),
               ),
             ],

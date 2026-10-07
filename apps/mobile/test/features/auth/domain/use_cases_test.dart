@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:goshopping/features/auth/domain/entities/sign_out_outcome.dart';
 import 'package:goshopping/features/auth/domain/entities/social_provider.dart';
 import 'package:goshopping/features/auth/domain/failures/auth_failure.dart';
 import 'package:goshopping/features/auth/domain/usecases/confirm_password_reset.dart';
@@ -47,7 +48,8 @@ void main() {
   });
 
   test('SignOut delegates', () async {
-    await SignOut(repo)();
+    repo.signOutOutcome = SignOutOutcome.partial;
+    expect(await SignOut(repo)(), SignOutOutcome.partial);
     expect(repo.calls, ['signOut']);
   });
 

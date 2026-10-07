@@ -7,20 +7,29 @@ import '../providers.dart';
 /// Base for one-shot form actions: `AsyncLoading` while running, then
 /// `AsyncData` or an `AsyncError` carrying an `AuthFailure`.
 abstract class ActionNotifier extends Notifier<AsyncValue<void>> {
+  /// Identifies the latest call (or reset). A call may only publish its result
+  /// while it is still the latest one: a late result of an older call must
+  /// never overwrite newer state.
+  int _latest = 0;
+
   @override
-  AsyncValue<void> build() => const AsyncData(null);
+  AsyncValue<void> build() {
+    _latest++; // A rebuild resets the form: calls started before it are stale.
+    return const AsyncData(null);
+  }
 
   /// Runs [action] unless one is already running. Returns whether it succeeded.
   Future<bool> run(Future<void> Function() action) async {
     if (state.isLoading) return false;
+    final call = ++_latest;
     state = const AsyncLoading();
     try {
       await action();
-      if (ref.mounted) state = const AsyncData(null);
+      if (ref.mounted && call == _latest) state = const AsyncData(null);
       return true;
     } catch (error, stack) {
       final failure = error is AuthFailure ? error : const UnknownFailure();
-      if (ref.mounted) state = AsyncError(failure, stack);
+      if (ref.mounted && call == _latest) state = AsyncError(failure, stack);
       return false;
     }
   }

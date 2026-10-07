@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:goshopping/features/auth/domain/entities/sign_out_outcome.dart';
 import 'package:goshopping/features/auth/domain/entities/social_provider.dart';
 import 'package:goshopping/features/auth/domain/failures/auth_failure.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
@@ -65,10 +66,28 @@ void main() {
       () async {
         await container.read(sessionProvider.future);
         repo.error = const NetworkFailure();
-        await container.read(sessionProvider.notifier).signOut();
+        final outcome = await container
+            .read(sessionProvider.notifier)
+            .signOut();
+        expect(outcome, SignOutOutcome.failed);
         expect(container.read(sessionProvider).value, isNull);
       },
     );
+
+    for (final outcome in SignOutOutcome.values) {
+      test(
+        'signOut reports the $outcome outcome and ends signed out',
+        () async {
+          await container.read(sessionProvider.future);
+          repo.signOutOutcome = outcome;
+          expect(
+            await container.read(sessionProvider.notifier).signOut(),
+            outcome,
+          );
+          expect(container.read(sessionProvider).value, isNull);
+        },
+      );
+    }
   });
 
   group('SignInController', () {
@@ -150,6 +169,78 @@ void main() {
       expect(
         container.read(signInControllerProvider).error,
         isA<UnknownFailure>(),
+      );
+    });
+  });
+
+  group('ActionNotifier.run: latest call wins', () {
+    test(
+      'a late result of a superseded call does not overwrite newer state',
+      () async {
+        final sub = container.listen(
+          forgotPasswordControllerProvider,
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        final c = container.read(forgotPasswordControllerProvider.notifier);
+
+        final first = Completer<void>();
+        final firstRun = c.run(() => first.future);
+        expect(
+          container.read(forgotPasswordControllerProvider).isLoading,
+          isTrue,
+        );
+
+        // The form is reset (e.g. the screen rebuilds the provider) and a newer
+        // call starts and fails while the first one is still in flight.
+        container.invalidate(forgotPasswordControllerProvider);
+        final c2 = container.read(forgotPasswordControllerProvider.notifier);
+        expect(
+          await c2.run(() async => throw const CodeMismatchFailure()),
+          isFalse,
+        );
+        expect(
+          container.read(forgotPasswordControllerProvider).error,
+          isA<CodeMismatchFailure>(),
+        );
+
+        first.complete();
+        await firstRun;
+        expect(
+          container.read(forgotPasswordControllerProvider).error,
+          isA<CodeMismatchFailure>(),
+        );
+      },
+    );
+
+    test('a late failure of a superseded call is ignored too', () async {
+      final sub = container.listen(forgotPasswordControllerProvider, (_, _) {});
+      addTearDown(sub.close);
+      final c = container.read(forgotPasswordControllerProvider.notifier);
+
+      final first = Completer<void>();
+      final firstRun = c.run(() => first.future);
+      container.invalidate(forgotPasswordControllerProvider);
+      final c2 = container.read(forgotPasswordControllerProvider.notifier);
+      final second = Completer<void>();
+      final secondRun = c2.run(() => second.future);
+
+      first.completeError(const NetworkFailure());
+      await firstRun;
+      expect(
+        container.read(forgotPasswordControllerProvider).isLoading,
+        isTrue,
+      );
+
+      second.complete();
+      expect(await secondRun, isTrue);
+      expect(
+        container.read(forgotPasswordControllerProvider).hasError,
+        isFalse,
+      );
+      expect(
+        container.read(forgotPasswordControllerProvider).isLoading,
+        isFalse,
       );
     });
   });

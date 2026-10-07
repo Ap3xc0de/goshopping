@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:goshopping/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:goshopping/features/auth/domain/entities/sign_out_outcome.dart';
 import 'package:goshopping/features/auth/domain/entities/social_provider.dart';
 import 'package:goshopping/features/auth/domain/failures/auth_failure.dart';
 
@@ -15,6 +16,26 @@ void main() {
   setUp(() {
     ds = FakeAuthDataSource();
     repo = AuthRepositoryImpl(ds);
+  });
+
+  group('signOut', () {
+    test('returns the outcome reported by the data source', () async {
+      for (final outcome in SignOutOutcome.values) {
+        ds.signOutOutcome = outcome;
+        expect(await repo.signOut(), outcome);
+      }
+    });
+
+    test('never throws: any error is a failed outcome', () async {
+      for (final error in <Object>[
+        const NetworkFailure(),
+        StateError('x'),
+        const SocketException('down'),
+      ]) {
+        ds.error = error;
+        expect(await repo.signOut(), SignOutOutcome.failed);
+      }
+    });
   });
 
   group('delegation', () {
@@ -53,7 +74,7 @@ void main() {
       expect(await repo.signInWithSocial(SocialProvider.google), testUser);
       expect(await repo.restoreSession(), testUser);
       expect(await repo.idToken(), 'id-token');
-      await repo.signOut();
+      expect(await repo.signOut(), SignOutOutcome.complete);
       expect(ds.calls.last, 'signOut');
     });
   });
@@ -112,7 +133,6 @@ void main() {
         () => repo.confirmSignUp(email: 'a', code: '1'),
         () => repo.resendSignUpCode('a'),
         () => repo.signInWithSocial(SocialProvider.apple),
-        () => repo.signOut(),
         () => repo.requestPasswordReset('a'),
         () =>
             repo.confirmPasswordReset(email: 'a', code: '1', newPassword: 'n'),

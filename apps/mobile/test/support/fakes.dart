@@ -1,4 +1,5 @@
 import 'package:goshopping/features/auth/domain/entities/auth_user.dart';
+import 'package:goshopping/features/auth/domain/entities/sign_out_outcome.dart';
 import 'package:goshopping/features/auth/domain/entities/social_provider.dart';
 import 'package:goshopping/features/auth/data/datasources/auth_data_source.dart';
 import 'package:goshopping/features/auth/domain/repositories/auth_repository.dart';
@@ -11,6 +12,7 @@ class FakeAuthDataSource implements AuthDataSource {
   Object? error;
   AuthUser? user = testUser;
   String? token = 'id-token';
+  SignOutOutcome signOutOutcome = SignOutOutcome.complete;
 
   Future<void> _record(String call) async {
     calls.add(call);
@@ -47,7 +49,10 @@ class FakeAuthDataSource implements AuthDataSource {
   }
 
   @override
-  Future<void> signOut() => _record('signOut');
+  Future<SignOutOutcome> signOut() async {
+    await _record('signOut');
+    return signOutOutcome;
+  }
 
   @override
   Future<void> requestPasswordReset(String email) => _record('reset:$email');
@@ -78,6 +83,7 @@ class FakeAuthRepository implements AuthRepository {
   Object? error;
   AuthUser? user = testUser;
   String? token = 'id-token';
+  SignOutOutcome signOutOutcome = SignOutOutcome.complete;
   Future<void> Function()? gate;
 
   Future<void> _record(String call) async {
@@ -116,7 +122,10 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signOut() => _record('signOut');
+  Future<SignOutOutcome> signOut() async {
+    await _record('signOut');
+    return signOutOutcome;
+  }
 
   @override
   Future<void> requestPasswordReset(String email) => _record('reset:$email');

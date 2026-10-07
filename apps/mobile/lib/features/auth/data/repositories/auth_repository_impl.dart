@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/sign_out_outcome.dart';
 import '../../domain/entities/social_provider.dart';
 import '../../domain/failures/auth_failure.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -65,7 +66,13 @@ class AuthRepositoryImpl implements AuthRepository {
       _guard(() => _source.signInWithSocial(provider));
 
   @override
-  Future<void> signOut() => _guard(_source.signOut);
+  Future<SignOutOutcome> signOut() async {
+    try {
+      return await _source.signOut();
+    } catch (_) {
+      return SignOutOutcome.failed;
+    }
+  }
 
   @override
   Future<void> requestPasswordReset(String email) =>
