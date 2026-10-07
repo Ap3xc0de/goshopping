@@ -33,6 +33,12 @@ type Config struct {
 	JWTAccessExpiry  time.Duration
 	JWTRefreshExpiry time.Duration
 
+	// Cognito (shopper authentication)
+	CognitoRegion      string
+	CognitoUserPoolID  string
+	CognitoAppClientID string
+	CognitoJWKSURL     string // optional override of the default JWKS endpoint
+
 	// SQS
 	SQSEndpoint              string
 	SQSOrderEventsURL        string
@@ -92,6 +98,11 @@ func Load() *Config {
 		S3BucketAssets: getEnv("S3_BUCKET_ASSETS", ""),
 		S3Endpoint:     getEnv("S3_ENDPOINT", ""),
 	}
+
+	cfg.CognitoRegion = getEnv("COGNITO_REGION", cfg.AWSRegion)
+	cfg.CognitoUserPoolID = getEnv("COGNITO_USER_POOL_ID", "")
+	cfg.CognitoAppClientID = getEnv("COGNITO_APP_CLIENT_ID", "")
+	cfg.CognitoJWKSURL = getEnv("COGNITO_JWKS_URL", "")
 
 	if cfg.AppEnv == "staging" || cfg.AppEnv == "production" {
 		cfg.loadFromAWS()
