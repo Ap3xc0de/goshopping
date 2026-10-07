@@ -179,10 +179,17 @@ func PublicStoreConfig(db *pgxpool.Pool) fiber.Handler {
 			Name   string    `json:"name"`
 			Slug   string    `json:"slug"`
 			Status string    `json:"status"`
+
+			LogoURL     string `json:"logo_url"`
+			Description string `json:"description"`
+			Category    string `json:"category"`
 		}
 		if err := db.QueryRow(ctx, `
-			SELECT id, name, slug, status FROM stores WHERE slug = $1 AND status = 'active'`, slug,
-		).Scan(&store.ID, &store.Name, &store.Slug, &store.Status); err != nil {
+			SELECT id, name, slug, status,
+			       COALESCE(logo_url,''), COALESCE(description,''), COALESCE(category,'')
+			FROM stores WHERE slug = $1 AND status = 'active'`, slug,
+		).Scan(&store.ID, &store.Name, &store.Slug, &store.Status,
+			&store.LogoURL, &store.Description, &store.Category); err != nil {
 			return fiber.NewError(fiber.StatusNotFound, "store not found")
 		}
 		return c.JSON(store)

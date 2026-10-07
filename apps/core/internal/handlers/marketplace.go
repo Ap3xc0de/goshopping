@@ -8,7 +8,7 @@ import (
 // MarketplaceListStores handles GET /marketplace/stores
 func MarketplaceListStores(svc *services.MarketplaceService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		result, err := svc.ListStores(c.QueryInt("page", 1), c.QueryInt("per_page", 20), c.Query("search"))
+		result, err := svc.ListStores(c.QueryInt("page", 1), c.QueryInt("per_page", 20), c.Query("search"), c.Query("category"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}

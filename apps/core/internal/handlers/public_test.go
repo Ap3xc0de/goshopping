@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -20,6 +21,23 @@ func TestPublicStoreConfig(t *testing.T) {
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		data := testutil.AssertJSON(t, resp)
 		assert.Equal(t, slug, data["slug"])
+		// Profile fields are present and empty when not set.
+		assert.Equal(t, "", data["logo_url"])
+		assert.Equal(t, "", data["description"])
+		assert.Equal(t, "", data["category"])
+	})
+
+	t.Run("returns store profile fields when set", func(t *testing.T) {
+		if _, err := app.DB.Exec(context.Background(), `
+			UPDATE stores SET logo_url = 'https://cdn.example.com/logo.png', description = 'About us', category = 'fashion'
+			WHERE slug = $1`, slug); err != nil {
+			t.Fatalf("update store profile: %v", err)
+		}
+		resp := app.GET(t, "/public/"+slug+"/config", "")
+		data := testutil.AssertJSON(t, resp)
+		assert.Equal(t, "https://cdn.example.com/logo.png", data["logo_url"])
+		assert.Equal(t, "About us", data["description"])
+		assert.Equal(t, "fashion", data["category"])
 	})
 
 	t.Run("returns 404 for unknown slug", func(t *testing.T) {

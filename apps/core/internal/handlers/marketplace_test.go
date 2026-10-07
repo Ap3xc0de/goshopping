@@ -27,6 +27,11 @@ func TestMarketplaceListStores(t *testing.T) {
 	insert("Alpha Shop", "alpha-shop", "active")
 	insert("Zeta Shop", "zeta-shop", "active")
 	insert("Hidden Shop", "hidden-shop", "inactive")
+	if _, err := app.DB.Exec(context.Background(), `
+		UPDATE stores SET logo_url = 'https://cdn.example.com/alpha.png', description = 'Fresh goods', category = 'grocery'
+		WHERE slug = 'alpha-shop'`); err != nil {
+		t.Fatalf("update store profile: %v", err)
+	}
 
 	t.Run("lists only active stores ordered by name without private fields", func(t *testing.T) {
 		resp := app.GET(t, "/marketplace/stores", "")
@@ -37,8 +42,27 @@ func TestMarketplaceListStores(t *testing.T) {
 		items, _ := data["data"].([]interface{})
 		first, _ := items[0].(map[string]interface{})
 		assert.Equal(t, "Alpha Shop", first["name"])
-		assert.Len(t, first, 3)
+		assert.Len(t, first, 6)
 		assert.NotContains(t, first, "account_id")
+		assert.Equal(t, "https://cdn.example.com/alpha.png", first["logo_url"])
+		assert.Equal(t, "Fresh goods", first["description"])
+		assert.Equal(t, "grocery", first["category"])
+
+		// Stores without a profile expose empty strings, never null.
+		last, _ := items[len(items)-1].(map[string]interface{})
+		assert.Equal(t, "Zeta Shop", last["name"])
+		assert.Equal(t, "", last["logo_url"])
+		assert.Equal(t, "", last["description"])
+		assert.Equal(t, "", last["category"])
+	})
+
+	t.Run("filters by exact category", func(t *testing.T) {
+		resp := app.GET(t, "/marketplace/stores?category=grocery", "")
+		data := testutil.AssertJSON(t, resp)
+		testutil.AssertPaginated(t, data, 1)
+
+		resp = app.GET(t, "/marketplace/stores?category=groc", "")
+		testutil.AssertPaginated(t, testutil.AssertJSON(t, resp), 0)
 	})
 
 	t.Run("search is case-insensitive", func(t *testing.T) {

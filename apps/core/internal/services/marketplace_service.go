@@ -18,6 +18,16 @@ const (
 
 // MarketplaceStore is the public-facing view of a store (no account/owner/internal fields).
 type MarketplaceStore struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	LogoURL     string    `json:"logo_url"`
+	Description string    `json:"description"`
+	Category    string    `json:"category"`
+}
+
+// MarketplaceStoreRef is the minimal store reference nested in a product.
+type MarketplaceStoreRef struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 	Slug string    `json:"slug"`
@@ -35,17 +45,17 @@ type ListMarketplaceStoresResult struct {
 // MarketplaceProduct is the public-facing view of a product (no cost/min_stock)
 // together with the store it belongs to.
 type MarketplaceProduct struct {
-	ID          uuid.UUID        `json:"id"`
-	StoreID     uuid.UUID        `json:"store_id"`
-	Name        string           `json:"name"`
-	SKU         string           `json:"sku"`
-	Description string           `json:"description"`
-	Price       models.Money     `json:"price"`
-	Stock       int              `json:"stock"`
-	Category    string           `json:"category"`
-	Images      json.RawMessage  `json:"images"`
-	Status      string           `json:"status"`
-	Store       MarketplaceStore `json:"store"`
+	ID          uuid.UUID           `json:"id"`
+	StoreID     uuid.UUID           `json:"store_id"`
+	Name        string              `json:"name"`
+	SKU         string              `json:"sku"`
+	Description string              `json:"description"`
+	Price       models.Money        `json:"price"`
+	Stock       int                 `json:"stock"`
+	Category    string              `json:"category"`
+	Images      json.RawMessage     `json:"images"`
+	Status      string              `json:"status"`
+	Store       MarketplaceStoreRef `json:"store"`
 }
 
 // ListMarketplaceProductsResult holds a paginated list of public products.
@@ -68,8 +78,8 @@ func NewMarketplaceService(db *pgxpool.Pool) *MarketplaceService {
 }
 
 // ListStores returns active stores ordered by name, optionally filtered by a
-// case-insensitive name search.
-func (s *MarketplaceService) ListStores(page, perPage int, search string) (*ListMarketplaceStoresResult, error) {
+// case-insensitive name search and an exact category.
+func (s *MarketplaceService) ListStores(page, perPage int, search, category string) (*ListMarketplaceStoresResult, error) {
 	ctx := context.Background()
 	page, perPage = normalizeMarketplacePaging(page, perPage)
 	offset := (page - 1) * perPage
@@ -83,6 +93,11 @@ func (s *MarketplaceService) ListStores(page, perPage int, search string) (*List
 		args = append(args, "%"+escapeLike(search)+"%")
 		idx++
 	}
+	if category != "" {
+		conditions = append(conditions, fmt.Sprintf("category = $%d", idx))
+		args = append(args, category)
+		idx++
+	}
 	where := "WHERE " + strings.Join(conditions, " AND ")
 
 	var total int64
@@ -92,7 +107,7 @@ func (s *MarketplaceService) ListStores(page, perPage int, search string) (*List
 
 	args = append(args, perPage, offset)
 	query := fmt.Sprintf(`
-		SELECT id, name, slug
+		SELECT id, name, slug, COALESCE(logo_url,''), COALESCE(description,''), COALESCE(category,'')
 		FROM stores %s
 		ORDER BY name ASC, id ASC
 		LIMIT $%d OFFSET $%d`, where, idx, idx+1)
@@ -106,7 +121,7 @@ func (s *MarketplaceService) ListStores(page, perPage int, search string) (*List
 	stores := []MarketplaceStore{}
 	for rows.Next() {
 		var st MarketplaceStore
-		if err := rows.Scan(&st.ID, &st.Name, &st.Slug); err != nil {
+		if err := rows.Scan(&st.ID, &st.Name, &st.Slug, &st.LogoURL, &st.Description, &st.Category); err != nil {
 			return nil, fmt.Errorf("scan store: %w", err)
 		}
 		stores = append(stores, st)
