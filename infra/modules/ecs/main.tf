@@ -206,10 +206,18 @@ resource "aws_ecs_task_definition" "core" {
     image     = "${var.ecr_urls["goshopping-core"]}:latest"
     essential = true
     portMappings = [{ containerPort = 3000, protocol = "tcp" }]
-    environment = [
-      { name = "APP_ENV",  value = var.environment },
-      { name = "PORT",     value = "3000" },
-    ]
+    environment = concat(
+      [
+        { name = "APP_ENV",  value = var.environment },
+        { name = "PORT",     value = "3000" },
+      ],
+      # Shopper (Cognito) auth; omitted until a user pool is wired in.
+      var.cognito_user_pool_id == "" ? [] : [
+        { name = "COGNITO_USER_POOL_ID",  value = var.cognito_user_pool_id },
+        { name = "COGNITO_APP_CLIENT_ID", value = var.cognito_app_client_id },
+        { name = "COGNITO_REGION",        value = var.cognito_region },
+      ],
+    )
     logConfiguration = {
       logDriver = "awslogs"
       options = {

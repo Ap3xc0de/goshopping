@@ -151,6 +151,33 @@ module "ecs" {
   desired_count      = 1
   certificate_arn    = aws_acm_certificate_validation.api.certificate_arn
   api_domain_name    = local.api_domain_name
+
+  cognito_user_pool_id  = module.cognito.user_pool_id
+  cognito_app_client_id = module.cognito.app_client_id
+  cognito_region        = var.aws_region
+}
+
+module "cognito" {
+  source = "../../modules/cognito"
+
+  environment   = "staging"
+  domain_prefix = var.cognito_domain_prefix
+  callback_urls = var.cognito_callback_urls
+  logout_urls   = var.cognito_logout_urls
+
+  enable_google        = var.enable_google_login
+  google_client_id     = var.google_client_id
+  google_client_secret = var.google_client_secret
+
+  enable_facebook     = var.enable_facebook_login
+  facebook_app_id     = var.facebook_app_id
+  facebook_app_secret = var.facebook_app_secret
+
+  enable_apple      = var.enable_apple_login
+  apple_services_id = var.apple_services_id
+  apple_team_id     = var.apple_team_id
+  apple_key_id      = var.apple_key_id
+  apple_private_key = var.apple_private_key
 }
 
 module "ssm" {

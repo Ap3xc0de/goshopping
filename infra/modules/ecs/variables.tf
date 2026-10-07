@@ -8,3 +8,6 @@ variable "task_memory"        { type = number; default = 512 }
 variable "desired_count"      { type = number; default = 1 }
 variable "certificate_arn"    { type = string }
 variable "api_domain_name"    { type = string }
+variable "cognito_user_pool_id"    { type = string; default = "" }
+variable "cognito_app_client_id"   { type = string; default = "" }
+variable "cognito_region"          { type = string; default = "" }
