@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../../core/config/auth_policy.dart';
 import '../../../../core/strings/app_strings.dart';
 import '../../domain/validators/auth_validators.dart';
 import '../auth_keys.dart';
@@ -26,6 +28,44 @@ class AuthScaffold extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One-time confirmation code input (digits only, policy length).
+class CodeField extends StatelessWidget {
+  const CodeField({
+    super.key,
+    required this.controller,
+    this.onChanged,
+    this.onSubmitted,
+    this.textInputAction = TextInputAction.done,
+    this.enabled = true,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final TextInputAction textInputAction;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      key: AuthKeys.code,
+      controller: controller,
+      enabled: enabled,
+      autofocus: true,
+      keyboardType: TextInputType.number,
+      textInputAction: textInputAction,
+      autofillHints: const [AutofillHints.oneTimeCode],
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(AuthPolicy.confirmationCodeLength),
+      ],
+      onChanged: onChanged,
+      onFieldSubmitted: onSubmitted,
+      decoration: const InputDecoration(labelText: AppStrings.codeLabel),
     );
   }
 }
@@ -133,6 +173,20 @@ class _PasswordFieldState extends State<PasswordField> {
   }
 }
 
+Key _ruleKey(PasswordRule rule) => switch (rule) {
+  PasswordRule.minLength => AuthKeys.ruleMinLength,
+  PasswordRule.uppercase => AuthKeys.ruleUppercase,
+  PasswordRule.lowercase => AuthKeys.ruleLowercase,
+  PasswordRule.number => AuthKeys.ruleNumber,
+};
+
+String _ruleLabel(PasswordRule rule) => switch (rule) {
+  PasswordRule.minLength => AppStrings.ruleMinLength,
+  PasswordRule.uppercase => AppStrings.ruleUppercase,
+  PasswordRule.lowercase => AppStrings.ruleLowercase,
+  PasswordRule.number => AppStrings.ruleNumber,
+};
+
 /// Live checklist of the password policy.
 class PasswordRulesChecklist extends StatelessWidget {
   const PasswordRulesChecklist({super.key, required this.password});
@@ -150,26 +204,12 @@ class PasswordRulesChecklist extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: 4),
-        _Rule(
-          key: AuthKeys.ruleMinLength,
-          label: AppStrings.ruleMinLength,
-          met: result.hasMinLength,
-        ),
-        _Rule(
-          key: AuthKeys.ruleUppercase,
-          label: AppStrings.ruleUppercase,
-          met: result.hasUppercase,
-        ),
-        _Rule(
-          key: AuthKeys.ruleLowercase,
-          label: AppStrings.ruleLowercase,
-          met: result.hasLowercase,
-        ),
-        _Rule(
-          key: AuthKeys.ruleNumber,
-          label: AppStrings.ruleNumber,
-          met: result.hasNumber,
-        ),
+        for (final rule in PasswordRule.values)
+          _Rule(
+            key: _ruleKey(rule),
+            label: _ruleLabel(rule),
+            met: result.isMet(rule),
+          ),
       ],
     );
   }

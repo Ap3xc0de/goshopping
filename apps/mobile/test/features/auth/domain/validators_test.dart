@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:goshopping/core/config/auth_policy.dart';
+import 'package:goshopping/core/strings/app_strings.dart';
 import 'package:goshopping/features/auth/domain/validators/auth_validators.dart';
 
 void main() {
@@ -64,6 +66,50 @@ void main() {
       expect(isValidConfirmationCode(' 123456 '), isTrue);
       expect(isValidConfirmationCode('12345'), isFalse);
       expect(isValidConfirmationCode('12345a'), isFalse);
+    });
+  });
+
+  group('single source of truth', () {
+    test('every rule drives both isMet and isValid', () {
+      expect(PasswordRule.values, hasLength(4));
+      for (final rule in PasswordRule.values) {
+        // A password that satisfies every rule except [rule] is invalid.
+        final candidates = {
+          PasswordRule.minLength: 'Ab1',
+          PasswordRule.uppercase: 'abcdefg1',
+          PasswordRule.lowercase: 'ABCDEFG1',
+          PasswordRule.number: 'Abcdefgh',
+        };
+        final result = PasswordRules.check(candidates[rule]!);
+        expect(result.isMet(rule), isFalse, reason: '$rule');
+        expect(result.isValid, isFalse, reason: '$rule');
+      }
+      expect(PasswordRules.check('Abcdef12').isValid, isTrue);
+    });
+
+    test('the min length and code length come from the shared policy', () {
+      expect(PasswordRules.minLength, AuthPolicy.passwordMinLength);
+      expect(PasswordRules.check('Aa1${'x' * 4}').hasMinLength, isFalse);
+      expect(
+        PasswordRules.check('Aa1${'x' * (AuthPolicy.passwordMinLength - 3)}')
+            .hasMinLength,
+        isTrue,
+      );
+      final code = '1' * AuthPolicy.confirmationCodeLength;
+      expect(isValidConfirmationCode(code), isTrue);
+      expect(isValidConfirmationCode('$code${1}'), isFalse);
+      expect(isValidConfirmationCode(code.substring(1)), isFalse);
+    });
+
+    test('Spanish copy mentions the shared lengths', () {
+      expect(
+        AppStrings.ruleMinLength,
+        contains('${AuthPolicy.passwordMinLength}'),
+      );
+      expect(
+        AppStrings.confirmInstructions('a@b.co'),
+        contains('${AuthPolicy.confirmationCodeLength}'),
+      );
     });
   });
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,7 +6,6 @@ import '../../../../core/router/auth_redirect.dart';
 import '../../../../core/strings/app_strings.dart';
 import '../../domain/validators/auth_validators.dart';
 import '../auth_failure_messages.dart';
-import '../auth_keys.dart';
 import '../providers.dart';
 import '../widgets/auth_widgets.dart';
 
@@ -68,21 +66,11 @@ class _ConfirmCodeScreenState extends ConsumerState<ConfirmCodeScreen> {
           ErrorBanner(message: authFailureMessage(failure)),
           const SizedBox(height: 16),
         ],
-        TextFormField(
-          key: AuthKeys.code,
+        CodeField(
           controller: _code,
           enabled: !loading,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          textInputAction: TextInputAction.done,
-          autofillHints: const [AutofillHints.oneTimeCode],
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(6),
-          ],
           onChanged: (_) => setState(() {}),
-          onFieldSubmitted: (_) => loading ? null : _confirm(),
-          decoration: const InputDecoration(labelText: AppStrings.codeLabel),
+          onSubmitted: (_) => loading ? null : _confirm(),
         ),
         const SizedBox(height: 24),
         SubmitButton(

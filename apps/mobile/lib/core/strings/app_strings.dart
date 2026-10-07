@@ -1,3 +1,5 @@
+import '../config/auth_policy.dart';
+
 /// User-facing copy (Spanish). Kept in one place so l10n can replace it later.
 abstract final class AppStrings {
   static const appName = 'Goshopping';
@@ -17,7 +19,8 @@ abstract final class AppStrings {
   // Validation
   static const emailInvalid = 'Ingresa un correo válido';
   static const passwordRequired = 'Ingresa tu contraseña';
-  static const ruleMinLength = 'Al menos 8 caracteres';
+  static const ruleMinLength =
+      'Al menos ${AuthPolicy.passwordMinLength} caracteres';
   static const ruleUppercase = 'Una letra mayúscula';
   static const ruleLowercase = 'Una letra minúscula';
   static const ruleNumber = 'Un número';
@@ -48,7 +51,8 @@ abstract final class AppStrings {
   static const accountConfirmedNotice =
       'Cuenta confirmada. Ya puedes iniciar sesión.';
   static String confirmInstructions(String email) =>
-      'Enviamos un código de 6 dígitos a $email.';
+      'Enviamos un código de ${AuthPolicy.confirmationCodeLength} dígitos a '
+      '$email.';
 
   // Forgot / reset password
   static const forgotTitle = 'Recuperar contraseña';
