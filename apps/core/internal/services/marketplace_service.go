@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/goshopping/core/internal/models"
@@ -14,6 +15,9 @@ import (
 const (
 	marketplaceDefaultPerPage = 20
 	marketplaceMaxPerPage     = 50
+
+	// marketplaceQueryTimeout bounds every marketplace query batch.
+	marketplaceQueryTimeout = 5 * time.Second
 )
 
 // MarketplaceStore is the public-facing view of a store (no account/owner/internal fields).
@@ -79,8 +83,9 @@ func NewMarketplaceService(db *pgxpool.Pool) *MarketplaceService {
 
 // ListStores returns active stores ordered by name, optionally filtered by a
 // case-insensitive name search and an exact category.
-func (s *MarketplaceService) ListStores(page, perPage int, search, category string) (*ListMarketplaceStoresResult, error) {
-	ctx := context.Background()
+func (s *MarketplaceService) ListStores(ctx context.Context, page, perPage int, search, category string) (*ListMarketplaceStoresResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, marketplaceQueryTimeout)
+	defer cancel()
 	page, perPage = normalizeMarketplacePaging(page, perPage)
 	offset := (page - 1) * perPage
 
@@ -141,8 +146,9 @@ func (s *MarketplaceService) ListStores(page, perPage int, search, category stri
 
 // ListProducts returns active products of active stores ordered by name,
 // optionally filtered by a case-insensitive name search and an exact category.
-func (s *MarketplaceService) ListProducts(page, perPage int, search, category string) (*ListMarketplaceProductsResult, error) {
-	ctx := context.Background()
+func (s *MarketplaceService) ListProducts(ctx context.Context, page, perPage int, search, category string) (*ListMarketplaceProductsResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, marketplaceQueryTimeout)
+	defer cancel()
 	page, perPage = normalizeMarketplacePaging(page, perPage)
 	offset := (page - 1) * perPage
 
