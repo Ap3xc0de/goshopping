@@ -120,6 +120,128 @@ Exchange a valid refresh token for a new token pair.
 
 ---
 
+## Marketplace
+
+Public, unauthenticated, cross-store read endpoints. Only `active` stores and `active` products of `active` stores are returned. Private fields (for example `cost`, `min_stock`, `account_id`) are never exposed.
+
+All list endpoints return the same pagination envelope: `data`, `total`, `page`, `per_page`, `total_pages`. Invalid or `< 1` values for `page` / `per_page` fall back to defaults (`page=1`, `per_page=20`); `per_page` is capped at 50.
+
+### GET /marketplace/stores
+
+Lists active stores ordered by name.
+
+**Query parameters**
+| Param | Default | Description |
+|-------|---------|-------------|
+| `page` | 1 | Page number |
+| `per_page` | 20 | Items per page (max 50) |
+| `search` | — | Case-insensitive substring match on store name |
+| `category` | — | Exact match on store category |
+
+**Response 200**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Alpha Shop",
+      "slug": "alpha-shop",
+      "logo_url": "https://cdn.example.com/alpha.png",
+      "description": "Fresh goods",
+      "category": "grocery"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 1
+}
+```
+
+`logo_url`, `description` and `category` are empty strings when not set.
+
+### GET /marketplace/products
+
+Lists active products across all active stores, ordered by name.
+
+**Query parameters**
+| Param | Default | Description |
+|-------|---------|-------------|
+| `page` | 1 | Page number |
+| `per_page` | 20 | Items per page (max 50) |
+| `search` | — | Case-insensitive substring match on product name |
+| `category` | — | Exact match on product category |
+
+**Response 200**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "store_id": "uuid",
+      "name": "Banana",
+      "sku": "BAN-001",
+      "description": "",
+      "price": 1500.00,
+      "stock": 10,
+      "category": "fruit",
+      "images": [],
+      "status": "active",
+      "store": {
+        "id": "uuid",
+        "name": "Alpha Shop",
+        "slug": "alpha-shop"
+      }
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 1
+}
+```
+
+Products never include `cost` or `min_stock`.
+
+---
+
+## Public Storefront
+
+Public, unauthenticated endpoints scoped to one active store, addressed by its slug. An unknown or inactive slug returns `404`.
+
+### GET /public/:storeSlug/config
+
+**Response 200**
+```json
+{
+  "id": "uuid",
+  "name": "Alpha Shop",
+  "slug": "alpha-shop",
+  "status": "active",
+  "logo_url": "https://cdn.example.com/alpha.png",
+  "description": "Fresh goods",
+  "category": "grocery"
+}
+```
+
+`logo_url`, `description` and `category` are empty strings when not set.
+
+### GET /public/:storeSlug/products
+
+Lists the store's active products. Returns the same pagination envelope as the marketplace endpoints, with products shaped without `cost`.
+
+**Query parameters**
+| Param | Default | Description |
+|-------|---------|-------------|
+| `page` | 1 | Page number |
+| `per_page` | 50 | Items per page (max 100) |
+| `category` | — | Exact match on product category |
+| `search` | — | Case-insensitive match on product name or SKU |
+
+Invalid or `< 1` values for `page` / `per_page` fall back to their defaults.
+
+---
+
 ## JWT Claims
 
 Access token payload:
