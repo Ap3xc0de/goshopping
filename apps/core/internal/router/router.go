@@ -39,6 +39,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *pgxpool.Pool, eventSvc *servi
 	// Marketplace (no auth, cross-store read-only)
 	market := app.Group("/marketplace")
 	market.Get("/stores", handlers.MarketplaceListStores(marketplaceSvc))
+	market.Get("/products", handlers.MarketplaceListProducts(marketplaceSvc))
 
 	// ── Protected routes ──────────────────────────────────────────────────────
 	api := app.Group("/", middleware.Auth(cfg.JWTSecret))

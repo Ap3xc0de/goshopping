@@ -21,3 +21,20 @@ func MarketplaceListStores(svc *services.MarketplaceService) fiber.Handler {
 		})
 	}
 }
+
+// MarketplaceListProducts handles GET /marketplace/products
+func MarketplaceListProducts(svc *services.MarketplaceService) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		result, err := svc.ListProducts(c.QueryInt("page", 1), c.QueryInt("per_page", 20), c.Query("search"), c.Query("category"))
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+		return c.JSON(fiber.Map{
+			"data":        result.Products,
+			"total":       result.Total,
+			"page":        result.Page,
+			"per_page":    result.PerPage,
+			"total_pages": result.TotalPages,
+		})
+	}
+}
